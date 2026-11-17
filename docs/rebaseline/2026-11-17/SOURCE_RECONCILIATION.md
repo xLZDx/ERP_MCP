@@ -2,7 +2,8 @@
 
 Source checkpoint: `a9f03cfa4ee4bfca1667b1db4c12ec7a399b6951` on
 `codex/main-consolidation-20261117`. This is a local candidate snapshot, not a
-published baseline, runtime qualification or merge approval.
+runtime qualification. Engineering integration was subsequently approved for
+561256d and published through PR59 at main3667b0e. See CONSOLIDATION_CLOSEOUT.md.
 
 ## Preservation and coverage
 
@@ -79,9 +80,9 @@ test groups are not added into a fabricated unique-test total. Missing runtime
 or provider qualification remains explicit. The source-only package exclusion
 test does not substitute for a prohibited wheel/image build.
 
-After tests and applicable independent review, a full-candidate GPT-PM APPROVE
-bound to the exact final HEAD is required before push/PR/merge. The earlier
-audit-tools approval cannot authorize this application delta. Main is unchanged
-until the approved candidate is merged. Cleanup only follows verified merge
-and preservation checks; unmerged alternatives retain their history. FIN-S1.2
-remains deferred until final project verification, not a current dependency.
+Tests and applicable independent review were followed by full-candidate GPT-PM
+APPROVE for561256d. PR59 merged that head into main3667b0e. The earlier audit-only
+approval did not authorize this application delta. Cleanup followed verified
+merge and preservation checks; unmerged alternatives retain their history.
+FIN-S1.2 remains deferred until final project verification. Live ERP MCP and
+credential investigation are also deferred, not prerequisites for local closeout.

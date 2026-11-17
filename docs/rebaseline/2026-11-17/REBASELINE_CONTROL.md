@@ -1,7 +1,11 @@
 # ERP_MCP full rebaseline — 2026-11-17
 
-Status: IN_PROGRESS. This is the operator-authorized replacement of the former
-FIN-only execution scope, not a declaration that earlier work is unfinished.
+Status: COMPLETE_BOUNDED. Audit and engineering consolidation merged through
+PR59 at main3667b0e after exact561256d approval. See CONSOLIDATION_CLOSEOUT.md
+for published baseline, preservation, cleanup and the later restored R2-US-002
+acceptance correction. Inventories below remain dated snapshots, not live counts.
+This was the operator-authorized replacement of FIN-only execution scope, not a
+declaration that earlier work was unfinished or that product gates are now closed.
 
 ## Evidence rules
 

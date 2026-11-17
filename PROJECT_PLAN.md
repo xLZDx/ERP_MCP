@@ -13,7 +13,7 @@ Source: project plans, `docs/phase2/TASK_LEDGER.md`, decision/evidence records, 
 
 ## Current rebaseline authority — 2026-11-17
 
-The operator authorized a full program rebaseline across source, architecture, all refs, documents and reports. This plan retains the original task identifiers and bounded acceptances. The old native ledger is evidence input, not a replacement for document/Git reconciliation. The bounded audit/preparation sprint REBASELINE is closed locally; current execution is MAIN_CONSOLIDATION (MC-01..04), with named candidate qualification in progress. Historical FIN stays in final-review state. FIN-S1.2 remains deferred to final project verification and is not a current dependency.
+The operator authorized a full program rebaseline across source, architecture, all refs, documents and reports. Rebaseline and engineering consolidation are complete: PR59 merged approved head561256d into published main3667b0e on2026-11-17. The original104 task identifiers remain;49 now have explicit historical bounded acceptance, including restored R2-US-002 (the initial audit snapshot contained48). The old native ledger remains evidence input, not a replacement for document/Git reconciliation. Historical FIN stays in final-review state; product/runtime gates are not promoted by engineering integration. FIN-S1.2 remains deferred to final project verification. Live ERP MCP starts and credential investigation are deferred by operator instruction.
 
 Source inventory: docs/rebaseline/2026-11-17/FILE_INVENTORY.json. Branch inventory and integration sequence: docs/rebaseline/2026-11-17/BRANCH_INVENTORY.json and BRANCH_INTEGRATION_AUDIT.md. Architecture: ARCHITECTURE_AUDIT.md in the same folder. Per-task basis: TASK_EVIDENCE_AUDIT.md.
 
@@ -35,15 +35,15 @@ The audit/preparation sprint completed locally in its bounded scope. Its PM appr
 
 | ID | Title | Acceptance criteria | Status | Evidence | Owner | Dependency | Commits |
 |---|---|---|---|---|---|---|---|
-| MC-01 | Preserved main-based candidate | Both histories and selected dirty work retained with provenance; unique refs classified; no history rewrite | IN_REVIEW | SOURCE_RECONCILIATION.md and residual49-source dispositions; selected source and historical proof retained; named core1086 passed/1 skipped; full-candidate review pending | Codex | | b3888d4, b1e2605, 8c0d70b, 6ec0ba0, 49e4503, 1fbbb7c, 0d02626 |
-| MC-02 | Concurrent capability observation isolation | Live requests coexist, latest accepted pointer monotonic, retries/crashes fail closed, grants unchanged | IN_REVIEW | Forward018; disposable concurrent/ACL PostgreSQL4 passed and observer-order5 passed, raw receipts in CONSOLIDATION_QUALIFICATION.md; final review pending | Codex | MC-01 | 486a844 |
-| MC-03 | Gateway artifact package boundary | Explicit gateway/S15 discovery and image roots, writer/S16 excluded, private sources retained | IN_REVIEW | Explicit package/image roots and named package-boundary tests in151-pass contract group; artifact build NOT_RUN under operator prohibition, no artifact-execution claim | Codex | MC-01 | 812122d |
-| MC-04 | Exact-candidate qualification and merge | Named tests, applicable reviews and exact-head PM approval; merge then safe cleanup | IN_PROGRESS | Named qualification receipts retained, S13 assigned files executed; Python-review signature-reuse MAJOR fixed in a9f03cf with regression; final SQL review and exact-head GPT-PM remain before push | Codex | MC-02, MC-03 | 0c43751, a9f03cf |
+| MC-01 | Preserved main-based candidate | Both histories and selected dirty work retained with provenance; unique refs classified; no history rewrite | ACCEPTED_BOUNDED | Source reconciliation, preserved inputs and full-candidate APPROVE561256d; published through PR59/main3667b0e; unmerged alternatives retained | Codex | | b3888d4, b1e2605, 8c0d70b, 6ec0ba0, 49e4503, 1fbbb7c, 0d02626, 561256d |
+| MC-02 | Concurrent capability observation isolation | Live requests coexist, latest accepted pointer monotonic, retries/crashes fail closed, grants unchanged | ACCEPTED_BOUNDED | Forward018; disposable concurrent/ACL PostgreSQL4 passed, observer-order5 passed; code/DB review and exact-head APPROVE; no live deployment | Codex | MC-01 | 486a844, 561256d |
+| MC-03 | Gateway artifact package boundary | Explicit gateway/S15 discovery and image roots, writer/S16 excluded, private sources retained | ACCEPTED_BOUNDED | Explicit package/image source roots and named package-boundary cases; exact-head APPROVE; builds remain NOT_RUN/prohibited, no artifact-execution claim | Codex | MC-01 | 812122d, 561256d |
+| MC-04 | Exact-candidate qualification and merge | Named tests, applicable reviews and exact-head PM approval; merge then safe cleanup | ACCEPTED_BOUNDED | Final561256d regression21 passed; four review roles, one fixed MAJOR; full-candidate APPROVE and receipt-format confirmation; PR59 MERGED3667b0e, main synchronized/clean, merged scratch copies removed | Codex | MC-02, MC-03 | 0c43751, a9f03cf, 561256d |
 
 ## Roadmap
 | Sprint | Title | Status | Goal |
 |---|---|---|---|
-| MAIN_CONSOLIDATION | Preserved main candidate and boundary fixes | ACTIVE | Qualify actual combined candidate before promotion. |
+| MAIN_CONSOLIDATION | Preserved main candidate and boundary fixes | CLOSED_BOUNDED_SPRINT | PR59 merged approved engineering candidate; product/runtime qualification remains separate. |
 | REBASELINE | Full evidence-based program rebaseline | CLOSED_BOUNDED_SPRINT | Reconcile all source/document/ref evidence and prepare main integration and cleanup. |
 | FIN | Phase 2 finisher backlog (sprint beea27520b33) | IN_REVIEW | Complete authorized S12/S13 follow-ups and the S16 rev. 2 fake-backed approval/tool slice, then collect exact-final-head evidence and reconcile acceptance. |
 | S0 | Baseline | IN_PROGRESS | Current plan and task records still show R2-US-001 in progress and R2-US-002 not started. A separate S0 closeout branch says 2/2 bounded tasks, but PR #42 is open and that snapshot is not integrated; keep it as an alternative historical claim, not current closure. |
@@ -90,7 +90,7 @@ Goal: Baseline.
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
 | R2-US-001 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence; TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence | IN_PROGRESS | Historical ledger IN_PROGRESS, current status unconfirmed; Supporting tests passed at 3af73797 (spec catalog 13, mapping/assembly/TC003 7); product TC001-TC003 remain NOT_RUN; GPT-PM read-only APPROVE of the uncommitted delta is not product acceptance | Codex |  |  |
-| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | NOT_STARTED | Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof | Codex | R2-US-001 |  |
+| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | BOUNDED_SCOPE_COMPLETE | Restored R2US002_BOUNDED_ACCEPTANCE.yaml and hash-matched evidence/receipt: request9550946b-a01e-4148-86c0-79db24d9e591 explicitly accepts the whole bounded story at c624b701; TC004..006 SATISFIED, canonical product NOT_RUN, no redistribution/production inclusion authority. Records now published via PR59. | Codex | R2-US-001 | c624b701, 749bbfad, 561256d |
 
 ## Sprint S1 - Connector contracts
 Goal: Connector contracts.

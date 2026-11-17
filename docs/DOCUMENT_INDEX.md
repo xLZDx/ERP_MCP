@@ -17,9 +17,11 @@ The live task ledger is local shared state resolved through the Git common
 directory; `rebaseline/LEDGER_LIFECYCLE.md` documents its bootstrap and backup
 rules. `rebaseline/LEDGER_BASELINE.json` is a dated recovery seed, not a live
 ledger or current approval. The original 104 product-task positions and the
-48 historical bounded-acceptance records remain preserved; rebaseline audit
-and consolidation tasks are separate work. This candidate is not yet merged to
-main, and full-candidate GPT-PM approval is pending. The global live report is
+48 bounded-acceptance records from the initial audit remain preserved; restored
+R2-US-002's explicit story adjudication brings the current original-program count
+to49. Rebaseline audit and consolidation tasks remain separate work. PR59 merged
+the full-candidate GPT-PM-approved561256d into main3667b0e; closeout evidence is
+`rebaseline/2026-11-17/CONSOLIDATION_CLOSEOUT.md`. The global live report is
 `../reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html`.
 
 This evidence reconciliation supersedes stale implementation-progress summaries,

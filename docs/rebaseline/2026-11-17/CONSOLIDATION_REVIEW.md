@@ -41,8 +41,9 @@ No unresolved confirmed BLOCKER/MAJOR remains in the reported review scopes.
 The review does not qualify real external-provider trust, separate-service-user
 DPAPI access, full startup recovery, shared physical-writer admission, real COM,
 production deployment or prohibited artifact builds. Full-candidate GPT-PM
-review of the exact final commit remains necessary before push/PR/merge. The
-earlier audit-only approval is inapplicable to application consolidation.
+approved561256d and PR59 subsequently merged it at main3667b0e; the actual
+receipt/merge/preservation facts are in CONSOLIDATION_CLOSEOUT.md. The earlier
+audit-only approval was not used for application consolidation.
 
 An initial database-review invocation used an inaccessible Bash environment;
 no SQL finding was inferred from it. Host `git show` with an explicit Windows

@@ -618,3 +618,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-17 SHORTCOMING: an agent follow-up retained its original start timestamp, so the ledger correctly refused it as proof of a role started after the source commit. Rule: respect the provenance refusal, obtain a fresh role run on the committed source, and never synthesize visibility events or weaken the guard.
 - 2026-11-17 SUCCESS: real-source access was explicitly deferred while independent local audit, synthetic regression and Git consolidation continued. Rule: scope an unavailable credential to its actual runtime action instead of blocking unrelated engineering work.
+
+- 2026-11-17 SHORTCOMING: an untracked-inclusive local stash captured private environment caches along with source. No values were printed or pushed; exact external backups remain. Rule: keep private untracked/runtime inputs outside Git and stash only selected source paths.
+- 2026-11-17 FAILURE: the first task reconciliation missed an explicit whole-story acceptance later restored from a retained branch. Rule: reapply status reconciliation after artifact restoration; preserve the dated old count and add the newly verified acceptance with its exact receipt/hash.
+- 2026-11-17 SUCCESS: the exact-head push/merge guard, private input preservation and live-ledger restoration kept main clean without rewriting history or resetting task state. Rule: publish only reviewed refs, then clean verified merged copies and preserve all unique alternatives.
