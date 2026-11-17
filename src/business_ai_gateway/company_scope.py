@@ -49,7 +49,9 @@ class CompanyScopeResolver:
               AND p.status='VALIDATED'
               AND p.metadata_fingerprint=$3
               AND m.entity_set=$4
-              AND __NATIVE_ONLY_SQL__
+              -- B3: a native evidence label is not proof of report authenticity. Until a
+              -- trusted native verifier exists, no native-backed mapping is runtime-usable.
+              AND FALSE
             ORDER BY (p.company_id=$2) DESC NULLS LAST, p.profile_version DESC
             LIMIT 1
             """),

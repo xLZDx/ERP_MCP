@@ -5,8 +5,8 @@
 # Topology is relocatable with ONE variable set (defaults unchanged):
 #   E2E_PORT_OFFSET     integer added to every default port (default 0)
 #   E2E_PROJECT_SUFFIX  appended to the compose project name, e.g. -rem (default empty)
-# When neither is set, the values recorded in .e2e/env.json (or env.pending.json) are used, so
-# status/fault/test run from any shell address the same environment that up.ps1 created.
+# When neither is set, recorded env.json (or env.pending.json) supplies the topology. Its explicit
+# per-service ports win over offset-derived defaults; explicit E2E_PORT_OFFSET relocates all ports.
 
 Set-StrictMode -Version 2.0
 
@@ -27,14 +27,19 @@ $script:Py = Join-Path $script:Root '.venv\Scripts\python.exe'
 $script:ComposeFile = Join-Path $script:Root 'compose.e2e.yml'
 $script:BindHost = '127.0.0.1'
 $script:BasePorts = [ordered]@{ postgres = 15432; redis = 16379; fake1c = 18766; sidecar = 18767
-    idp = 18080; gateway = 18000 }
+    idp = 18080; gateway = 18000; capability_observer = 18001; capability_acceptor = 18002 }
 # Components that run as host processes (start order); stop order is the reverse.
 $script:Real1c = ($env:E2E_REAL1C -eq '1')
 # Real local 1C profile (E2E_REAL1C=1): no Fake1C and no fake sidecar process is started, stopped or probed.
-$script:ProcessComponents = if ($script:Real1c) { @('idp', 'gateway') } else { @('fake1c', 'sidecar', 'idp', 'gateway') }
+$script:ProcessComponents = if ($script:Real1c) {
+    @('idp', 'capability_acceptor', 'capability_observer', 'gateway')
+} else {
+    @('fake1c', 'sidecar', 'idp', 'capability_acceptor', 'capability_observer', 'gateway')
+}
 
 function Resolve-E2eTopology {
-    $offset = $env:E2E_PORT_OFFSET
+    $offsetOverride = $env:E2E_PORT_OFFSET
+    $offset = $offsetOverride
     $suffix = $env:E2E_PROJECT_SUFFIX
     $recorded = $null
     if ($null -eq $offset -and $null -eq $suffix) {
@@ -56,14 +61,37 @@ function Resolve-E2eTopology {
     $offset = [int]$offset
     if ($offset -lt 0 -or ($offset + 18767) -gt 65535) { throw 'E2E_PORT_OFFSET out of range' }
     if ($suffix -notmatch '^(-[a-z0-9]+)*$') { throw 'E2E_PROJECT_SUFFIX must look like -name' }
+
+    $recordedPorts = $null
+    if ($recorded -and ($recorded.PSObject.Properties.Name -contains 'ports')) {
+        $recordedPorts = $recorded.ports
+        if ($null -eq $recordedPorts -or
+            $recordedPorts -isnot [System.Management.Automation.PSCustomObject]) {
+            throw 'E2E_RECORDED_PORTS must be an object'
+        }
+    }
+
     $script:PortOffset = $offset
     $script:ProjectSuffix = $suffix
     $script:ProjectName = 'erpmcp-e2e' + $suffix
     $script:Ports = [ordered]@{}
-    foreach ($name in $script:BasePorts.Keys) { $script:Ports[$name] = $script:BasePorts[$name] + $offset }
-    # Child processes (envctl.py, pytest, fault.ps1) must see the same topology.
-    $env:E2E_PORT_OFFSET = [string]$offset
-    $env:E2E_PROJECT_SUFFIX = $suffix
+    foreach ($name in $script:BasePorts.Keys) {
+        $port = $script:BasePorts[$name] + $offset
+        if ($null -eq $offsetOverride -and $null -ne $recordedPorts) {
+            $property = $recordedPorts.PSObject.Properties[$name]
+            if ($null -ne $property) {
+                $port = 0
+                if (-not [int]::TryParse([string]$property.Value, [ref]$port) -or
+                    $port -lt 1024 -or $port -gt 65535) {
+                    throw ('E2E_RECORDED_PORT_INVALID: ' + $name)
+                }
+            }
+        }
+        $script:Ports[$name] = $port
+    }
+    $uniquePorts = @($script:Ports.Values | Select-Object -Unique)
+    if ($uniquePorts.Count -ne $script:Ports.Count) { throw 'E2E_RECORDED_PORTS must be unique' }
+    # Leave unset overrides unset so child processes reload the same recorded topology.
 }
 Resolve-E2eTopology
 
@@ -145,8 +173,8 @@ function Clear-E2eSecretEnv {
 }
 
 function Test-E2eGatewayNeedsReader([string]$Name) {
-    # Only the gateway of the real local 1C profile talks to the reference base with the reader pair.
-    return ($script:Real1c -and $Name -eq 'gateway')
+    # The gateway reads business data and the observer independently probes the real source.
+    return ($script:Real1c -and $Name -in 'gateway', 'capability_observer')
 }
 
 function Assert-E2eReaderAvailable {
@@ -280,6 +308,8 @@ function Get-ComponentModule([string]$Name) {
         'sidecar' { return 'sidecar_recording_app:app' }
         'idp' { return 'testbed.idp' }
         'gateway' { return 'business_ai_gateway.app:app' }
+        'capability_observer' { return 'business_ai_gateway.capability_observer_service:app' }
+        'capability_acceptor' { return 'business_ai_gateway.capability_acceptor_service:app' }
     }
 }
 
@@ -292,6 +322,10 @@ function Get-ComponentCommand([string]$Name) {
         'idp' { return @('-m', 'testbed.idp') }
         'gateway' { return @('-m', 'uvicorn', 'business_ai_gateway.app:app', '--host', $script:BindHost,
             '--port', [string]$script:Ports.gateway, '--no-access-log') }
+        'capability_observer' { return @('-m', 'uvicorn', 'business_ai_gateway.capability_observer_service:app',
+            '--host', $script:BindHost, '--port', [string]$script:Ports.capability_observer, '--no-access-log') }
+        'capability_acceptor' { return @('-m', 'uvicorn', 'business_ai_gateway.capability_acceptor_service:app',
+            '--host', $script:BindHost, '--port', [string]$script:Ports.capability_acceptor, '--no-access-log') }
     }
 }
 
@@ -319,7 +353,7 @@ function Assert-E2eComponentAllowed([string]$Name) {
 }
 
 function Start-E2eComponent {
-    param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway')][string]$Name)
+    param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway', 'capability_observer', 'capability_acceptor')][string]$Name)
     Assert-E2eComponentAllowed $Name
     $foreign = Get-ForeignListener $Name
     if ($foreign) {
@@ -332,7 +366,20 @@ function Start-E2eComponent {
         (Join-Path $script:E2eDir 'logs') | Out-Null
     $out = Join-Path $script:E2eDir ('logs\' + $Name + '.out.log')
     $err = Join-Path $script:E2eDir ('logs\' + $Name + '.err.log')
-    if ($Name -in 'gateway', 'sidecar') { Import-E2eEnv }
+    if ($Name -in 'gateway', 'sidecar', 'capability_observer', 'capability_acceptor') { Import-E2eEnv }
+    if ($Name -eq 'gateway') {
+        foreach ($key in 'BAG_CAPABILITY_OBSERVATION_DATABASE_URL', 'BAG_CAPABILITY_ACCEPTANCE_DATABASE_URL',
+            'BAG_CAPABILITY_WORKER_API_TOKEN', 'BAG_CAPABILITY_ACCEPTOR_URL', 'BAG_CAPABILITY_ACCEPTOR_API_TOKEN') {
+            Remove-Item ('Env:' + $key) -ErrorAction SilentlyContinue
+        }
+    } elseif ($Name -eq 'capability_observer') {
+        Remove-Item Env:BAG_CAPABILITY_ACCEPTANCE_DATABASE_URL -ErrorAction SilentlyContinue
+    } elseif ($Name -eq 'capability_acceptor') {
+        foreach ($key in 'BAG_CAPABILITY_OBSERVATION_DATABASE_URL', 'BAG_CAPABILITY_WORKER_API_TOKEN',
+            'BAG_CAPABILITY_OBSERVER_URL', 'BAG_CAPABILITY_OBSERVER_TOKEN', 'BAG_CAPABILITY_ACCEPTOR_URL') {
+            Remove-Item ('Env:' + $key) -ErrorAction SilentlyContinue
+        }
+    }
     # Test lane only: the single source whose profile may be served from labelled machine two-source evidence
     # (ADR-0008 section 8; never native proof). Absent for every other profile and for production.
     if ($Name -eq 'gateway' -and $script:Real1c) { $env:BAG_MACHINE_RECONCILED_SOURCES = 'onec-818ha-reference' }
@@ -347,7 +394,7 @@ function Start-E2eComponent {
     }
     try {
         if (Test-E2eGatewayNeedsReader $Name) {
-            # Real local 1C profile: the reader pair must be in the gateway's environment before the child
+            # Real local 1C profile: the reader pair must be in the reader process environment before the child
             # starts, both variables together, otherwise nothing is launched (ERP_READER_* errors).
             $process = Invoke-818HAReaderEnvironment -Action { Invoke-WithoutAmbientSecrets -Action $launch }
         } else {
@@ -372,7 +419,7 @@ function Start-E2eComponent {
 }
 
 function Stop-E2eComponent {
-    param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway')][string]$Name)
+    param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway', 'capability_observer', 'capability_acceptor')][string]$Name)
     Assert-E2eComponentAllowed $Name
     $port = $script:Ports[$Name]
     $foreign = Get-ForeignListener $Name
@@ -408,6 +455,8 @@ function Wait-E2eComponent([string]$Name) {
             Wait-Http ($base + '/healthz') -Component $Name | Out-Null
             Wait-Http ($base + '/readyz') -Component $Name | Out-Null
         }
+        'capability_observer' { Wait-Http ($base + '/healthz') -Component $Name | Out-Null }
+        'capability_acceptor' { Wait-Http ($base + '/healthz') -Component $Name | Out-Null }
     }
 }
 

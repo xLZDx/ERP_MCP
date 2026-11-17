@@ -773,3 +773,84 @@ Follow-up after the first review pass: the installer now best-effort disables an
 ## 2026-11-17 — FIN-S3.2 installer fail-closed review fixes
 
 Code review found two false-success/fail-open cases: a configuration mismatch after task registration could throw without disabling the still-runnable task, and successful read-back checked only the first action while omitting a check that `Principal.UserId` matched the current identity. The registration-failure path also now disables any existing task before reporting failure; all disable paths require a read-back of `Disabled`. Successful read-back requires exactly one action, the expected PowerShell executable and script path, the current principal, and the single enabled interactive/highest logon trigger with a one-minute delay. Both `code-reviewer` and `silent-failure-hunter` confirmed the original findings and independently reviewed the fixes with no remaining actionable finding. The PowerShell parser reported no syntax errors; scoped `git diff --check` emitted no diagnostics. The focused Pester regression remains `NOT_RUN`: PreToolUse denied the test role's attempt to create its test file, and no alternate execution path was used. No scheduled task, service, credential, or 1C data was changed. Existing FIN-S3.2 Redis restart evidence remains historical and unchanged; this source edit has no test evidence yet.
+
+## 2026-11-17 — FIN-S2.1 approval core and conformance rerun
+
+After the operator authorized continuing local verification, the assigned `functional-test-reviewer` ran only the FIN-S2.1 approval-core and S12-conformance modules at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q tests/phase2/test_s16_approval_core.py tests/phase2/test_s16_conformance.py
+```
+
+Result: exit 0; `57 passed in 0.42s`, with no skips or warnings. Coverage includes one-use approval, requester/approver independence, decision read-back recovery and replay refusal, apply-time dependency and target revalidation, concurrent single-claim behavior, token class/epoch and expiry checks, fail-closed store/evidence paths, no retry after ambiguous apply, and receipt validation/read-back. This is synthetic/fake-backed evidence only; live IdP/browser, durable SQL, and real 1C apply behavior remain unverified. The result does not by itself close FIN-S2.1 or the FIN sprint; project-plan state remains `IN_REVIEW` pending the routed final FIN review and separate integration boundaries.
+
+## 2026-11-17 — FIN-S2.2 approval page rerun
+
+The assigned `functional-test-reviewer` ran only `tests/phase2/test_s16_approval_page.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`, with phase2 conftest isolation:
+
+```powershell
+$env:PYTHONPATH='src'; .\.venv\Scripts\python.exe -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s16_approval_page.py
+```
+
+Result: exit 0; `7 passed in 0.27s`, no warnings or skips. The selected fake-service tests cover page success and Origin checks, missing/foreign Origin refusal, body/message bounds before service dispatch, malformed ASGI scope refusal before auth/service, decision-reference binding, and safe clock-error handling. This does not verify a real browser, live IdP, durable SQL, production listener, or 1C apply. FIN-S2.2 stays `IN_REVIEW` pending the routed final FIN review and live integration boundaries.
+
+## 2026-11-17 — FIN-S2.3 model-facing tools rerun
+
+The assigned `functional-test-reviewer` ran only `tests/phase2/test_s16_tools.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`, with phase2 conftest isolation:
+
+```powershell
+$env:PYTHONPATH='src'; .\.venv\Scripts\python.exe -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s16_tools.py
+```
+
+Result: exit 0; `15 passed in 0.20s`, no warnings or skips. The fake-server test covers the exact five-tool surface, manifest schema, approval-alias refusal, safe errors, S15 verification-result pass-through, rollback proposal boundaries, and pre-dispatch oversized-input refusal. Deployed MCP registration and real chat clients remain unverified; FIN-S2.3 stays `IN_REVIEW` pending the routed final FIN review and deployed-boundary evidence.
+
+## 2026-11-17 — FIN-S2.4 private ingress rerun
+
+The assigned `functional-test-reviewer` ran only `tests/phase2/test_s16_private_ingress.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`, with phase2 conftest isolation:
+
+```powershell
+$env:PYTHONPATH='src'; .\.venv\Scripts\python.exe -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s16_private_ingress.py
+```
+
+Result: exit 0; `11 passed, 1 warning in 0.28s`, no skips. The warning is an httpx2 raw-content `DeprecationWarning`. Coverage is synthetic/in-process; live listener, browser/IdP, deployed binding, SQL persistence and real 1C apply remain unverified. FIN-S2.4 stays `IN_REVIEW` pending the routed final FIN review and deployment evidence.
+
+## 2026-11-17 — FIN-S3.1 final named-selection rerun at reconciled HEAD
+
+The assigned `functional-test-reviewer` ran the documented 21-module FIN-S3.1 selection at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`:
+
+```powershell
+uv run --locked --extra dev python -m pytest -q tests/phase2/test_s15_verifier.py tests/phase2/test_s15_oracle.py tests/phase2/test_s15_import_graph.py tests/phase2/test_s15_ab_compare.py tests/phase2/test_s15_reconcile.py tests/phase2/test_s15_negative_controls.py tests/phase2/test_s12_period_producer.py tests/phase2/test_s12_budget_producer.py tests/phase2/test_s12_sql_code_parity.py tests/phase2/test_s13_inflight_status.py tests/phase2/test_s13_checkpoint_suffix_functional.py tests/phase2/test_s13_checkpoint_suffix_e2e.py tests/phase2/test_s13_checkpoint_restore_e2e.py tests/phase2/test_s13_lifecycle_preflight.py tests/phase2/test_s16_conformance.py tests/phase2/test_s16_approval_core.py tests/phase2/test_s16_approval_page.py tests/phase2/test_s16_tools.py tests/phase2/test_s16_private_ingress.py tests/phase2/test_capability_client.py tests/phase2/test_period_lock_evidence_readonly.py
+```
+
+Result: exit 0; `1048 passed, 2 warnings, 56 subtests passed in 34.05s`, no failures or skips. Warnings: `PytestReturnNotNoneWarning` from `test_s13_checkpoint_suffix_functional.py::test_python_classifier` returning an integer, and httpx2 raw-content deprecation in private ingress. This is dirty-tree evidence: selected inputs include modified `test_s13_lifecycle_preflight.py` and untracked capability-client, period-lock, S12 budget and S12 period test files. The run does not prove a clean commit, live provider freshness, production deployment, COM writer, S12/S13/G8 acceptance or production authorization. FIN-S3.1 remains `IN_REVIEW` pending routed final FIN review.
+
+## 2026-11-17 — FIN-S2.2 independence-result type guard (NOT_RUN)
+
+Source inspection at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` found the preview service used truthiness for `PrincipalRegistryPort.are_independent`, unlike the exact-boolean checks in `S16Core.decide` and `S16Core.apply`. The working tree now rejects every result except the exact boolean `True`. The assigned functional-test-reviewer attempted to add and run a focused case returning integer `1`, but the repository GO gate denied editing `tests/phase2/test_s16_approval_page.py`; no test was edited or run. Verification is `NOT_RUN`; this source-only change remains unverified and FIN-S2.2 remains `IN_REVIEW`.
+
+The assigned functional-test-reviewer separately ran the existing page-test selection after the source edit, with phase2 conftest isolation:
+
+```powershell
+$env:PYTHONPATH='src'; python -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s16_approval_page.py
+```
+
+Result: exit 0; `7 passed, 1 warning in 0.47s`. The warning is `pytest-asyncio` deprecation for `asyncio.get_event_loop_policy`. This run used dirty working tree HEAD `240070b`, where the uncommitted exact-boolean guard was present. Existing tests do not exercise a truthy non-boolean registry result, so the new guard remains `NOT_RUN` and unverified; this run does not promote FIN-S2.2.
+
+## 2026-11-17 — Verify removal of recurring five-minute task
+
+Read-only Task Scheduler inspection returned `CodexCompletionWatchdog-AllSessions` as `Disabled`; its stored time-trigger definition still contains `PT5M` and `P3650D`. `ERP_MCP_Lane_Autostart` is `Ready` with only an enabled `MSFT_TaskLogonTrigger` and no repetition interval. No scheduled task was changed. This confirms the requested recurring five-minute check is disabled; it does not remove the separate logon startup.
+
+## 2026-11-17 — FIN-S1.2 authenticated OData discovery retry
+
+Read-only `sources_list` on both ERP_MCP_Ivan and ERP_MCP_Razer returned the same three read-only authorized sources. Refreshing metadata for `onec-818ha-reference` on both reported 920 EntitySets (AccountingRegister 2, AccumulationRegister 152, Catalog 38, ChartOfAccounts 1, Document 721, InformationRegister 6). `onec_find_entities` for `Закрытие` and `Регламентная` returned empty result lists on both servers. This is discovery evidence only; it does not show the entire metadata contains no other equivalent contract, nor establish period-close semantics. FIN-S1.2 AC-1 remains `BLOCKED_EXTERNAL` through final project verification: no authenticated status interface or qualified closed/open mapping was found. Synthetic producer contract evidence already recorded 18 passed at source HEAD `e30e2ec`; it is not native 1C period-closure evidence and will not be rerun during implementation. Provider owner is unassigned; the next bounded source qualification is reserved for final project verification.
+
+## 2026-11-17 — FIN-S3.2 installer-test prerequisite denied
+
+The assigned functional-test-reviewer was asked to check for `Invoke-Pester` and then author/run a new named mock-only installer test. PreToolUse denied the initial environment-inspection command, reporting no qualifying fresh standalone GO; no environment check, file write, test run, real scheduled-task change, Docker/lane operation, credential access, or 1C action followed. Installer regression remains `NOT_RUN`; this denial does not erase the separately recorded bounded Redis-restart evidence.
+
+
+## 2026-11-17 — FIN-S3.2 installer regression and routed review
+
+The assigned functional-test-reviewer ran only `tests/phase2/register_lane_task.Tests.ps1` using Windows PowerShell 5.1.26100.9818 and Pester 3.4.0 at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`. Exit code 0: 7 passed, 0 failed, 0 skipped, 0 pending, 0 inconclusive in 4.22 seconds. The test invokes an in-memory isolated copy of the installer body after removing only `#Requires -RunAsAdministrator` and the in-script admin guard; a separate assertion verifies both guard requirements. Every ScheduledTasks cmdlet is mocked. No real task, service, Docker lane, credential, or 1C data was touched. Current test SHA-256: `58C3508F2F0C9BCC49CCBB8D51182CD6EBD0961963C2F12258C819319399903C`.
+
+The routed code-reviewer and silent-failure-hunter reviews are both accepted with zero remaining findings. The initial review's recurrence concern was resolved by the operator-authored instruction to remove five-minute periodic checks after the already evidenced bounded Redis restart; the current installer correctly preserves only the one-minute logon trigger. The native ledger now records FIN-S3.2 verification and review against task head `240070b`; its task state is `done`. The project-plan overlay intentionally remains `IN_REVIEW` pending the final FIN sprint review. This does not establish a live scheduler run on the current installer or change release/production status.

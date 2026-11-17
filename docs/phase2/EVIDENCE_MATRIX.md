@@ -73,3 +73,8 @@ Measured on the S5 fix commit tree (parent eeafb82): offline `tests/phase2` 1567
 D-019 (issues #28/#33): offline tests/phase2 1586 passed / 229 skipped, ruff clean, no NUL bytes; promotion 105 and resnapshot tests green. The PostgreSQL integration run on the commit carrying this entry is recorded in the follow-up evidence line. Mutation runs, Release 1 regression, CI: NOT_RUN by operator decision.
 
 Integration on the pushed S5 head af9f287 (follow-up to D-018/D-019/D-020): `-m integration` on the disposable PostgreSQL with REQUIRE_PG=1: 229 passed, 1641 deselected, exit 0 (732 s). Offline on the same head: 1641 passed / 229 skipped, ruff clean, no NUL bytes. The earlier 'integration on af9f287 NOT_RUN' statement in the GPT-PM request is superseded by this line. Mutation runs, Release 1 regression, CI: NOT_RUN by operator decision.
+
+
+### R2-US-011 evidence crosswalk, historical runs only
+
+The recorded full Phase 2 runs (904 passed on the a00d16a plus remediation tree; 326 passed on the corrected S2/G1 tree) included tests/phase2/test_temporal.py. That file is present at approved revision df92cc8 and unchanged across the compared revisions. Criterion mapping from test names and assertions: TC031 uses test_as_known_at_cannot_see_future_observation and test_backdated_effective_event_does_not_rewrite_knowledge; TC032 uses test_unknown_valid_time_is_not_polling_time; TC033 uses test_backdated_effective_event_does_not_rewrite_knowledge and test_supersedes_is_validated. This is traceability to historical runs, not new execution. Unsettled knowledge time still fails with KNOWLEDGE_HORIZON_NOT_SETTLED; product runtime is not implied.

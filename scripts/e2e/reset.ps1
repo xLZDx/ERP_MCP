@@ -21,7 +21,7 @@ Invoke-Envctl @('mark-not-ready') | Out-Null   # not ready until the re-seed suc
 Invoke-Envctl @('init-secrets') | Out-Null
 Invoke-Envctl @('write-env', '--seed', $Seed) | Out-Null
 Start-E2eDependencies
-foreach ($name in 'gateway', 'idp') { Stop-E2eComponent $name }
+foreach ($name in 'gateway', 'capability_observer', 'capability_acceptor', 'idp') { Stop-E2eComponent $name }
 Import-E2eEnv
 try {
     Invoke-Envctl @('drop-schema') | Out-Null

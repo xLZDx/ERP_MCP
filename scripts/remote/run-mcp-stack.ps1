@@ -29,6 +29,27 @@ New-Item -ItemType Directory -Force -Path $Logs | Out-Null
 function Log([string]$m) { Add-Content -Path $LogFile -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '  ' + $m) -Encoding UTF8 }
 function Test-Port([int]$p) { [bool](Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction SilentlyContinue) }
 function Wait-Port([int]$p, [int]$s) { $e = (Get-Date).AddSeconds($s); while ((Get-Date) -lt $e) { if (Test-Port $p) { return $true }; Start-Sleep -Seconds 2 }; return $false }
+function Test-Address([string]$a) { [bool](Get-NetIPAddress -AddressFamily IPv4 -IPAddress $a -ErrorAction SilentlyContinue) }
+function Wait-Address([string]$a, [int]$s) { $e = (Get-Date).AddSeconds($s); while ((Get-Date) -lt $e) { if (Test-Address $a) { return $true }; Start-Sleep -Seconds 2 }; return (Test-Address $a) }
+function Assert-RequiredGatewayReady([bool]$Ready) {
+    if (-not $Ready) { throw 'GATEWAY_NOT_READY' }
+    return $true
+}
+function Test-RequiredGatewayReady([string]$Uri) {
+    try {
+        $response = Invoke-RestMethod -Uri $Uri -Method Get -TimeoutSec 3 -ErrorAction Stop
+        return ($response.status -ceq 'ready')
+    } catch {
+        return $false
+    }
+}
+function Wait-RequiredGatewayReady([string]$Uri, [int]$Attempts = 12) {
+    for ($attempt = 0; $attempt -lt $Attempts; $attempt++) {
+        if (Test-RequiredGatewayReady -Uri $Uri) { return $true }
+        if ($attempt + 1 -lt $Attempts) { Start-Sleep -Seconds 2 }
+    }
+    return $false
+}
 function Start-Hidden([string]$File, [string[]]$Args2, [string]$Dir, [string]$Name) {
     $p = @{ FilePath = $File; WorkingDirectory = $Dir; WindowStyle = 'Hidden'; PassThru = $true
             RedirectStandardOutput = (Join-Path $Logs ($Name + '.out.log')); RedirectStandardError = (Join-Path $Logs ($Name + '.err.log')) }
@@ -88,7 +109,14 @@ try {
     }
 
     # 6. Gateway (needs the reader pair in its environment before it starts)
-    if (-not (Test-Port 21000)) {
+    if (-not (Wait-Address $BindIp 300)) {
+        Log ("gateway: bind address " + $BindIp + " unavailable after 300 seconds; skipped")
+        Assert-RequiredGatewayReady -Ready $false
+    } elseif (Test-Port 21000) {
+        $gatewayReady = Wait-RequiredGatewayReady -Uri ("http://{0}:21000/readyz" -f $BindIp)
+        Log ('gateway readyz: ' + $gatewayReady)
+        Assert-RequiredGatewayReady -Ready $gatewayReady
+    } else {
         $blob = [IO.File]::ReadAllBytes((Join-Path $EnvDir 'test_reader_password.dpapi'))
         $plain = [Security.Cryptography.ProtectedData]::Unprotect($blob, $null, 'CurrentUser')
         $env:ERP_MCP_818HA_USER = 'ERP_MCP_TEST_READER'
@@ -98,7 +126,12 @@ try {
         $env:PYTHONPATH = (Join-Path $App 'src') + ';' + $App
         Start-Hidden $Py @('-m', 'uvicorn', 'business_ai_gateway.app:app', '--host', $BindIp, '--port', '21000', '--no-access-log') $App 'gateway'
         Remove-Item Env:\ERP_MCP_818HA_USER, Env:\ERP_MCP_818HA_PASSWORD -ErrorAction SilentlyContinue
-        Log ('gateway: ' + (Wait-Port 21000 60))
+        $gatewayReady = Wait-Port 21000 60
+        if ($gatewayReady) {
+            $gatewayReady = Wait-RequiredGatewayReady -Uri ("http://{0}:21000/readyz" -f $BindIp)
+        }
+        Log ('gateway: ' + $gatewayReady)
+        Assert-RequiredGatewayReady -Ready $gatewayReady
     }
     # 7. OpenAI tunnel-client for the ChatGPT connector (only when the operator has stored a tunnel id and key)
     if ((Test-Path (Join-Path $EnvDir 'tunnel.json')) -and (Test-Path (Join-Path $EnvDir 'tunnel_api_key.dpapi')) -and -not (Test-Port 21090)) {

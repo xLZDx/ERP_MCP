@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncpg
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 17
 
 
 class Database:
@@ -73,6 +73,16 @@ class Database:
     async def assert_runtime_role(self):
         row = await self.require_pool().fetchrow("""
             SELECT pg_has_role(current_user, 'business_ai_app', 'USAGE') AS runtime_member,
+                   pg_has_role(session_user, 'business_ai_capability_writer', 'MEMBER') AS writer_member,
+                   pg_has_role(session_user, 'business_ai_capability_acceptor', 'MEMBER') AS acceptor_member,
+                   has_table_privilege(current_user, 'bag.source_capabilities', 'SELECT') AS can_read_capabilities,
+                   has_function_privilege(current_user,
+                     'bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
+                     'EXECUTE') AS can_record_capability_observation,
+                   has_function_privilege(current_user, 'bag.accept_capability_observation(text,uuid,bigint)',
+                     'EXECUTE') AS can_accept_capability_observation,
+                   has_function_privilege(current_user, 'bag.read_accepted_capability_observation(text,uuid,bigint)',
+                     'EXECUTE') AS can_read_accepted_capability_observation,
                    EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname IN (current_user, session_user)
                      AND (r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolbypassrls OR r.rolreplication)) AS elevated,
                    EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname IN
@@ -84,7 +94,49 @@ class Database:
                    has_table_privilege(current_user, 'bag.audit_events', 'UPDATE,DELETE') AS mutable_audit,
                    has_table_privilege(current_user, 'bag.audit_events', 'TRUNCATE') AS truncate_audit
         """)
-        if not row["runtime_member"] or any(row[key] for key in (
+        if (not row["runtime_member"] or not row["can_read_capabilities"]
+            or row["writer_member"] or row["acceptor_member"]
+            or row["can_record_capability_observation"]
+            or row["can_accept_capability_observation"]
+            or not row["can_read_accepted_capability_observation"] or any(row[key] for key in (
             "elevated", "privileged_member", "mutable_sources", "mutable_grants", "mutable_companies", "mutable_audit", "truncate_audit"
-        )):
+        ))):
             raise RuntimeError("runtime database role violates least-privilege contract")
+
+    async def assert_capability_writer_role(self):
+        row = await self.require_pool().fetchrow("""
+            SELECT pg_has_role(current_user, 'business_ai_capability_writer', 'USAGE') AS writer_member,
+                   pg_has_role(session_user, 'business_ai_capability_acceptor', 'MEMBER') AS acceptor_member,
+                   pg_has_role(session_user, 'business_ai_app', 'MEMBER') AS app_member,
+                   has_function_privilege(current_user,
+                     'bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
+                     'EXECUTE') AS can_record,
+                   has_function_privilege(current_user, 'bag.read_accepted_capability_observation(text,uuid,bigint)',
+                     'EXECUTE') AS can_read_accepted,
+                   has_function_privilege(current_user, 'bag.accept_capability_observation(text,uuid,bigint)',
+                     'EXECUTE') AS can_accept,
+                   has_table_privilege(current_user, 'bag.source_capabilities', 'INSERT,UPDATE,DELETE') AS can_write_accepted_state
+        """)
+        if (not row["writer_member"] or row["acceptor_member"] or row["app_member"]
+            or not row["can_record"] or row["can_accept"] or row["can_read_accepted"]
+            or row["can_write_accepted_state"]):
+            raise RuntimeError("capability observation database role violates least-privilege contract")
+
+    async def assert_capability_acceptor_role(self):
+        row = await self.require_pool().fetchrow("""
+            SELECT pg_has_role(current_user, 'business_ai_capability_acceptor', 'USAGE') AS acceptor_member,
+                   pg_has_role(session_user, 'business_ai_capability_writer', 'MEMBER') AS writer_member,
+                   pg_has_role(session_user, 'business_ai_app', 'MEMBER') AS app_member,
+                   has_function_privilege(current_user,
+                     'bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
+                     'EXECUTE') AS can_record,
+                   has_function_privilege(current_user, 'bag.read_accepted_capability_observation(text,uuid,bigint)',
+                     'EXECUTE') AS can_read_accepted,
+                   has_function_privilege(current_user, 'bag.accept_capability_observation(text,uuid,bigint)',
+                     'EXECUTE') AS can_accept,
+                   has_table_privilege(current_user, 'bag.source_capabilities', 'INSERT,UPDATE,DELETE') AS can_write_accepted_state
+        """)
+        if (not row["acceptor_member"] or row["writer_member"] or row["app_member"]
+            or row["can_record"] or not row["can_accept"]
+            or row["can_read_accepted"] or row["can_write_accepted_state"]):
+            raise RuntimeError("capability acceptance database role violates least-privilege contract")

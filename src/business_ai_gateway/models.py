@@ -24,6 +24,7 @@ class Source:
     platform_version_hint: str | None = None
     fallback_kind: str | None = None
     fallback_base_url: str | None = None
+    row_version: int | None = None
 
     def validate_runtime(
         self, *, production: bool, allowed_source_hosts: tuple[str, ...] = ()
@@ -105,6 +106,7 @@ def source_from_record(row: Any) -> Source:
         platform_version_hint=row["platform_version_hint"],
         fallback_kind=row["fallback_kind"],
         fallback_base_url=row["fallback_base_url"],
+        row_version=row.get("row_version"),
     )
 
 

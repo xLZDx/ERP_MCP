@@ -11,6 +11,7 @@ import math
 import re
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 
 from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget
 from .structural_hash import StructuralFingerprint, fingerprint_edmx
@@ -26,11 +27,22 @@ class OneCFetchError(RuntimeError):
         self.code = code
 
 
+class MetadataCompleteness(StrEnum):
+    """Coverage of the fetched source metadata as visible to the authorized subject."""
+
+    COMPLETE = "COMPLETE"
+    PARTIAL_ACL_FILTERED = "PARTIAL_ACL_FILTERED"
+    PARTIAL_SOURCE_CHANGED = "PARTIAL_SOURCE_CHANGED"
+    PARTIAL_SCOPE_CHANGED = "PARTIAL_SCOPE_CHANGED"
+    PARTIAL_ACCESS_REVOKED = "PARTIAL_ACCESS_REVOKED"
+    PARTIAL_CONSISTENCY_UNVERIFIED = "PARTIAL_CONSISTENCY_UNVERIFIED"
+
+
 @dataclass(frozen=True, slots=True)
 class ObservedMetadata:
     source_id: str
-    fingerprint: StructuralFingerprint
-    completeness: str = "COMPLETE"
+    fingerprint: StructuralFingerprint | None
+    completeness: MetadataCompleteness = MetadataCompleteness.COMPLETE
     trust: str = "OBSERVED_ONLY"
     # Objects removed from fingerprint.objects because entity_allowed did not say True.
     withheld_objects: int = 0
@@ -38,6 +50,23 @@ class ObservedMetadata:
     def __post_init__(self) -> None:
         if type(self.trust) is not str or self.trust != "OBSERVED_ONLY":
             raise ValueError("PHASE2_METADATA_TRUST_FORBIDDEN")
+        if not isinstance(self.completeness, MetadataCompleteness):
+            raise ValueError("PHASE2_METADATA_COMPLETENESS_INVALID")
+        if (type(self.source_id) is not str or not self.source_id
+                or type(self.withheld_objects) is not int or self.withheld_objects < 0):
+            raise ValueError("PHASE2_METADATA_COVERAGE_INVALID")
+        if self.completeness is MetadataCompleteness.COMPLETE:
+            if (self.fingerprint is None or self.fingerprint.source_id != self.source_id
+                    or self.withheld_objects != 0 or self.fingerprint.acl_filtered
+                    or self.fingerprint.withheld_count != 0):
+                raise ValueError("PHASE2_METADATA_COVERAGE_INVALID")
+        elif self.completeness is MetadataCompleteness.PARTIAL_ACL_FILTERED:
+            if (self.fingerprint is None or self.fingerprint.source_id != self.source_id
+                    or self.withheld_objects == 0 or not self.fingerprint.acl_filtered
+                    or self.withheld_objects != self.fingerprint.withheld_count):
+                raise ValueError("PHASE2_METADATA_COVERAGE_INVALID")
+        elif self.fingerprint is not None or self.withheld_objects != 0:
+            raise ValueError("PHASE2_METADATA_COVERAGE_INVALID")
 
 
 class OneCMetadataDiscovery:
@@ -181,6 +210,7 @@ class OneCMetadataDiscovery:
         # unfiltered fingerprint inside the trusted boundary, never on this view.
         return ObservedMetadata(
             source_id=source_id, fingerprint=result.scoped_to_visible(allowed),
-            completeness="PARTIAL_ACL_FILTERED" if withheld else "COMPLETE",
+            completeness=(MetadataCompleteness.PARTIAL_ACL_FILTERED if withheld
+                          else MetadataCompleteness.COMPLETE),
             withheld_objects=withheld,
         )

@@ -27,6 +27,8 @@ $PostgresPort = [int]$laneTopology.ports.postgres
 $RedisPort = [int]$laneTopology.ports.redis
 $Runtime   = $ProjectRoot
 $Py        = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
+$CredentialsValidator = Join-Path $ProjectRoot 'scripts\real1c\validate_e2e_credentials.py'
+$IdpConfigPath = Join-Path $Lane 'idp-config.json'
 $Docker    = 'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
 $DockerUi  = 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
 $Httpd     = 'D:\ERP_MCP_Testbed\apache24\bin\httpd.exe'
@@ -65,24 +67,119 @@ function Start-Hidden([string]$File, [string[]]$ArgumentList, [string]$WorkDir, 
     return Start-Process @params
 }
 
-# Mutex: the logon starter and the watchdog must never run side by side.
+function Test-DockerDaemon([int]$TimeoutMilliseconds = 10000) {
+    $process = $null
+    try {
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $Docker
+        $startInfo.Arguments = 'info'
+        $startInfo.WorkingDirectory = $Runtime
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) {
+            Log 'docker info probe could not start'
+            return $false
+        }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($TimeoutMilliseconds)) {
+            $processId = $process.Id
+            $terminated = $false
+            try {
+                $process.Kill()
+                $terminated = $process.WaitForExit(5000)
+            } catch { }
+            if ($terminated) {
+                $stdoutTask.GetAwaiter().GetResult() | Out-Null
+                $stderrTask.GetAwaiter().GetResult() | Out-Null
+                Log ('docker info probe timed out after ' + $TimeoutMilliseconds + ' ms; child ' + $processId + ' terminated')
+            } else {
+                $script:DockerProbeUnsafe = $true
+                Log ('docker info probe timed out after ' + $TimeoutMilliseconds + ' ms; child ' + $processId + ' termination not confirmed')
+            }
+            return $false
+        }
+        $process.WaitForExit()
+        $stdoutTask.GetAwaiter().GetResult() | Out-Null
+        $stderrTask.GetAwaiter().GetResult() | Out-Null
+        return ($process.ExitCode -eq 0)
+    } catch {
+        Log ('docker info probe failed: ' + $_.Exception.GetType().Name)
+        return $false
+    } finally {
+        if ($null -ne $process) { $process.Dispose() }
+    }
+}
+
+# Mutex: logon startup and any manual one-shot restart must never run side by side.
 $mutex = New-Object System.Threading.Mutex($false, 'Global\ERP_MCP_Lane_Autostart')
 if (-not $mutex.WaitOne(0)) { Log 'another autostart run is active, exiting'; exit 0 }
 try {
+    $script:DockerProbeUnsafe = $false
     Log '=== lane autostart pass ==='
 
-    # 1. Docker Desktop and the lane database / cache
-    & $Docker info *> $null
+    # Validate test-IdP credentials before starting or changing any lane component.
+    $credentialsPath = $null
+    if (-not (Test-Path -LiteralPath $Py -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $CredentialsValidator -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $IdpConfigPath -PathType Leaf)) {
+        Log 'FAIL: test-IdP credential preflight inputs are missing; lane components were not started'
+        exit 1
+    }
+    try {
+        $idpConfig = Get-Content -LiteralPath $IdpConfigPath -Raw | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $idpConfig -or $idpConfig.credentials_path -isnot [string] -or
+                [string]::IsNullOrWhiteSpace($idpConfig.credentials_path)) { throw 'CONFIG_INVALID' }
+        $credentialsPath = [IO.Path]::GetFullPath($idpConfig.credentials_path)
+        $laneRoot = [IO.Path]::GetFullPath($Lane).TrimEnd('\') + '\'
+        if (-not $credentialsPath.StartsWith($laneRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'CREDENTIAL_PATH_OUTSIDE_LANE'
+        }
+    } catch {
+        Log 'FAIL: test-IdP configuration preflight failed; lane components were not started'
+        exit 1
+    }
+    if (-not (Test-Path -LiteralPath $credentialsPath -PathType Leaf)) {
+        Log 'FAIL: configured test-IdP credential file is missing; lane components were not started'
+        exit 1
+    }
+    & $Py $CredentialsValidator $credentialsPath *>> $LogFile
     if ($LASTEXITCODE -ne 0) {
+        Log 'FAIL: test-IdP credential preflight failed; lane components were not started'
+        exit 1
+    }
+
+    # 1. Docker Desktop and the lane database / cache
+    $dockerReady = Test-DockerDaemon
+    if ($script:DockerProbeUnsafe) {
+        Log 'FAIL: docker probe child termination is unconfirmed; refusing further probes and lane startup'
+        exit 1
+    }
+    if (-not $dockerReady) {
         Log 'docker daemon not reachable, starting Docker Desktop'
         if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
             Start-Process -FilePath $DockerUi -WindowStyle Hidden
         }
         $deadline = (Get-Date).AddMinutes(4)
-        do { Start-Sleep -Seconds 5; & $Docker info *> $null } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
+        do {
+            Start-Sleep -Seconds 5
+            $remainingMilliseconds = [int][Math]::Floor(($deadline - (Get-Date)).TotalMilliseconds)
+            if ($remainingMilliseconds -le 0) { break }
+            $dockerReady = Test-DockerDaemon -TimeoutMilliseconds ([Math]::Min(30000, $remainingMilliseconds))
+            if ($script:DockerProbeUnsafe) { break }
+        } while (-not $dockerReady -and (Get-Date) -lt $deadline)
     }
-    & $Docker info *> $null
-    if ($LASTEXITCODE -ne 0) { Log 'FAIL: docker daemon did not come up; lane cannot start'; exit 1 }
+    if ($script:DockerProbeUnsafe) {
+        Log 'FAIL: docker probe child termination is unconfirmed; refusing further probes and lane startup'
+        exit 1
+    }
+    $dockerReady = Test-DockerDaemon
+    if (-not $dockerReady) { Log 'FAIL: docker daemon did not come up; lane cannot start'; exit 1 }
     foreach ($name in 'erpmcp-e2e-real1c-postgres-1', 'erpmcp-e2e-real1c-redis-1') {
         & $Docker update --restart unless-stopped $name *> $null
         if (-not (& $Docker ps -q -f ("name=" + $name))) { & $Docker start $name *> $null; Log ('docker start ' + $name) }

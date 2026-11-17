@@ -15,7 +15,7 @@ $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfi
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $me
 $trigger.Delay = 'PT1M'
 $trigger.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1)).Repetition
-$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 20) -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 $principal = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Highest
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
 'task registered: ' + [bool](Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)

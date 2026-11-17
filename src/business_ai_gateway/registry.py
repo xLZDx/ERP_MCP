@@ -5,7 +5,12 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from .analytics_balance import ANALYTICS_BALANCE_CONCEPT, validate_analytics_balance_mapping
-from .compatibility import OneCCapabilities
+from .compatibility import (
+    AdapterProfile,
+    CapabilityUnsupported,
+    CompatibilityStatus,
+    OneCCapabilities,
+)
 from .counterparty_lookup import COUNTERPARTY_LOOKUP_CONCEPT, validate_counterparty_lookup_mapping
 from .db import Database
 from .duplicate_counterparties import DUPLICATE_CONCEPT, validate_duplicate_mapping
@@ -611,30 +616,62 @@ class Registry:
     async def require_account_turnovers_mapping(self, source_id: str, company_id: UUID) -> dict:
         return await self.require_semantic_mapping(source_id, company_id, ACCOUNT_TURNOVERS_CONCEPT)
 
-    async def save_capabilities(self, capabilities: OneCCapabilities):
-        row = await self.db.require_pool().fetchrow(
+    async def get_capabilities(
+        self,
+        source_id: str,
+        *,
+        request_id: str | None = None,
+        observation_id: int | None = None,
+    ) -> tuple[OneCCapabilities, dict]:
+        if (request_id is None) != (observation_id is None):
+            raise ValueError("request and observation IDs must be supplied together")
+        if request_id is not None:
+            query = """
+                SELECT source_id, metadata_fingerprint, platform_version,
+                       compatibility_status, adapter_profile, metadata_supported,
+                       json_supported, atom_supported, expand_supported, entity_set_count,
+                       evidence_json, register_capabilities_json, previous_metadata_fingerprint,
+                       drift_status, drift_detected_at, drift_acknowledged_at
+                FROM bag.read_accepted_capability_observation($1, $2::uuid, $3::bigint)
             """
-            SELECT * FROM bag.record_capability_observation(
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb
-            )
-            """,
-            capabilities.source_id,
-            capabilities.metadata_fingerprint,
-            capabilities.platform_version,
-            capabilities.compatibility_status.value,
-            capabilities.adapter_profile.value,
-            capabilities.metadata_supported,
-            capabilities.json_supported,
-            capabilities.atom_supported,
-            capabilities.expand_supported,
-            capabilities.entity_set_count,
-            json.dumps(capabilities.evidence, ensure_ascii=False),
-            json.dumps(capabilities.register_capabilities, ensure_ascii=False),
+            args = (source_id, request_id, observation_id)
+        else:
+            query = """
+                SELECT source_id, metadata_fingerprint, platform_version,
+                       compatibility_status, adapter_profile, metadata_supported,
+                       json_supported, atom_supported, expand_supported, entity_set_count,
+                       evidence_json, register_capabilities_json, previous_metadata_fingerprint,
+                       drift_status, drift_detected_at, drift_acknowledged_at
+                FROM bag.source_capabilities WHERE source_id=$1
+            """
+            args = (source_id,)
+        row = await self.db.require_pool().fetchrow(
+            query,
+            *args,
         )
+        if row is None:
+            raise CapabilityUnsupported("CAPABILITY_OBSERVATION_NOT_AVAILABLE")
         evidence = row["evidence_json"]
         if isinstance(evidence, str):
             evidence = json.loads(evidence)
-        return {
+        register_capabilities = row["register_capabilities_json"]
+        if isinstance(register_capabilities, str):
+            register_capabilities = json.loads(register_capabilities)
+        capabilities = OneCCapabilities(
+            source_id=row["source_id"],
+            platform_version=row["platform_version"],
+            metadata_fingerprint=row["metadata_fingerprint"],
+            metadata_supported=row["metadata_supported"],
+            json_supported=row["json_supported"],
+            atom_supported=row["atom_supported"],
+            expand_supported=row["expand_supported"],
+            entity_set_count=row["entity_set_count"],
+            adapter_profile=AdapterProfile(row["adapter_profile"]),
+            compatibility_status=CompatibilityStatus(row["compatibility_status"]),
+            evidence=evidence or {},
+            register_capabilities=register_capabilities or {},
+        )
+        return capabilities, {
             "drift_status": row["drift_status"],
             "previous_metadata_fingerprint": row["previous_metadata_fingerprint"],
             "drift_detected_at": (
@@ -643,7 +680,7 @@ class Registry:
             "drift_acknowledged_at": (
                 row["drift_acknowledged_at"].isoformat() if row["drift_acknowledged_at"] else None
             ),
-            "source_capability_evidence": evidence.get("semantic_capabilities", {}),
+            "source_capability_evidence": (evidence or {}).get("semantic_capabilities", {}),
         }
 
     async def record_semantic_capability_evidence(

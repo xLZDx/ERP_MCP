@@ -1,0 +1,809 @@
+{
+  "root_head": "c8f986bcafdcb3be09aae9d5026e08c2805a32a5",
+  "candidate_history_base": "b3888d4",
+  "imports": [
+    {
+      "path": ".env.production.example",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "f8f532bf69e4e31ba16b39e6e35dace71b01cbc5550b2985023389529a36b9a3",
+      "previous_candidate_blob": "106151ae0b64a9c92e2d8ce2b3a0046db1b9fda2"
+    },
+    {
+      "path": "AGENTS.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "01142ce061c8ed8bf5cc4d74e442149a17c268a5d9a2809a890c6e3672d5a585",
+      "previous_candidate_blob": "4f4dac8794e61bcecb4bd13d403f34df12c8839c"
+    },
+    {
+      "path": "db/migrations/016_capability_observation_writer_acceptor.sql",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "cf06f1edf172f71fd148069b95ef2d08f0e49298c16f164131fd20f39277c6d7",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "db/migrations/017_semantic_profile_machine_evidence_only.sql",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "c17a5267d424bcf22a2542b258d6fd642884d33db20eb1c06a1d3470c9784af2",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "db/phase2/027_private_writer_admission_schema.sql",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "37fe2ad5b53eac3075a3735a70cfa2c5fe7e4f264fca9bd966b62fe373a510d7",
+      "previous_candidate_blob": "809d9c75c577b4a94d7ee3cf4e88cdca79f19384"
+    },
+    {
+      "path": "docs/phase2/CHANGE_RECORD_403.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "f9f7cc941e19ce79c53d65a57cf333c5c818ff822f2d450d94c2ec7e5e7987e2",
+      "previous_candidate_blob": "5365a96ed2ee430177e0308529940ba40a3c95f1"
+    },
+    {
+      "path": "docs/phase2/CHANGE_RECORD_407.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "96029cec4233b6f3d5276469bd0b5db3fd2b1f0d5725008ac54c1e904f3eaf8c",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "734d3c12b2533992c75073b0b0cb05c3a255b86c1e56c18e829a88bc6bc9e47f",
+      "previous_candidate_blob": "255237dec7b4c22b8453d3df11accfaea871d62e"
+    },
+    {
+      "path": "docs/phase2/D10_OFFLINE_ONLY_REBASELINE_PROPOSAL_2026-11-09.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "aa275541f2523c47f86d82fef964fbee3cbd985acca07cb3fd7d7a3ef67f8437",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/phase2/DECISION_LOG.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "a8b1bd8bf1f3657d40b62bad70a74f4c34c805d5c4270a4f95e65532a69e732b",
+      "previous_candidate_blob": "b62618fb90dd9b55c49a6a335983ae444764c161"
+    },
+    {
+      "path": "docs/phase2/EVIDENCE_MATRIX.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "af984ae6177794e78a5854ac8a433f60db6dd41835027341144dfdbca6906bff",
+      "previous_candidate_blob": "d5e504b38fe4859591e46f4609a40c4e3190b2e5"
+    },
+    {
+      "path": "docs/phase2/OPERATOR_BACKLOG.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4a01f0f2d8da801eee0cd7916938c54ca1d7314d49e3479e6d29cf6f4e5cb8ef",
+      "previous_candidate_blob": "db15b17ae0c8f13cd7ad09ceed917996b0a64d4b"
+    },
+    {
+      "path": "docs/phase2/S10_RELEASE_HANDOFF.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "09e2ce8c9978f9ee39f4312d79dff0a5b35df9e1d8ba75b9dc791efb50728bd6",
+      "previous_candidate_blob": "3b9bc4498786f037b7e281ef33d54b590bc28771"
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_EVIDENCE_CROSSWALK_2026-11-09.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "2387ad6b47cdfaa83c8265a98e19da875d425aed760f3fee524adcce1dff2eae",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_PREREQUISITE_CORRELATION_2026-11-09.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0e2d8c6216367999fc7b714fe726dd995281c45b3bdc41f5e33e52859298d2fe",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_PREREQUISITE_CORRELATION_2026-11-09.pre-current-S12-reconcile-20261109-210106.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "f9afbc6b0be2f4029267e8e41605fcebb5f41de27a5fcb41eac9e485bbdc7971",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_PREREQUISITE_CORRELATION_2026-11-09.pre-test-lane-rebaseline-20261109-223050.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "e388303932e26d625d2be56ede70dd150e52e3ee08460017808732e62202b493",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/phase2/S1_S4_TRACEABILITY.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "efc244fe0201c99ab8b5900991b69d5cb579a0a66b43e1f6a64fe663cc49b857",
+      "previous_candidate_blob": "444bcc330188ece56a011271f0de98994cb6083e"
+    },
+    {
+      "path": "docs/phase2/SPRINT_S8_PLAN.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "6c6f4d48c41a20581acd35f65814304a2b1057af6130d8c3a912f68e7435f832",
+      "previous_candidate_blob": "1ba832ea3b10f2556f6e06067b88963bac601faf"
+    },
+    {
+      "path": "docs/phase2/SPRINT_S9_PLAN.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "ed3a23a8cda99b44d2aa702bcf007875d02d6c530a82debaa88972e0464cedea",
+      "previous_candidate_blob": "4eddeea26f2e2d44e29500d4316ac48fa31ddd0c"
+    },
+    {
+      "path": "docs/phase2/TASK_LEDGER.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4b909289a28b1339265a7748f14c4a275ae65f2444ca0eba43aea7d71a925a8b",
+      "previous_candidate_blob": "48fe178ff2a53c9aa600b618761f9b26bb72834f"
+    },
+    {
+      "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/acceptance/phase2.feature",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "3467b6280bd5c87d13c8461e7fdf313acdef2fa4372584ea39bd3c47396fe003",
+      "previous_candidate_blob": "d2cb7049a60cfce763c5419e832f6bc0334a1e34"
+    },
+    {
+      "path": "docs/sdlc/AF_STATE.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "e4a95928006816a4fcf0f750f42ec294b285f6c3fa42949f908436589fbc7b84",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/sdlc/functional-evidence.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "779533f0c40b26aea20ddc63e93ff9e508e8e781cbf11de68576f30f3d28f8c2",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/sdlc/next-sprint-preparation.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "03438d7a73ffbf9cadcd2ea743bf6894855a887b189b37cd35140e3982658e71",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/sdlc/state.json",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "5ac1bb371f52f6b7679e57e0832f22e8fce2b84f17f62802e75e3157ae277c98",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "docs/sdlc/verify-evidence.json",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "359998d504c8cc23c5778bd3b58385865db3dece729fc0647143d4fc19980f77",
+      "previous_candidate_blob": "03241ff13209e11697f3d9c0aced63bfd9f18921"
+    },
+    {
+      "path": "docs/sdlc/verify-evidence.md",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0112dac90c25517f6d04ee13567ffafb0bc601a7c37a8e2b36c10ccc6b77c11c",
+      "previous_candidate_blob": "70946fe756f2ffbba9267ca4096ae603c1b2f036"
+    },
+    {
+      "path": "scripts/check_db_privileges.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "a725714235b477fd431b278f961383f9849f6097d52e98d466a93fbbaa2465fe",
+      "previous_candidate_blob": "7c59df5bdb0b578ff08f5f54e565aaf6751201d5"
+    },
+    {
+      "path": "scripts/e2e/_common.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "f0ba5106b3d1a037eefb6e74dee0568f0d9331dcf2030b0a19e5b3c97195c5f5",
+      "previous_candidate_blob": "5b97e52ea49c37e8ce69a8a52b91bf08e264e626"
+    },
+    {
+      "path": "scripts/e2e/down.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "d921f8419937726be9c1a23074cbf33eda592378bb18ea013d5e1ad69931b8e7",
+      "previous_candidate_blob": "56bc8fe205f6bbd7c44b432dbd5e077e55fd6734"
+    },
+    {
+      "path": "scripts/e2e/envctl.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "842354be0ec9f7b75f51587b9ef51db8e97f0ffc2b96be450e93533a2f5dfa84",
+      "previous_candidate_blob": "337bb1eb768e242dae6ecdae05674dc92b06bf63"
+    },
+    {
+      "path": "scripts/e2e/fault.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "6ed5d04454b3a9065e5d32f53619478e721482c1eea11e78d9e9a03462e235f5",
+      "previous_candidate_blob": "66816593840d7599f4e3ab6b6417522ab256d5f7"
+    },
+    {
+      "path": "scripts/e2e/reset.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "46c3ce6f184fae1125053779aca5ddc59d6eecdcd747615e172617926c5e0650",
+      "previous_candidate_blob": "f9ad03ec85e731edd1e35a2b73e7c5f76af7f38f"
+    },
+    {
+      "path": "scripts/e2e/status.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "57a94f298744b6968aa70b90bdc721d134d46f1ebb5a66bfb2783983d9c4ff16",
+      "previous_candidate_blob": "3f0960cdff16e35b424cc16384806849a5711cde"
+    },
+    {
+      "path": "scripts/ft/setup.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "1fca523433b7f16b0a875b2c4a977a9d1553c303a9d84abbb085604eadbc40bf",
+      "previous_candidate_blob": "5411bedfbfe2a80c34d580181943f71533c9d4a0"
+    },
+    {
+      "path": "scripts/postgres_restore_drill.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "28d59cf8e5bf735d03d652fd57fcceb4b17ebc7c3cce9a909bf1a9c136d9ac23",
+      "previous_candidate_blob": "a4595705ad4a933e6e39be1364ca0f8891f57beb"
+    },
+    {
+      "path": "scripts/real1c/autostart/start_lane.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4cf08a46cfc76559c5be1cc1e09151013f67b4e93f0b2b98580ecaeecbc4e9b7",
+      "previous_candidate_blob": "157d492d0bc7941271065de248d52c5d43899c50"
+    },
+    {
+      "path": "scripts/real1c/gateway_client.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0842654f99006b65bde3716712055d9a9a4ec9d164ae82cb08cfc204fa79eebd",
+      "previous_candidate_blob": "35b891ecc6dbafd107a878cec885c69972c7298c"
+    },
+    {
+      "path": "scripts/real1c/lane_setup.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "333c659aac21bff7f23eb3692e440aa4f68a88b7ce296708f83226ddd1a09a99",
+      "previous_candidate_blob": "be31b792adf2cbaee8613384d2567c136fc2c97c"
+    },
+    {
+      "path": "scripts/real1c/period_lock_evidence_readonly.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "a4d1fd99f7673a936658fe0c057c891d50d565a60d734370571ad9d6b97cd050",
+      "previous_candidate_blob": "100227b81c47d08d862cd0264f592ecf6d4e178e"
+    },
+    {
+      "path": "scripts/real1c/period_status_native_readonly.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "8c9df5857777de9c4baff7b730fe174490727181db89915eca2f345726255be8",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "scripts/real1c/probes.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "fcd78bd5c333b2f2e0abbbe011a7ea4b44725c0c3244880be0bfaf6cecede2e3",
+      "previous_candidate_blob": "6465164490cec114c2011f34f4465f84a940f4ed"
+    },
+    {
+      "path": "scripts/real1c/validate_e2e_credentials.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4b6affe2e153748024a2d57726ff5e8982de184f37042e466b82da883d302f83",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "scripts/remote/register-stack-task.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0667b6918bf9d5523ec53fdee56b25c00facb4d0025d38656759335f6daba04c",
+      "previous_candidate_blob": "5573e720d7fab3165224f6cb63636241c424ef5c"
+    },
+    {
+      "path": "scripts/remote/run-mcp-stack.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "cb09d4a701af4ee1df2824a3030a8b28e05986c851a4d0116a2c6645a7c88d1c",
+      "previous_candidate_blob": "5d296e173f4c541a28ad353c1458dbeb43053483"
+    },
+    {
+      "path": "scripts/verify_schema.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "43fd74aa451659df1fe168eff489228acbcc92612a7562b1815d49fb0ba7386f",
+      "previous_candidate_blob": "1050d4f11e5bf420b54e94528174827458de1e69"
+    },
+    {
+      "path": "src/business_ai_gateway/admin_api.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "11a7abed725a45f77694d9f2f667391a7ab9761374ae602a7a702d66af513b4c",
+      "previous_candidate_blob": "a16a0e4652ac59657f771ac9804d3d8484535534"
+    },
+    {
+      "path": "src/business_ai_gateway/admin_mutations.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "a45718d9b760d59531dd61473654bec08657a968ef5ff3c2a31b9b1c0ba6b01c",
+      "previous_candidate_blob": "9f8cf373c778a0d8aec64e693debb3f0a825a355"
+    },
+    {
+      "path": "src/business_ai_gateway/capability_acceptor_service.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4c9f497ab31b03494d41d335c4b0b30ec90890b2ff155e59afb72dd3204be59b",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "src/business_ai_gateway/capability_client.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "998131ad931cf8134876f75aa18cf948415fbc7676d57fe261c54c59895054eb",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "src/business_ai_gateway/capability_observer_service.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "8ef4e28fd162f446bdb8f60404300bda84c57f1df78c731e41616a493ccfd035",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "src/business_ai_gateway/company_scope.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "57138327bc4420fdc33fbdecb30d84b84ea5b14953e31098069788a54f705b68",
+      "previous_candidate_blob": "eb1552da38316350092d6fde96baddfe69c879e8"
+    },
+    {
+      "path": "src/business_ai_gateway/db.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "393d52f07762bae9ad01c2df6bc105f3ddbfc8550627801a3a24adcd53607e7b",
+      "previous_candidate_blob": "b1a49adcbc218874b52951d907e5e989ed4e9a40"
+    },
+    {
+      "path": "src/business_ai_gateway/models.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "c74258850f40f337c9a4d17baece3af37ccc40fe2ad6dd296daff509948e5fd7",
+      "previous_candidate_blob": "8a86da6da006db131e1d2a92f7c21f5475eeca11"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/backend_budget.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "2363dcb1dae66cfaf21fa002b7a393cdbeea66d0bd6c1e5f7c2ae76723cb5f2b",
+      "previous_candidate_blob": "a7d56bfef8e39fc1fc52af88fc788d55ef41cb8a"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/capacity_interference.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "8e632a1546606cdb5c495a4f38978af3d36cd908f1720aafbefd15d083ffb559",
+      "previous_candidate_blob": "a9a94a0a2f5617335a90f77d00e7c7fbd2091f83"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/capture_loop.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "08ab76e3fa45d528ff0a00d80edc81ff27a992592dc569f7a8073ac1173f3929",
+      "previous_candidate_blob": "04d14a2be850fbe800277320dc5b806cf4efc277"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "195abf3ee727f8a97355ffa178498257cbce18fb64f799d9579020931b2e7018",
+      "previous_candidate_blob": "05b897d1f4905a9c0681c625279d268325d15211"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/change_ledger/lifecycle.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "11f014e1d79a6fb6f445fcf5bf045641148fa839a1e12f2d0a72b5f6a8cafe60",
+      "previous_candidate_blob": "c4aafd2db56223dc1b25b0252eb5d5855408fa1e"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "795fbb79616eaff18b07cad3429007d164e7a497a00c47375846967ec16ddbe7",
+      "previous_candidate_blob": "62bab4042bff477f572eb0602a3521c08a329318"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/drift.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "d3a4f3d1d8735e1485ca03f8665a8848dfc666e5f4b026344c987cac1d902401",
+      "previous_candidate_blob": "ec921c1c8f2b317f08b231075a20f3460570d668"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/onec_composition.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4d24103f2f18d8e8d401658ddf15f8e6449f4497446fd5efec49a2c4f1847305",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/onec_discovery.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "3418aa9340393286621f8593ffd863337fda1b50daed41de6f1c92a23b95570a",
+      "previous_candidate_blob": "6066680538aed767e2d9ef2da5f44578c8dc1106"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/resnapshot.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0b210f6ca421b4b907369f12106c0bb5fa61d010a9c3d872b5f93f0109828cb0",
+      "previous_candidate_blob": "e20e94e084da6a6b925ca5c13bd4baf06ee3e0b1"
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/scheduler.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "34b31246e9e880e3ec38d478ca11cf03518bf746df32d1dcd560ce03170c106a",
+      "previous_candidate_blob": "ac594999a7c9aba0763793227507a136b2ef573d"
+    },
+    {
+      "path": "src/business_ai_gateway/principal.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "bd29afa8dcf1b9f8e696c7029e8bb850db79423c2ffd89c59da688e46db930c9",
+      "previous_candidate_blob": "77902e8cb8396588e8475bd91ca8edec0034641a"
+    },
+    {
+      "path": "src/business_ai_gateway/registry.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "5f5b2ca50781394aba376d2991ee7c921449bef4da1dc49f50a96320c48b74d0",
+      "previous_candidate_blob": "5544855f7abebd073997887585cd42912db6f631"
+    },
+    {
+      "path": "src/business_ai_gateway/runtime.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "a949a47b03a6506971c00605c7db6bc60c730ad98aeaf10ae4007e9d50b1b62b",
+      "previous_candidate_blob": "1f941d05326756d97be570c3a00036b7ee8fe628"
+    },
+    {
+      "path": "src/business_ai_gateway/semantic.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0b27fa71adb7ebe6fb9645b1117fd6325142d7f764c32853b5acd8c807077004",
+      "previous_candidate_blob": "bdb489b0c32c4f3dbba6c5f8a87c6b06eb9631f2"
+    },
+    {
+      "path": "src/business_ai_gateway/server.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "66fff3d11a920de2c57401e12ec37e2de25358ba9544190eb81d78a1a18f9b0e",
+      "previous_candidate_blob": "cbea1ae62f8a94855660f31ebf2b8af5866fe069"
+    },
+    {
+      "path": "src/business_ai_gateway/settings.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "a2be93a52b23872b0776e4ce5b5f5ceaf011a4338d3bec639aec224596550991",
+      "previous_candidate_blob": "f47fc2b481197b3f208d31151b3a9d01e13cafb9"
+    },
+    {
+      "path": "src/erp_mcp_s16/services.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "819018d9ea7900d65a476fbf973fb8796a35eb6ba69570f50f00c1e6547891ef",
+      "previous_candidate_blob": "7b5323b034fef7ac6612094fec6382727451ea13"
+    },
+    {
+      "path": "tests/e2e/admin/test_m2_capability_observation_boundary.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "7a10e6bc7572846d87b248b40bcae7b58318648ac3dff1ddcdc827c30da3b55b",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/fixtures/s12_period_observations.synthetic.json",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "68cbfc5502d7bef8fa23bdcab48a9b113ae7d2669226c0de7f52ef9b46301397",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/r2_tc001_fixture.json",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "afe76ff46b84e41f76bdf801dd91e4da5476a1cde96f5fde8fa9ab9b442517e9",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/r2_tc001_oracle.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "7bcba3c765e90a6e5e05dd9987306deb168fdd91c813aba8ed01ac0e24f79ed9",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/r2_tc001_stdio_server.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "8fbc2fc4267d5f3cfa7857a8c708aebae57157bcd365e37c55ac6391123b06e6",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/register_lane_task.Tests.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "58c3508f2f0c9bcc49ccbb8d51182cd6ebd0961963c2f12258c819319399903c",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/remote_stack_readiness.Tests.ps1",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "ba0c6715e4cc53e517062d43c790c92cba88ff0291dcfe60812c3ef79755a999",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/run_r2_tc001.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "19ccf8f4374e99d6c476950c2b25a278f5cee71ce5a68781fd1eb1734910c5e1",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_backend_budget.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "c5a2ba1726aa7f1e1de9e7ff85eda67b7b0d57f1e9afe8cbbc2d7608acb37297",
+      "previous_candidate_blob": "cd5e215be37eede274fb3f0281fc39b122f42f47"
+    },
+    {
+      "path": "tests/phase2/test_capability_client.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "f92ba1b2d45d370c2cf020a98307c12b58d1242999febb87776ce6adf7ecf0d3",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_capture_loop.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "a471b17fba02e97a6c26088b06ed096febd58952aaac28df0f1fdee99286ee7f",
+      "previous_candidate_blob": "68a2c06751beb5708cefe1863ae03a5ed6d4c9ad"
+    },
+    {
+      "path": "tests/phase2/test_drift.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "7b5513d1df9f2e8ad457f906cf053c11ebc6a921e1b79ff9dd962518d2d450d2",
+      "previous_candidate_blob": "bf34ff86551ec54584ed8924968dc23812940ed4"
+    },
+    {
+      "path": "tests/phase2/test_onec_composition.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "b9898ace17c8a88e73b7e8245bcc3aea4d48911ffd2e816939124e9f92e30b88",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_period_lock_evidence_readonly.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "697a255a8f31931e8845d8107990a4e0aa30d7b74314bcc6a203a3492752713d",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_r2_tc001_product_acceptance.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "64c2a308c57b581a260ed4de23e7c92c839dcbd27573913477c07be41e8c9d91",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_s12_budget_producer.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "f0a1b7f33dd7238f3101014bf80cd5882f7f003439ae0d55eadbeafaad4623e5",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_s12_period_producer.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "252681a28981a696868637c4b37af5a0e4c3fef5956cd563e2f7d6ba50631945",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_s13_barrier_ack_sql.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "e633795dcef7e0417e22871963546ab668321f1b8261f9757205db61d1b9743b",
+      "previous_candidate_blob": "b103a4b74d47e1c6fb9008c7be67060d7ce178b3"
+    },
+    {
+      "path": "tests/phase2/test_s13_current_turn_sql.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "78310350449589ec20e89b2a7bc8f7a5f2ded5165c474579e105eef9f41869bc",
+      "previous_candidate_blob": "17556c5835b1481913034466bbb16e5d6bcc6205"
+    },
+    {
+      "path": "tests/phase2/test_s13_dev_anchor_service.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "97aea540cdc9324386b6d3582438e0354f5b75e7317038a216e455a94072025e",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_s13_dev_anchor_service_e2e.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "8fa4723b0c096220d5d1877a98a23c37193062ffbaed4e5fc3e4865f57562775",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_s13_lifecycle_preflight.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0016da9b2908325b0392bd479ea5f96769c6ad2abd2dc7b307bec012fc23d113",
+      "previous_candidate_blob": "0d87a437d62ea698f40454b8df6c8c791afe8d3b"
+    },
+    {
+      "path": "tests/phase2/test_s13_lifecycle_preflight_e2e.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "623d2252742d122004b522859567090e2bca90e0b88a44036fb20469047bef22",
+      "previous_candidate_blob": "18678441a68ee3c7d13b34a4f228666a3a68361c"
+    },
+    {
+      "path": "tests/phase2/test_s16_replay.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "548edeb3128a8b0e49848deac385b2378da811f2619ebd8875454820e8fbcaf4",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_scheduler.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "47e9ade598f8180ce0aa5b3524facee25c129f0651daa5560c29f95053059e88",
+      "previous_candidate_blob": "3e69cd853a23e4ac4c87241b52dc771977275c81"
+    },
+    {
+      "path": "tests/phase2/test_scheduler_fairness.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "f7888b5fe85fefccf72064b696e4da45cde5b263e46c2f2758a71883d8a2014a",
+      "previous_candidate_blob": "4eb5812017bd0af8a73aed997ecc37a05b46c270"
+    },
+    {
+      "path": "tests/phase2/test_scheduler_resume.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "7b969eec7b18e972398d99e7ffa1a6dec49f5fc6a3542096e694271bcdec6ae4",
+      "previous_candidate_blob": "c6e17ada45f7dd6b2a45413a60220030a4ee9b5a"
+    },
+    {
+      "path": "tests/phase2/test_semantic_profile_migration017.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4c87ba02aff9ef9d3a69278e264c163f84533a82c6b634615216188bc380be27",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/phase2/test_spec_catalog.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "43d66855901154079ffc6fa7ed7a58ff4864ef07b7b05f297450cbd4e4cf167e",
+      "previous_candidate_blob": "96b3d0361f2543a92f9d05eb3f3c0a9179386dca"
+    },
+    {
+      "path": "tests/phase2/test_structural_diff.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "d89854d819366418abfbbdfde6ae79aff3d1a69e0c77ba1f79814581c06296d1",
+      "previous_candidate_blob": "8167f692b8b87b0f2f6b12016f20a516148f6d16"
+    },
+    {
+      "path": "tests/phase2/test_structural_hash.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "1e43c60ddeeec74189d27b0d38a3aa927b2ce256e21e83fbbdb0bed5a0a8d85b",
+      "previous_candidate_blob": "672dc49ebf277d5e119023e9a82d005d3f544e3c"
+    },
+    {
+      "path": "tests/real1c/test_real_profile_envctl.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "0ffb98a86b491542a959c91d8b1497d990b43df61147171c9bab37a39fbb1369",
+      "previous_candidate_blob": "c76255ba2b6b32b0ee75418521354b13f905979e"
+    },
+    {
+      "path": "tests/test_admin_mutations_postgres.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "2f285fc8f2d4a6a4d9e45822a5a0c12d1ca12e9841d776060dd793fc47de1588",
+      "previous_candidate_blob": "d0a347d7fa6020ea5e4163d68f68b4b7683bb718"
+    },
+    {
+      "path": "tests/test_b3_company_scope_fail_closed.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "1d46fcc70e9acff2d95a25bcb346c1326420bf5d685348d12aefc662a6e06e12",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/test_capability_observation_role_boundary.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "47c20c095d8bb852ea9f10ecac6cef3ee88dd87778dfe890f8f207922e3f9a46",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/test_native_evidence_fail_closed.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "4faee2a38f139478cc542bb21a8d09fb78f5fb7b03f12c8b993e97ef96ad16e5",
+      "previous_candidate_blob": null
+    },
+    {
+      "path": "tests/test_semantic_profiles.py",
+      "source": "Preserved original dirty checkout; not a qualification claim",
+      "sha256": "c2734e094100045049518204e865be2c2df7c763ef3edd1e2bf0ac457a7e4c58",
+      "previous_candidate_blob": "5186d59d2b5638c1fe7f780674227e7c4138f940"
+    }
+  ],
+  "retained_outside_promotion": [
+    {
+      "path": "db/phase2/028_refusal_codes_parity.local.sql",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-review1.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-review1.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-final.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review11.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review11.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review12.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review12.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review13.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review13.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review2.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review2.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review3.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review3.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review5.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review5.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review6.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review6.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review7.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review7.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review8.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review8.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review9.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review9.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-verified.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-b23fab6-review14.json",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-b23fab6-review14.json.sha256",
+      "disposition": "RETAIN_EXTERNAL_BACKUP_NOT_AUTO_PROMOTED",
+      "reason": "Historical generated evidence or alternative local SQL; preserve for individual disposition."
+    }
+  ],
+  "limits": "Imported bytes preserve pre-existing work; no tests/checks/runtime claims. Dependency/node/worktree directories and historical report snapshots are not blindly copied. All initial dirty work remains in external backups and original checkout."
+}

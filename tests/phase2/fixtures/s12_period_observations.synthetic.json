@@ -1,0 +1,29 @@
+{
+  "classification": "SYNTHETIC_TEST_FIXTURE_ONLY_NOT_1C_EVIDENCE",
+  "binding": {
+    "tenant_id": "synthetic-tenant-s12",
+    "company_id": "synthetic-company-s12",
+    "source_id": "synthetic-source-s12",
+    "organization_ref": "synthetic-org-s12",
+    "base_fingerprint": "synthetic-base-fingerprint-s12"
+  },
+  "period_id": "2026-10",
+  "source_version": "synthetic-config-v1",
+  "authentication_ref": "synthetic-auth-ref-s12",
+  "observed_now": "2026-10-12T12:00:00+00:00",
+  "max_age_seconds": 300,
+  "observations": {
+    "CLOSED": {
+      "closed": true,
+      "observed_at": "2026-10-12T11:59:00+00:00"
+    },
+    "OPEN": {
+      "closed": false,
+      "observed_at": "2026-10-12T11:59:00+00:00"
+    },
+    "STALE": {
+      "closed": true,
+      "observed_at": "2026-10-12T11:54:59+00:00"
+    }
+  }
+}

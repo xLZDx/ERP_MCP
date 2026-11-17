@@ -41,3 +41,7 @@ python -m ruff check .
 
 Integration and production claims additionally require the evidence gates in
 `docs/DEFINITION_OF_DONE.md` and `docs/TEST_STRATEGY.md`.
+
+## Status report upkeep
+
+Follow the global post-task report rule. After each accepted ERP_MCP sprint task, update the Russian and English whole-program status reports using verified task, review, Git, and runtime evidence; keep bounded acceptance separate from product/runtime/deployment status. Preserve historical snapshots and create a new current-dated pair in `reports/`. The current report pair is `reports/ERP_MCP_PHASE2_STATUS_2026-11-01.ru.html` and `reports/ERP_MCP_PHASE2_STATUS_2026-11-01.html`; refresh these canonical files and add the current-dated pair.

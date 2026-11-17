@@ -272,11 +272,16 @@ def capability_evidence_fingerprint(capability_profile: Any) -> str:
 def validate_native_reconciliation_evidence(
     evidence: Any, *, allow_machine: bool = False
 ) -> list[dict[str, str]]:
-    """Normalize the ten PASS cases.
+    """Validate machine cases only; native report evidence is fail-closed.
 
-    Machine two-source cases are refused unless the caller explicitly allows them: a manifest of machine cases can
-    therefore never be normalized into legacy native evidence by the native validation paths.
+    Native evidence has no trusted verifier for immutable report bytes, scope or independent attestation. A caller
+    supplied reference and JSON fingerprint cannot establish those facts, so only the separately verified machine
+    path may pass this normalizer until a native verifier contract exists.
     """
+    if not allow_machine:
+        raise ValueError(
+            "native report evidence is not independently verifiable; profile cannot be validated"
+        )
     cases = evidence.get("native_reconciliation_cases") if isinstance(evidence, dict) else None
     if not isinstance(cases, list) or len(cases) < 10:
         raise ValueError("at least ten native reconciliation cases are required")

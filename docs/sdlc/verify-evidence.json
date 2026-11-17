@@ -1,5 +1,5 @@
 {
-  "tested_head": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
+  "tested_head": "9f891e405a8e0ff53ad1f0f1883e274fe3213908",
   "runs": [
     {
       "command": "$env:PYTHONPATH='src'; .\\.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_s12_period_producer.py tests/phase2/test_s12_budget_producer.py tests/phase2/test_s16_approval_core.py tests/phase2/test_s16_tools.py tests/phase2/test_s16_conformance.py tests/phase2/test_s16_replay.py tests/phase2/test_s16_proposal_boundary.py",
@@ -83,7 +83,7 @@
     },
     {
       "item": "Qualified real accounting period/budget readers and live ERP connector/watchdog outcome",
-      "reason": "No qualified authenticated reader or successful correlated connector/restart evidence is available; the prior connector probe returned an internal error."
+      "reason": "No qualified authenticated reader or successful correlated connector/restart evidence is available. On 2026-11-14, ERP_MCP_Razer sources_list returned tunnel-client not seen for 300 seconds; ERP_MCP_Ivan exposed only the 818HA sources, not ERP_MCP_REAL1. Local com.docker.service remained Stopped/Manual; ordinary Start-Service was denied, elevated Windows PowerShell launch returned operation canceled by the user, and the autostart task RunLevel Limited had LastTaskResult 5. The Docker probe log fails closed when child termination is unconfirmed. A normal Docker Desktop launch at 2026-11-14 18:09 UTC left com.docker.service Stopped/Manual; the launched process was closed without starting the lane. Razer sources_list still reports tunnel-client unavailable. AC-1/AC-2 remain NOT_RUN; resume after Docker, tunnel-client, and elevated testbed access are available."
     },
     {
       "item": "Live IdP, browser, approval UAT, deployment, production writer qualification or real POST/UNPOST",
@@ -164,6 +164,18 @@
       "model": "not surfaced by bridge",
       "effort": "not reported",
       "verdict": "Reply text APPROVE; AF tool disposition UNRECOGNIZED due wrapper prefix, 0 blocker/major and 2 non-blocking minor; no approval artifact. Request 62ce3be7-1c54-4694-98ad-8ae5f17be34a, reply b8137d03-e618-5926-8ca2-a66c030dd822."
+    },
+    {
+      "role": "GPT-PM via PM Bridge",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "TC001 OPEN; supporting selected checks do not satisfy product acceptance. Defined bounded P01-P12 verification procedure under existing R2-REQ-01; contract READY FOR IMPLEMENTATION, but product case remains NOT_RUN until execution and independent adjudication. Request 62af8553-262b-4d1b-83ae-6c17ad179db1, reply 4976c013-7b37-59f9-b58d-181eb7801d3a."
+    },
+    {
+      "role": "GPT-PM via PM Bridge",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "APPROVE local commit for the scoped dependency/P11/test-runner delta; 0 blocker, 0 major, 2 minor post-commit requirements. P12 remains NOT_RUN until the reviewed dependency and test changes are committed and exact-head verification is rerun; TC001 product acceptance remains OPEN/NOT_RUN. Request b554a2d8-0f09-4d3c-a776-d8e6e958a5bd, reply ea99bb9e-f0b8-53b3-8f91-6764f527c7fa."
     }
   ],
   "sprint_review_source_head": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
@@ -242,16 +254,134 @@
       "seconds": 1.03,
       "exit_code": 0,
       "scope_status": "clean"
+    },
+    {
+      "head": "9f891e405a8e0ff53ad1f0f1883e274fe3213908",
+      "role": "functional-test-reviewer",
+      "command": "$env:PYTHONPATH='src'; .\\.venv\\Scripts\\python.exe -m pytest -q tests/test_compatibility.py::test_capability_detector_reports_unsupported_without_safe_route tests/test_compatibility.py::test_html_metadata_response_gets_no_fingerprint tests/test_semantic_profiles.py::test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping tests/test_semantic_profiles.py::test_native_evidence_and_operator_cli_require_reconciliation_and_actor tests/test_capability_drift_migration.py::test_capability_observation_boundary_has_no_fake_fingerprint_or_runtime_ack tests/phase2/test_safe_parser.py::test_tc080_active_content_types_denied tests/phase2/test_safe_parser.py::test_tc080_external_content_types_denied tests/phase2/test_safe_parser.py::test_run_isolated_child_does_not_inherit_secrets tests/test_private_evidence_store.py::test_unconfirmed_cross_scope_and_revoked_retention_are_denied_after_reopen tests/test_onec_client.py::test_upstream_http_error_does_not_expose_url_or_query_values tests/test_onec_client.py::test_upstream_network_error_is_mapped_without_chaining_request_url tests/test_onec_client.py::test_native_transport_rejects_encoding_before_unbounded_decompression tests/test_onec_client.py::test_url_is_pinned_to_registered_host tests/test_onec_client.py::test_metadata_probe_outage_is_sanitized_and_fails_closed tests/test_com_bridge_client.py::test_non_loopback_url_rejected tests/test_com_bridge_client.py::test_echo_mismatch_is_binding_mismatch tests/test_com_bridge_client.py::test_malformed_response_rejected tests/test_com_bridge_client.py::test_response_size_is_bounded tests/test_com_bridge_client.py::test_redirects_are_not_followed tests/test_rsv_bridge.py::test_rsv_bridge_rejects_unsafe_source_id_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_fails_closed_on_unreviewed_upstream_tool tests/test_rsv_bridge.py::test_rsv_bridge_metadata_response_is_bounded tests/test_rsv_bridge.py::test_digest_mismatch_does_not_resolve_secret_or_create_config tests/test_rsv_bridge.py::test_rsv_bridge_uses_secret_bound_ephemeral_config_and_removes_it tests/test_rsv_bridge.py::test_rsv_bridge_rejects_invalid_secret_config_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_rejects_oversized_secret_config_before_process_launch tests/test_auth.py::test_invalid_or_under_scoped_tokens_are_denied tests/test_auth.py::test_bad_signature_is_denied tests/test_auth.py::test_jwks_validation_error_fails_closed tests/test_auth.py::test_missing_or_malformed_client_identity_fails_closed tests/test_auth.py::test_blank_primary_client_identity_does_not_fall_back tests/test_server_audit.py::test_durable_access_receipt_exists_before_adapter_dispatch tests/test_server_audit.py::test_pre_dispatch_audit_outage_is_sanitized_and_never_calls_adapter tests/test_server_audit.py::test_source_acl_denial_is_audited_and_stops_before_rate_limit tests/test_rsv_secret_privacy.py tests/phase2/test_release_migration.py::test_identical_digests_everywhere_is_r1_unchanged tests/phase2/test_release_migration.py::test_one_changed_r1_digest_is_a_regression_naming_only_the_typed_operation_id",
+      "result": "captured stdout: 84 passed in 8.90s; process exit code not retained; supporting checks only, product TC001 not executed",
+      "seconds": 8.9,
+      "exit_code": null,
+      "scope_status": "supporting evidence only; TC001 remains OPEN"
+    },
+    {
+      "head": "9f891e405a8e0ff53ad1f0f1883e274fe3213908",
+      "role": "functional-test-reviewer",
+      "command": "$env:PYTHONPATH='src'; .\\.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_spec_catalog.py",
+      "result": "13 passed in 0.89s",
+      "seconds": 0.89,
+      "exit_code": 0,
+      "scope_status": "catalog guard only; does not execute product TC001"
+    },
+    {
+      "head": "9f891e405a8e0ff53ad1f0f1883e274fe3213908",
+      "role": "e2e-runner",
+      "command": ".venv\\Scripts\\python.exe tests/phase2/run_tc001_r1_preservation.py --output tests/phase2/evidence/tc001-r1-preservation-9f891e4-review7.json",
+      "result": "procedure READY_FOR_INDEPENDENT_REVIEW; P01-P12 and STATUS_GUARD PASS; 499 passed, 0 skipped; P05 offline sidecar Node suite 14/14, exit 0",
+      "seconds": 18.028,
+      "exit_code": 0,
+      "evidence_path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review7.json",
+      "evidence_sha256": "d0d4c01ceb20c93535b8bd043792637bd1142d51c6c6af3586971b51582be6bd",
+      "test_module_sha256": "f5de5f373fc05090d24cde32a8fbf2541d65c44571dc7aa1fc6b68c89ad6b240",
+      "runner_sha256": "e209fc47cc80de44c3e346eb2f07e6e85151dea32e6cbf019b44fda2c2c15849",
+      "scope_status": "procedure evidence approved by read-only internal review; product TC001 remains NOT_RUN pending GPT-PM adjudication"
+    },
+    {
+      "head": "9f891e405a8e0ff53ad1f0f1883e274fe3213908",
+      "role": "e2e-runner",
+      "build_command": "docker build --tag erp-mcp-tc001-sidecar:9f891e4-undici8123 --file adapters/odata-sidecar/Dockerfile .",
+      "build_exit_code": 0,
+      "image_tag": "erp-mcp-tc001-sidecar:9f891e4-undici8123",
+      "image_digest": "sha256:b266cd4c06c45b4772c37fcbe023fadbd5d0e22bf6fbdb24c4305e83936e6fc7",
+      "aggregate_command": ".venv\\Scripts\\python.exe tests/phase2/run_tc001_r1_preservation.py --node-test-image erp-mcp-tc001-sidecar:9f891e4-undici8123 --node-test-image-build-command \"docker build --tag erp-mcp-tc001-sidecar:9f891e4-undici8123 --file adapters/odata-sidecar/Dockerfile .\" --output tests/phase2/evidence/tc001-r1-preservation-9f891e4-review8.json",
+      "aggregate_exit_code": 1,
+      "result": "499 passed, 0 skipped, pytest exit 0; P01-P11 and STATUS_GUARD PASS; P05 verifies immutable image installed undici 8.12.3 matches working-tree lock and Node suite 14/14 exit 0; P12 NOT_RUN because candidate HEAD manifest/lock are 8.10.2 while working-tree manifest/lock are 8.12.3",
+      "evidence_path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review8.json",
+      "evidence_sha256": "6b1c85c70b78c53f220d9a838ae5e6daeac49251486f9f658c311452f7ebad6c",
+      "runner_sha256": "ebe0099ceda116ccd9702cfcf085cf1821e391df36706f13620ebe2c7723343e",
+      "scope_status": "P05 runtime dependency finding corrected and tested; P12 and GPT-PM product adjudication remain open"
+    },
+    {
+      "head": "9f891e405a8e0ff53ad1f0f1883e274fe3213908",
+      "role": "e2e-runner",
+      "command": ".venv\\Scripts\\python.exe tests/phase2/run_tc001_r1_preservation.py --node-test-image erp-mcp-tc001-sidecar:9f891e4-undici8123 --node-test-image-build-command \"docker build --tag erp-mcp-tc001-sidecar:9f891e4-undici8123 --file adapters/odata-sidecar/Dockerfile .\" --output tests/phase2/evidence/tc001-r1-preservation-9f891e4-review9.json",
+      "result": "procedure OPEN only because P12 NOT_RUN before commit; P01-P11 and STATUS_GUARD PASS; 499 passed, 0 skipped, pytest exit 0; P05 immutable image undici 8.12.3 matched working-tree lock, Node suite 14/14 exit 0",
+      "seconds": 29.981,
+      "exit_code": 1,
+      "pytest_exit_code": 0,
+      "evidence_path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review9.json",
+      "evidence_sha256": "36976d476c59b0373486d1cae7cbcd58940366b5757e605abc1b003aa1af8834",
+      "runner_sha256": "f4edfb75867eff09c255f9ae7c62e7fa3ac86d9b40e0768a53be4728ce46c106",
+      "image_id": "sha256:b266cd4c06c45b4772c37fcbe023fadbd5d0e22bf6fbdb24c4305e83936e6fc7",
+      "installed_undici_version": "8.12.3",
+      "node_tests": "14 passed, 0 failed, 0 skipped; exit 0",
+      "scope_status": "precommit acceptance procedure evidence; P12 awaits reviewed commit, exact-head rerun and GPT-PM adjudication"
+    },
+    {
+      "head": "9f891e405a8e0ff53ad1f0f1883e274fe3213908",
+      "role": "e2e-runner",
+      "command": ".venv\\Scripts\\python.exe tests/phase2/run_tc001_r1_preservation.py --output tests/phase2/evidence/tc001-r1-preservation-9f891e4-review13.json",
+      "result": "procedure OPEN; 507 passed, 0 skipped, pytest exit 0; P01, P02-P04, P06-P11 and STATUS_GUARD PASS; P05 NOT_RUN because candidate no-cache Docker build failed fetching ignore@5.3.2 from npm registry (ECONNRESET; no image digest); P12 NOT_RUN because dependency and harness changes are uncommitted",
+      "seconds": 72.123,
+      "exit_code": 1,
+      "pytest_exit_code": 0,
+      "evidence_path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review13.json",
+      "evidence_sha256": "f9a5ad2814955b4f369bf5cdab38f2f8edcb58326abc5e24ab6bd61920b46563",
+      "runner_sha256": "48bada3a51616da6e7d4972ff5616240f712d213a106913a2a0b4b2ea0e5943f",
+      "test_module_sha256": "71cb0accdd7550e5b9b3df7bd1d56f5373fea28aa86fa01b4faf55213e92d5ec",
+      "build_exit_code": 1,
+      "build_error": "npm registry ECONNRESET fetching ignore@5.3.2; candidate image digest unavailable",
+      "scope_status": "bounded preservation evidence; P01 fix is passing; product TC001 remains NOT_RUN; retry P05 and P12 on the committed candidate, then request GPT-PM adjudication"
+    },
+    {
+      "head": "b23fab6f6bcdbbe3088e255a8635032996916178",
+      "role": "e2e-runner",
+      "command": ".venv\\Scripts\\python.exe tests/phase2/run_tc001_r1_preservation.py --output tests/phase2/evidence/tc001-r1-preservation-b23fab6-review14.json",
+      "result": "procedure OPEN only because P12 is NOT_RUN; 507 passed, 0 skipped, pytest exit 0; P01-P11 and STATUS_GUARD PASS; P05 fresh no-cache candidate image build PASS, installed/candidate/working undici 8.12.3, Node suite 14 passed with 0 skipped",
+      "seconds": 34.789,
+      "exit_code": 1,
+      "pytest_exit_code": 0,
+      "evidence_path": "tests/phase2/evidence/tc001-r1-preservation-b23fab6-review14.json",
+      "evidence_sha256": "49cbb57bc719a68b8a667c14c9a12fdd787a74072178e221ea6a580a14e4ffdb",
+      "image_id": "sha256:0dabbf494008608db2df79e2fe181cafb2ffd5c77b1101263bc0260dc6284b26",
+      "installed_undici_version": "8.12.3",
+      "node_tests": "14 passed, 0 failed, 0 skipped; exit 0",
+      "build_exit_code": 0,
+      "scope_status": "exact-head bounded verification at committed candidate; P12 validator reports false mismatches because raw worktree SHA is compared with Git blob bytes under core.autocrlf=true; harness defect pending correction; product TC001 remains NOT_RUN"
+    },
+    {
+      "head": "b23fab6f6bcdbbe3088e255a8635032996916178",
+      "role": "e2e-runner",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_tc001_r1_preservation.py -k p12",
+      "result": "5 passed, 9 deselected, exit 0 in 4.19s; covers Git-clean blob identity normalization for LF/CRLF and rejection of changed bytes",
+      "seconds": 4.19,
+      "exit_code": 0,
+      "scope_status": "focused P12 harness regression only; corrected runner/test changes are uncommitted pending GPT-PM supplementary review request dfa5af88-51b1-4d80-ae0c-ef95a0911d66; no exact-head aggregate rerun after correction"
+    },
+    {
+      "head": "b23fab6f6bcdbbe3088e255a8635032996916178",
+      "role": "e2e-runner",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q -rs tests/test_capability_registry_postgres.py tests/test_admin_mutations_postgres.py",
+      "result": "25 passed, 0 skipped, exit 0 in 37.24s; isolated PostgreSQL/Redis E2E project; ensure-roles, migrations 001-015, verify-schema and check_db_privileges.py passed; cross-source denial reached expected 403 and no-write assertions",
+      "seconds": 37.24,
+      "exit_code": 0,
+      "pytest_exit_code": 0,
+      "e2e_project": "erpmcp-e2e-codexs0tc002c",
+      "e2e_dir": ".e2e/s0-tc002-codexs0tc002c",
+      "postgres_image": "postgres:16-alpine",
+      "cleanup": "compose down --volumes --remove-orphans exit 0; unique E2E directory removed after containment check; no project containers, volume, or network remain",
+      "test_file_sha256": "2f285fc8f2d4a6a4d9e45822a5a0c12d1ca12e9841d776060dd793fc47de1588",
+      "scope_status": "bounded S0 DB-backed tests only; no product TC002 execution or B2 timeout-fingerprint fault injection; effective business_ai_app role/function-argument authorization remains separate"
     }
   ],
   "s0_not_run": [
     {
       "item": "Product TC001–TC003",
-      "reason": "Test catalog and Gherkin explicitly require these product cases to remain NOT_RUN / @not_implemented."
+      "reason": "Review14 at committed HEAD b23fab6f6bcdbbe3088e255a8635032996916178: 507 passed, 0 skipped; P01-P11 and STATUS_GUARD PASS; fresh candidate image, P05 and 14/14 Node cases PASS. P12 correction now compares Git-clean OIDs; focused regression run passed 5 tests with 9 deselected. The correction remains uncommitted: supplementary GPT-PM review request dfa5af88-51b1-4d80-ae0c-ef95a0911d66 was sent, but PM Bridge reports the UI reply failed to load and no correlated verdict is available. Product TC001 remains NOT_RUN / OPEN pending approval to commit, exact-head aggregate rerun, and independent adjudication. TC002/TC003 product scenarios remain NOT_RUN / @not_implemented; their DB, provenance, delivery and deployed-revision evidence gaps remain separately listed."
     },
     {
-      "item": "M2/M8 effective database-role and function-argument authorization; B2 DB fault injection",
-      "reason": "BAG_PRIVILEGE_TEST_DATABASE_URL is unset; no approved disposable PostgreSQL target is configured. No test, migration, or database changes were run."
+      "item": "B2 metadata-timeout fault injection; M2 effective-role/function-argument authorization; M8 legacy claim reproduction",
+      "reason": "Assigned e2e-runner executed tests/test_capability_registry_postgres.py and tests/test_admin_mutations_postgres.py at HEAD b23fab6f6bcdbbe3088e255a8635032996916178 on a unique disposable PostgreSQL/Redis E2E project: 25 passed, 0 skipped; roles, migrations 001-015, schema and privilege checks passed; project/volume/directory were cleaned. Remaining: B2 metadata-timeout fingerprint history was not fault-injected, and M2 business_ai_app SET ROLE/function-argument authorization was not exercised by these modules. Product TC002 remains NOT_RUN pending independent adjudication."
     },
     {
       "item": "B3 authentic report provenance; TC003 provider-attested deployed revision; M7 real alert delivery",
@@ -260,6 +390,10 @@
     {
       "item": "Exhaustive R1 behavior preservation / zero-impact proof",
       "reason": "Completed only a bounded path/evidence comparison and selected regression tests."
+    },
+    {
+      "item": "P12 exact-head status for updated sidecar dependency",
+      "reason": "The direct undici pin and lock are committed in b23fab6f6bcdbbe3088e255a8635032996916178; npm audit reports zero advisories. Review14 proves P05 against the committed no-cache image (undici 8.12.3; 14/14 Node cases). The Git-clean blob comparison correction is implemented and its focused tests pass (5 passed, 9 deselected), but remains uncommitted pending GPT-PM review; exact-head aggregate P12 has not been rerun."
     }
   ],
   "af_phase8_attempt": {

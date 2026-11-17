@@ -234,3 +234,77 @@ def test_capacity_configuration_accepts_minimal_integer_budget():
     with budget.reserve(trusted_backend_id=bid("physical-1")):
         assert budget.active_total == 1
     assert budget.active_total == 0
+
+
+def test_waiter_queue_is_bounded_per_backend_and_globally():
+    budget = PhysicalBackendBudget(
+        per_backend_limit=1, total_limit=1,
+        max_waiters_per_backend=1, max_waiters_total=1,
+    )
+    a, b = bid("backend-a"), bid("backend-b")
+    with budget.reserve(trusted_backend_id=a):
+        with pytest.raises(BackendCapacityError, match="CAPACITY"):
+            with budget.reserve(trusted_backend_id=a, waiter_id="first"):
+                pass
+        with pytest.raises(BackendCapacityError, match="WAIT_QUEUE_FULL"):
+            with budget.reserve(trusted_backend_id=a, waiter_id="second"):
+                pass
+        # The global waiter limit applies across backend keys too.
+        with pytest.raises(BackendCapacityError, match="WAIT_QUEUE_FULL"):
+            with budget.reserve(trusted_backend_id=b, waiter_id="third"):
+                pass
+
+
+def test_global_waiter_limit_prunes_expired_idle_backend_queues(monkeypatch):
+    now = [10.0]
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+    budget = PhysicalBackendBudget(
+        per_backend_limit=1, total_limit=1, max_waiters_per_backend=1,
+        max_waiters_total=1, waiter_ttl_seconds=2.0,
+    )
+    idle_backend, active_backend, new_backend = map(bid, ("idle", "active", "new"))
+    with budget.reserve(trusted_backend_id=idle_backend):
+        with pytest.raises(BackendCapacityError, match="CAPACITY"):
+            with budget.reserve(trusted_backend_id=idle_backend, waiter_id="expired"):
+                pass
+
+    # Let the idle backend's sole ticket expire without touching that backend again.
+    now[0] += 3.0
+    with budget.reserve(trusted_backend_id=active_backend):
+        # Expiry is pruned globally before the bound is checked, so this is ordinary
+        # capacity contention and the new ticket is admitted, not rejected as queue-full.
+        with pytest.raises(BackendCapacityError, match="CAPACITY"):
+            with budget.reserve(trusted_backend_id=new_backend, waiter_id="fresh"):
+                pass
+
+
+def test_waiters_on_a_backend_alternate_interactive_and_background_grants():
+    from business_ai_gateway.phase2.backend_budget import WorkClass
+
+    budget = PhysicalBackendBudget(per_backend_limit=1, total_limit=1)
+    backend = bid("physical-1")
+    # Occupy capacity so both lanes enter the same waiter queue.
+    with budget.reserve(trusted_backend_id=backend):
+        # Queue order starts in the background lane so FIFO alone cannot satisfy the
+        # expected interactive-first contested turn.
+        for identity, lane in (("background-1", WorkClass.BACKGROUND),
+                               ("interactive-1", WorkClass.INTERACTIVE),
+                               ("background-2", WorkClass.BACKGROUND),
+                               ("interactive-2", WorkClass.INTERACTIVE)):
+            with pytest.raises(BackendCapacityError, match="CAPACITY"):
+                with budget.reserve(trusted_backend_id=backend, work_class=lane,
+                                    waiter_id=identity):
+                    pass
+
+    # First contested turn favors interactive; each subsequent contested grant alternates.
+    granted = []
+    for identity, lane in (
+        ("interactive-1", WorkClass.INTERACTIVE),
+        ("background-1", WorkClass.BACKGROUND),
+        ("interactive-2", WorkClass.INTERACTIVE),
+        ("background-2", WorkClass.BACKGROUND),
+    ):
+        with budget.reserve(trusted_backend_id=backend, work_class=lane,
+                            waiter_id=identity):
+            granted.append(identity)
+    assert granted == ["interactive-1", "background-1", "interactive-2", "background-2"]

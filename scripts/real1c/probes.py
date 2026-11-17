@@ -477,6 +477,8 @@ async def probe_portfolio(lane: Lane, companies: int = 150) -> dict:
     source = "onec-818ha-portfolio"
     env = dict(os.environ)
     env.update({"BAG_ADMIN_DATABASE_URL": lane.env.dsn("admin"), "BAG_DATABASE_URL": lane.env.dsn("app"),
+                "BAG_CAPABILITY_OBSERVATION_DATABASE_URL": lane.env.dsn("capability_writer"),
+                "BAG_CAPABILITY_ACCEPTANCE_DATABASE_URL": lane.env.dsn("capability_acceptor"),
                 "BAG_ENVIRONMENT": "test", "PYTHONPATH": str(ROOT / "src") + ";" + str(ROOT)})
 
     def cli(*args: str) -> int:

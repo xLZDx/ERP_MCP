@@ -8,12 +8,17 @@ from __future__ import annotations
 
 import json
 import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
-from scripts.real1c.com_fingerprint import _sha, metadata_names
+from scripts.real1c.com_fingerprint import KINDS, _sha, metadata_names
 from scripts.real1c.com_oracle import Oracle
 
 MAX_ROWS = 100
 MAX_OPERATION_ROWS = 1000
+CONFIG_EXPORT = Path(
+    "D:/ERP_MCP_Testbed/1c/reference/exports/config/fin_s12_full_config_20261108"
+)
 QUERY = """ВЫБРАТЬ ПЕРВЫЕ 100
     ПРЕДСТАВЛЕНИЕ(Т.Раздел) КАК Раздел,
     ПРЕДСТАВЛЕНИЕ(Т.Объект) КАК Объект,
@@ -36,12 +41,59 @@ def _date_only(value: object) -> str:
     return match.group(1)
 
 
+def _exported_config_metadata() -> tuple[str, list[str]]:
+    """Read version and metadata names; never treat them as full-code or period-state proof."""
+    config_path = CONFIG_EXPORT / "Configuration.xml"
+    if not config_path.is_file():
+        raise ValueError("PERIOD_CONFIG_EXPORT_UNAVAILABLE")
+    root = ET.parse(config_path).getroot()
+    config = next((node for node in root.iter() if node.tag.rsplit("}", 1)[-1] == "Configuration"), None)
+    properties = next(
+        (node for node in config if node.tag.rsplit("}", 1)[-1] == "Properties"), None
+    ) if config is not None else None
+    version = next(
+        (node.text for node in properties if node.tag.rsplit("}", 1)[-1] == "Version"), None
+    ) if properties is not None else None
+    if not version:
+        raise ValueError("PERIOD_CONFIG_EXPORT_VERSION_INVALID")
+
+    names: list[str] = []
+    for kind in KINDS:
+        folder = CONFIG_EXPORT / kind
+        if not folder.is_dir():
+            raise ValueError("PERIOD_CONFIG_EXPORT_INCOMPLETE")
+        objects = {
+            child.name if child.is_dir() else child.stem
+            for child in folder.iterdir()
+            if child.is_dir() or child.suffix.lower() == ".xml"
+        }
+        names.extend(f"{kind}.{name}" for name in objects)
+    return version, sorted(names)
+
+
+def _verify_export_metadata_matches_live(metadata: dict, live_names: list[str]) -> dict:
+    export_version, export_names = _exported_config_metadata()
+    export_fingerprint = _sha(export_names)
+    live_fingerprint = _sha(live_names)
+    if (metadata.get("configuration_version") != export_version
+            or len(live_names) != len(export_names)
+            or live_fingerprint != export_fingerprint):
+        raise ValueError("PERIOD_CONFIG_EXPORT_MISMATCH")
+    return {
+        "metadata_names_match_live": True,
+        "configuration_version": export_version,
+        "metadata_object_count": len(export_names),
+        "metadata_fingerprint": export_fingerprint,
+    }
+
+
 def main() -> int:
     oracle = None
     try:
         oracle = Oracle()  # fixed 818HA_test_ready clone; protected credential is never emitted
         metadata = oracle.platform_and_config()
         names = metadata_names(oracle._conn)
+        config_export_metadata = _verify_export_metadata_matches_live(metadata, names)
         rows = oracle.rows(
             QUERY,
             ("Раздел", "Объект", "Пользователь", "ДатаЗапрета"),
@@ -60,7 +112,10 @@ def main() -> int:
             state = str(row["Состояние"]).strip()
             if not state:
                 raise ValueError("PERIOD_OPERATION_STATE_INVALID")
-            key = (date[:7], state, bool(row["Проведен"]))
+            posted = row["Проведен"]
+            if type(posted) is not bool:
+                raise ValueError("PERIOD_OPERATION_POSTED_FLAG_INVALID")
+            key = (date[:7], state, posted)
             operation_counts[key] = operation_counts.get(key, 0) + 1
         operation_summary = [
             {
@@ -89,6 +144,7 @@ def main() -> int:
             "platform_config": metadata,
             "metadata_object_count": len(names),
             "metadata_fingerprint": _sha(names),
+            "versioned_config_export_metadata": config_export_metadata,
             "register": "ДатыЗапретаИзменения",
             "rows_returned": len(observations),
             "row_limit": MAX_ROWS,
@@ -97,8 +153,9 @@ def main() -> int:
             "period_operation_row_limit": MAX_OPERATION_ROWS,
             "period_operation_summary": operation_summary,
             "scope_limit": (
-                "raw date-lock and close-operation facts only; no fiscal-period mapping "
-                "or gateway acceptance claim"
+                "export version and metadata object-name set match the live config; BSL content is not "
+                "compared. The read remains raw date-lock and close-operation facts only; required/stale "
+                "operation status is not derived, so there is no fiscal-period mapping or gateway acceptance claim"
             ),
         }
         print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))

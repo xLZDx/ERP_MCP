@@ -25,6 +25,9 @@ Rules
   Raw exception text is never stored or returned.
 - The response ``content_digest`` is used as the structural hash handed to ``drift.classify`` ONLY for
   an ``OK_COMPLETE`` outcome; a partial/unknown capture carries no hash (drift rejects one).
+- A missing accepted baseline is unknown state (including after process restart): incremental
+  capture is refused. A complete snapshot yields a candidate hash that must be explicitly accepted;
+  the snapshot requirement remains until a later complete snapshot proves the accepted baseline.
 - ``snapshot=True`` requires a request without ``page_cursor`` (first page); the request must carry
   the loop's own tenant/source. The connector call runs on a dedicated bounded executor under
   ``connector_timeout``; a call that outlives it is a TIMEOUT and its late result is discarded (the
@@ -78,6 +81,7 @@ class ConnectorFailure(Exception):
 class CaptureStatus(StrEnum):
     CAPTURED = "CAPTURED"                        # job SUCCEEDED (complete or partial capture)
     RESNAPSHOT_REQUIRED = "RESNAPSHOT_REQUIRED"  # incremental refused; nothing ran
+    BASELINE_APPROVAL_REQUIRED = "BASELINE_APPROVAL_REQUIRED"  # complete snapshot awaits explicit acceptance
     INVALID_RESPONSE = "INVALID_RESPONSE"        # SDK-invalid response: failure, not drift
     FAILED = "FAILED"                            # connector failure; scheduler decided retry/poison
     NOT_RUN = "NOT_RUN"                          # scheduler did not run/finish the work (see run)
@@ -112,18 +116,44 @@ class CaptureLoop:
         self._sched, self._tracker, self._connector = scheduler, tracker, connector
         self._ledger, self._scope = ledger, scope
         self._accepted: dict[str, str] = {}
+        self._pending_baselines: dict[str, tuple[str, int]] = {}
 
     def accepted_hash(self, connection_id: str) -> str | None:
         return self._accepted.get(connection_id)
 
+    async def approve_baseline(self, connection_id: str, structural_hash: str) -> bool:
+        """Accept only the exact complete-snapshot candidate awaiting explicit approval.
+
+        Accepted baselines are held in memory. After a process restart, the first complete
+        snapshot becomes a candidate again and cannot silently become trusted state. Approval
+        also requires that the candidate's capture epoch is still the live scope epoch; stale
+        candidates are discarded. The caller must still run a complete snapshot to clear any
+        pending resnapshot requirement.
+        """
+        pending = self._pending_baselines.get(connection_id)
+        if pending is None or pending[0] != structural_hash:
+            return False
+        live_epoch = await self._ledger.scope_epoch(self._scope)
+        # Another approval may have consumed this exact candidate while the ledger call
+        # yielded. Candidate identity also distinguishes a newly captured same-hash candidate.
+        if self._pending_baselines.get(connection_id) is not pending:
+            return False
+        if type(live_epoch) is not int or live_epoch != pending[1]:
+            del self._pending_baselines[connection_id]
+            return False
+        self._accepted[connection_id] = pending[0]
+        del self._pending_baselines[connection_id]
+        return True
+
     def _result(self, status: CaptureStatus, connection_id: str, *,
                 kind: CaptureOutcomeKind | None = None, decision: DriftDecision | None = None,
-                cleared: bool = False, run: RunResult | None = None) -> CaptureResult:
+                candidate_hash: str | None = None, cleared: bool = False,
+                run: RunResult | None = None) -> CaptureResult:
         return CaptureResult(
             status, kind, decision.events if decision else (),
             self._tracker.is_required(connection_id), self._tracker.reason(connection_id),
             cleared, self._accepted.get(connection_id),
-            decision.candidate_hash if decision else None, run)
+            decision.candidate_hash if decision else candidate_hash, run)
 
     async def capture_step(self, job_id: UUID, connection_id: str, request: CaptureRequest, *,
                            snapshot: bool = False) -> CaptureResult:
@@ -131,6 +161,13 @@ class CaptureLoop:
             raise ValueError("REQUEST_SCOPE_MISMATCH")
         if snapshot and request.page_cursor is not None:
             raise ValueError("SNAPSHOT_REQUIRES_FIRST_PAGE")
+        if connection_id in self._pending_baselines:
+            return self._result(CaptureStatus.BASELINE_APPROVAL_REQUIRED, connection_id,
+                                candidate_hash=self._pending_baselines[connection_id][0])
+        if connection_id not in self._accepted and not snapshot:
+            self._tracker.require(connection_id, ResnapshotReason.BASELINE_MISSING,
+                                  request.scope_epoch)
+            return self._result(CaptureStatus.RESNAPSHOT_REQUIRED, connection_id)
         if self._tracker.is_required(connection_id) and not snapshot:
             return self._result(CaptureStatus.RESNAPSHOT_REQUIRED, connection_id)
         state: dict[str, Any] = {"invalid": False, "refused": False}
@@ -167,13 +204,24 @@ class CaptureLoop:
             return self._result(status, connection_id, kind=kind, decision=decision, run=run)
         cleared = False
         if decision is not None:
+            if self._accepted.get(connection_id) is None and decision.candidate_hash is not None:
+                self._pending_baselines[connection_id] = (
+                    decision.candidate_hash, request.scope_epoch)
+                return self._result(
+                    CaptureStatus.BASELINE_APPROVAL_REQUIRED, connection_id,
+                    kind=kind, decision=decision, run=run)
             if decision.accepted_hash is not None:
                 self._accepted[connection_id] = decision.accepted_hash
             if snapshot and state.get("token") is not None:
                 try:
                     live = await self._ledger.scope_epoch(self._scope)
                 except PortError:
-                    live = None  # cannot prove the epoch: keep the requirement (conservative)
+                    # A complete response is not enough to clear a snapshot requirement when
+                    # the live scope epoch cannot be verified. Preserve this as visible state.
+                    self._tracker.require(
+                        connection_id, ResnapshotReason.SCOPE_EPOCH_UNVERIFIED,
+                        request.scope_epoch)
+                    live = None
                 if type(live) is int:
                     cleared = self._tracker.complete(
                         connection_id, kind, request.scope_epoch, live,

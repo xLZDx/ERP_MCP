@@ -1974,3 +1974,7 @@ GPT-PM request5690d981-f15c-4d39-a3d4-51eb7f47bd7d/reply3313217b-dd70-57ff-a0dc-
 ## 2026-11-17 — Assemble preserved main-based consolidation history
 
 Created codex/main-consolidation-20261117 from origin/main7c1f69c and merged preserved rootc8f986b with a normal no-ff merge, without rewriting history or changing main. Original dirty work remains untouched for separately recorded import. Added the consolidation plan and pre-implementation design; architect review caught probe completion/order ambiguity, so MC-02 now requires a DB-issued pre-probe reservation. Source implementation waits for fix-only design acceptance. Preserved the existing mandatory manual-only CI trigger configuration; no workflow was run. Audit-only PM approval is not a promotion receipt for this candidate.
+
+## 2026-11-17 — Preserve dirty source inputs before boundary fixes
+
+Imported 110 explicit current source/config/test/document paths from the original checkout into the main-based candidate; SHA256 provenance is in CANDIDATE_INPUTS.json. Original checkout was not modified by copying. Retained 28 generated-evidence/local-SQL paths outside automatic promotion, with original/external backups intact. Copying is preservation, not fresh qualification. Architect accepted the revised pre-probe reservation design with no BLOCKER/MAJOR; clarified source locking/version validation before allocation and stale-token checks at record/accept. No migrations, services, tests or builds were run.

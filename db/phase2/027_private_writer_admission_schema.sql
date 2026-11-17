@@ -1372,11 +1372,13 @@ CREATE FUNCTION change_ledger.private_writer_register_barrier_ack_v1(
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $fn$
 DECLARE hint change_ledger.writer_barriers%ROWTYPE; b change_ledger.writer_barriers%ROWTYPE;
         service_binding change_ledger.private_writer_service_bindings%ROWTYPE;
+        service_binding_hint change_ledger.private_writer_service_bindings%ROWTYPE;
         lf change_ledger.lifecycle_fences%ROWTYPE; p change_ledger.private_writer_process_attestations%ROWTYPE;
         k change_ledger.private_writer_signer_key_versions%ROWTYPE;
         sk change_ledger.private_writer_signer_key_versions%ROWTYPE;
         prior change_ledger.writer_barrier_acknowledgements%ROWTYPE; expected_calls uuid[];
         exact_tuple boolean; ref_lock text; initial_public_key bytea;
+         key_material_lock_ids bigint[]; key_material_lock_id bigint;
         expected_ref text; ref_material bytea; key_id_bytes bytea; key_version_bytes bytea;
         supervisor_public_key bytea; supervisor_key_id text; supervisor_key_version text;
         current_trust_revision bigint;
@@ -1406,18 +1408,11 @@ BEGIN
  END IF;
  -- Acknowledgements belong to one enabled physical writer binding. Hold the binding row through
  -- registration so revocation cannot race a newly stored acknowledgement for that base/service.
- SELECT * INTO service_binding FROM change_ledger.private_writer_service_bindings x
+  SELECT * INTO service_binding_hint FROM change_ledger.private_writer_service_bindings x
   WHERE x.base_fingerprint=p_ack.base_fingerprint
     AND x.writer_service_id=p_ack.writer_service_id
     AND x.writer_host_id=p_ack.writer_host_id
-    AND x.binding_enabled AND x.revoked_at IS NULL FOR SHARE;
- IF NOT FOUND THEN RAISE EXCEPTION 'NOT_ENTITLED' USING ERRCODE='42501'; END IF;
- -- Match trust-registry writers: revision row precedes key/advisory locks. Holding this share
- -- lock through commit prevents a new acknowledgement from being admitted against a stale key
- -- snapshot while still allowing exact replay below after revocation.
- SELECT revision INTO current_trust_revision
-  FROM change_ledger.private_writer_trust_registry_revision
-  WHERE revision_id=1 FOR SHARE;
+    AND x.binding_enabled AND x.revoked_at IS NULL;
  IF NOT FOUND THEN RAISE EXCEPTION 'NOT_ENTITLED' USING ERRCODE='42501'; END IF;
  key_id_bytes:=pg_catalog.convert_to(p_ack.key_id,'UTF8');
  key_version_bytes:=pg_catalog.convert_to(p_ack.key_version,'UTF8');
@@ -1441,24 +1436,53 @@ BEGIN
  SELECT public_key INTO supervisor_public_key FROM change_ledger.private_writer_signer_key_versions x
   WHERE x.key_id=p.supervisor_key_id AND x.key_version=p.supervisor_key_version;
  IF NOT FOUND THEN RAISE EXCEPTION 'RECOVERY_EVIDENCE_REJECTED' USING ERRCODE='P0001'; END IF;
- PERFORM pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtextextended(encode(supervisor_public_key,'hex'),17017));
+  -- Snapshot both immutable key materials as hints before locking either key-material identity.
+  SELECT * INTO k FROM change_ledger.private_writer_signer_key_versions x
+   WHERE x.key_id=p_ack.key_id AND x.key_version=p_ack.key_version;
+  IF NOT FOUND THEN RAISE EXCEPTION 'RECOVERY_EVIDENCE_REJECTED' USING ERRCODE='P0001'; END IF;
+  initial_public_key:=k.public_key;
+  -- Plan both actual signed bigint key identities before acquiring ranked advisory fences.
+  key_material_lock_ids:=ARRAY[
+   pg_catalog.hashtextextended(encode(supervisor_public_key,'hex'),17017),
+   pg_catalog.hashtextextended(encode(initial_public_key,'hex'),17017)
+  ];
  PERFORM change_ledger.private_writer_take_base_fence_v1(hint.base_fingerprint);
  PERFORM change_ledger.private_writer_take_scope_fence_v1(hint.tenant_id,hint.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id FOR UPDATE;
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
+  END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id;
   IF NOT FOUND OR lf.state<>'RECOVERING' OR lf.epoch<>hint.epoch THEN
   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
  END IF;
- SELECT * INTO k FROM change_ledger.private_writer_signer_key_versions x
-  WHERE x.key_id=p_ack.key_id AND x.key_version=p_ack.key_version;
- IF NOT FOUND THEN RAISE EXCEPTION 'RECOVERY_EVIDENCE_REJECTED' USING ERRCODE='P0001'; END IF;
- initial_public_key:=k.public_key;
- PERFORM pg_catalog.pg_advisory_xact_lock(
-  pg_catalog.hashtextextended(encode(initial_public_key,'hex'),17017));
+  -- Match the documented rank and sort/deduplicate both planned signed bigint key identities.
+  FOR key_material_lock_id IN
+   SELECT DISTINCT lock_id FROM pg_catalog.unnest(key_material_lock_ids) AS planned(lock_id)
+   ORDER BY lock_id
+  LOOP
+   PERFORM pg_catalog.pg_advisory_xact_lock(key_material_lock_id);
+  END LOOP;
  ref_lock:='barrier-ack-ref:v1:'||encode(pg_catalog.sha256(convert_to(p_ref,'UTF8')),'hex');
  PERFORM change_ledger.private_writer_take_global_fences_v1(ARRAY[
   'barrier-id:v1:'||lower(p_ack.barrier_id::text),ref_lock]);
+  -- The trust revision row follows key-material and namespace-6 fences, matching trust writers.
+  -- Holding it through commit prevents stale-key admission while preserving the common lock rank.
+  SELECT revision INTO current_trust_revision
+   FROM change_ledger.private_writer_trust_registry_revision
+   WHERE revision_id=1 FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'NOT_ENTITLED' USING ERRCODE='42501'; END IF;
+  SELECT * INTO service_binding FROM change_ledger.private_writer_service_bindings x
+   WHERE x.base_fingerprint=p_ack.base_fingerprint
+     AND x.writer_service_id=p_ack.writer_service_id
+     AND x.writer_host_id=p_ack.writer_host_id
+     AND x.binding_enabled AND x.revoked_at IS NULL FOR SHARE;
+  IF NOT FOUND OR service_binding IS DISTINCT FROM service_binding_hint THEN
+   RAISE EXCEPTION 'NOT_ENTITLED' USING ERRCODE='42501';
+  END IF;
  SELECT * INTO k FROM change_ledger.private_writer_signer_key_versions x
   WHERE x.key_id=p_ack.key_id AND x.key_version=p_ack.key_version FOR SHARE;
  IF NOT FOUND OR k.public_key IS DISTINCT FROM initial_public_key
@@ -2497,6 +2521,12 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(p_identity.tenant_id,p_identity.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=p_identity.tenant_id AND x.company_id=p_identity.company_id FOR UPDATE;
+ IF NOT FOUND THEN
+  RETURN change_ledger.private_writer_refusal_v1(p_identity,'STALE_EPOCH');
+ END IF;
+ -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+ SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+  WHERE x.tenant_id=p_identity.tenant_id AND x.company_id=p_identity.company_id;
  IF NOT FOUND OR lf.state<>'READY' OR lf.epoch<>p_identity.epoch THEN
   RETURN change_ledger.private_writer_refusal_v1(p_identity,'STALE_EPOCH');
  END IF;
@@ -2676,6 +2706,10 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(p_identity.tenant_id,p_identity.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=p_identity.tenant_id AND x.company_id=p_identity.company_id FOR UPDATE;
+ IF NOT FOUND THEN RETURN false; END IF;
+ -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+ SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+  WHERE x.tenant_id=p_identity.tenant_id AND x.company_id=p_identity.company_id;
  IF NOT FOUND OR lf.state<>'READY' OR lf.epoch<>p_identity.epoch THEN RETURN false; END IF;
  PERFORM change_ledger.private_writer_take_global_fences_v1(ARRAY[
   'call-id:v1:'||lower(p_identity.call_id::text),
@@ -2809,6 +2843,10 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(p_identity.tenant_id,p_identity.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=p_identity.tenant_id AND x.company_id=p_identity.company_id FOR UPDATE;
+ IF NOT FOUND THEN RETURN false; END IF;
+ -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+ SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+  WHERE x.tenant_id=p_identity.tenant_id AND x.company_id=p_identity.company_id;
  IF NOT FOUND OR lf.state<>'READY' OR lf.epoch<>p_identity.epoch THEN RETURN false; END IF;
  PERFORM change_ledger.private_writer_take_global_fences_v1(ARRAY[
   'record-change-id:v1:'||lower(p_identity.change_id::text),
@@ -2930,7 +2968,13 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(p_tenant,p_company);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=p_tenant AND x.company_id=p_company FOR UPDATE;
- IF NOT FOUND OR lf.state<>'READY' OR lf.epoch<>intent.auth_epoch THEN
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
+  END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=p_tenant AND x.company_id=p_company;
+  IF NOT FOUND OR lf.state<>'READY' OR lf.epoch<>intent.auth_epoch THEN
   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
  END IF;
  -- Match the legacy verifier-key material advisory identity before namespace 6.
@@ -3061,7 +3105,11 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(p_tenant,p_company);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=p_tenant AND x.company_id=p_company FOR UPDATE;
- IF NOT FOUND OR lf.state<>'READY' THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=p_tenant AND x.company_id=p_company;
+  IF NOT FOUND OR lf.state<>'READY' THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
  PERFORM change_ledger.assert_switch_off(p_tenant,p_company);
 
   PERFORM change_ledger.private_writer_take_global_fences_v1(ARRAY[
@@ -3677,7 +3725,13 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(hint.tenant_id,hint.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id FOR UPDATE;
- IF NOT FOUND OR lf.state NOT IN ('READY','RECOVERING') THEN
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
+  END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id;
+  IF NOT FOUND OR lf.state NOT IN ('READY','RECOVERING') THEN
   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
  END IF;
  FOR keyrow IN
@@ -3981,7 +4035,13 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(hint.tenant_id,hint.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id FOR UPDATE;
- IF NOT FOUND OR lf.state NOT IN ('READY','RECOVERING') THEN
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
+  END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id;
+  IF NOT FOUND OR lf.state NOT IN ('READY','RECOVERING') THEN
   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
  END IF;
  SELECT * INTO keyrow FROM change_ledger.private_writer_signer_key_versions x
@@ -4189,7 +4249,13 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(hint.tenant_id,hint.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id FOR UPDATE;
- IF NOT FOUND OR lf.state NOT IN ('READY','RECOVERING') THEN
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
+  END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id;
+  IF NOT FOUND OR lf.state NOT IN ('READY','RECOVERING') THEN
   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
  END IF;
  -- Serialize every evidence-key revocation by the same public-key material fence used by
@@ -4462,6 +4528,9 @@ BEGIN
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=p_scope.tenant_id AND x.company_id=p_scope.company_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'WRITER_ADMISSION_CLOSED' USING ERRCODE='P0001'; END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=p_scope.tenant_id AND x.company_id=p_scope.company_id;
  SELECT * INTO b FROM change_ledger.private_writer_service_bindings x
   WHERE x."session_user"=SESSION_USER AND x.base_fingerprint=p_base
    AND x.binding_enabled AND x.revoked_at IS NULL FOR SHARE;
@@ -4590,7 +4659,13 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(hint.tenant_id,hint.company_id);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id FOR UPDATE;
- IF NOT FOUND OR lf.state<>'RECOVERING' OR lf.epoch<>hint.epoch THEN
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
+  END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences x
+   WHERE x.tenant_id=hint.tenant_id AND x.company_id=hint.company_id;
+  IF NOT FOUND OR lf.state<>'RECOVERING' OR lf.epoch<>hint.epoch THEN
   RAISE EXCEPTION 'STALE_EPOCH' USING ERRCODE='P0001';
  END IF;
  ref_lock:='barrier-ack-ref:v1:'||encode(pg_catalog.sha256(convert_to(p_acknowledgement_ref,'UTF8')),'hex');
@@ -4851,6 +4926,10 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(t,c);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences f
   WHERE f.tenant_id=t AND f.company_id=c FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
+ -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+ SELECT * INTO lf FROM change_ledger.lifecycle_fences f
+  WHERE f.tenant_id=t AND f.company_id=c;
  IF NOT FOUND OR lf.state IN ('NOT_READY','RECOVERING') THEN
   RAISE EXCEPTION 'LIFECYCLE_NOT_READY';
  END IF;
@@ -4938,6 +5017,10 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(t,c);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences f
   WHERE f.tenant_id=t AND f.company_id=c FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
+ -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+ SELECT * INTO lf FROM change_ledger.lifecycle_fences f
+  WHERE f.tenant_id=t AND f.company_id=c;
  IF NOT FOUND OR lf.state IN ('NOT_READY','RECOVERING') THEN
   RAISE EXCEPTION 'LIFECYCLE_NOT_READY';
  END IF;
@@ -4974,6 +5057,10 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(t,c);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences f
   WHERE f.tenant_id=t AND f.company_id=c FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
+ -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+ SELECT * INTO lf FROM change_ledger.lifecycle_fences f
+  WHERE f.tenant_id=t AND f.company_id=c;
  IF NOT FOUND OR lf.state IN ('NOT_READY','RECOVERING') THEN
   RAISE EXCEPTION 'LIFECYCLE_NOT_READY';
  END IF;
@@ -12632,7 +12719,11 @@ BEGIN
  PERFORM change_ledger.private_writer_take_scope_fence_v1(t,c);
  SELECT * INTO lf FROM change_ledger.lifecycle_fences f
   WHERE f.tenant_id=t AND f.company_id=c FOR SHARE;
- IF NOT FOUND OR lf.state<>'READY' THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
+  -- Keep the row lock, but evaluate admission from a distinct READ COMMITTED statement snapshot.
+  SELECT * INTO lf FROM change_ledger.lifecycle_fences f
+   WHERE f.tenant_id=t AND f.company_id=c;
+  IF NOT FOUND OR lf.state<>'READY' THEN RAISE EXCEPTION 'LIFECYCLE_NOT_READY'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
 
  -- The same key-material advisory identity serializes signature attachment with key

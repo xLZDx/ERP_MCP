@@ -72,7 +72,7 @@ async def candidate_db() -> AsyncIterator[CandidateDb]:
             os.environ["ERP_PHASE2_TEST_IMAGE"] = old_image
 
 
-async def test_registration_locks_trust_revision_before_other_locks_and_checks_exact_replay_first(
+async def test_registration_orders_fresh_scope_and_key_fences_before_revalidation_and_replay(
         candidate_db: CandidateDb,
 ) -> None:
     conn = candidate_db.conn
@@ -85,28 +85,94 @@ async def test_registration_locks_trust_revision_before_other_locks_and_checks_e
     )).lower()
     compact = re.sub(r"\s+", " ", definition)
 
-    binding_lock = compact.index(
-        "from change_ledger.private_writer_service_bindings x where "
-        "x.base_fingerprint=p_ack.base_fingerprint",
+    binding_hint = compact.index(
+        "select * into service_binding_hint from change_ledger.private_writer_service_bindings x",
     )
-    binding_for_share = compact.index("for share", binding_lock)
-    revision_lock = compact.index("from change_ledger.private_writer_trust_registry_revision")
-    revision_for_share = compact.index("for share", revision_lock)
-    first_advisory_lock = compact.index("pg_advisory_xact_lock")
+    supervisor_key_hint = compact.index(
+        "select public_key into supervisor_public_key from "
+        "change_ledger.private_writer_signer_key_versions x",
+    )
+    receipt_key_hint = compact.index(
+        "select * into k from change_ledger.private_writer_signer_key_versions x "
+        "where x.key_id=p_ack.key_id and x.key_version=p_ack.key_version",
+    )
+    key_plan = compact.index("key_material_lock_ids:=array[")
     base_fence = compact.index("private_writer_take_base_fence_v1")
-    key_lookup = compact.index(
+    scope_fence = compact.index("private_writer_take_scope_fence_v1")
+    lifecycle_lock = compact.index(
+        "select * into lf from change_ledger.lifecycle_fences x "
+        "where x.tenant_id=hint.tenant_id and x.company_id=hint.company_id for update",
+    )
+    lifecycle_fresh_read = compact.index(
+        "select * into lf from change_ledger.lifecycle_fences x "
+        "where x.tenant_id=hint.tenant_id and x.company_id=hint.company_id;",
+        lifecycle_lock + 1,
+    )
+    lifecycle_decision = compact.index(
+        "if not found or lf.state<>'recovering' or lf.epoch<>hint.epoch",
+        lifecycle_fresh_read,
+    )
+    key_material_lock_loop = compact.index(
+        "for key_material_lock_id in select distinct lock_id from "
+        "pg_catalog.unnest(key_material_lock_ids) as planned(lock_id) order by lock_id loop",
+    )
+    first_key_material_lock = compact.index(
+        "pg_catalog.pg_advisory_xact_lock(key_material_lock_id)",
+        key_material_lock_loop,
+    )
+    global_identity_fences = compact.index(
+        "private_writer_take_global_fences_v1(array[",
+        first_key_material_lock,
+    )
+    revision_lock = compact.index(
+        "select revision into current_trust_revision from "
+        "change_ledger.private_writer_trust_registry_revision",
+    )
+    binding_revalidation = compact.index(
+        "select * into service_binding from change_ledger.private_writer_service_bindings x",
+        revision_lock,
+    )
+    binding_revalidation_decision = compact.index(
+        "if not found or service_binding is distinct from service_binding_hint",
+        binding_revalidation,
+    )
+    receipt_key_revalidation = compact.index(
         "select * into k from change_ledger.private_writer_signer_key_versions x "
         "where x.key_id=p_ack.key_id and x.key_version=p_ack.key_version for share",
+        binding_revalidation_decision,
+    )
+    receipt_key_decision = compact.index(
+        "if not found or k.public_key is distinct from initial_public_key",
+        receipt_key_revalidation,
     )
     exact_lookup = compact.index(
         "from change_ledger.writer_barrier_acknowledgements x where x.barrier_id",
+        receipt_key_decision,
     )
     exact_return = compact.index("if exact_tuple then return prior.acknowledgement_ref")
     stale_refusal = compact.index("current_trust_revision is distinct from p_trust_revision")
 
-    assert (binding_lock < binding_for_share < revision_lock < revision_for_share
-            < first_advisory_lock < base_fence < key_lookup), (
-        "active writer binding must be held before trust-revision and advisory/fence locks",
+    # Binding and key lookups are nonlocking hints. Ranked scope/lifecycle locks come first;
+    # the lifecycle decision uses a separate fresh statement while its FOR UPDATE lock remains.
+    assert (binding_hint < supervisor_key_hint < receipt_key_hint < key_plan < base_fence
+            < scope_fence < lifecycle_lock < lifecycle_fresh_read < lifecycle_decision
+            < key_material_lock_loop < first_key_material_lock), (
+        "hints, scope/lifecycle fence, fresh state read, and planned key locks must follow rank",
+    )
+    assert "for share" not in compact[binding_hint:supervisor_key_hint], (
+        "service binding hint must not acquire a row lock before ranked fences",
+    )
+    assert "for share" not in compact[receipt_key_hint:key_plan], (
+        "receipt key material must be a nonlocking hint during lock planning",
+    )
+    assert "select distinct lock_id" in compact[key_material_lock_loop:first_key_material_lock]
+    assert "order by lock_id" in compact[key_material_lock_loop:first_key_material_lock], (
+        "both signed bigint key locks must be deduplicated and acquired in signed order",
+    )
+    assert (first_key_material_lock < global_identity_fences < revision_lock
+            < binding_revalidation < binding_revalidation_decision
+            < receipt_key_revalidation < receipt_key_decision < exact_lookup), (
+        "key/global fences must precede trust, binding, and key row revalidation",
     )
     assert exact_lookup < exact_return < stale_refusal, (
         "an exact durable tuple must remain replayable before stale snapshot refusal",
@@ -152,7 +218,7 @@ async def _valid_ack_fixture(conn: asyncpg.Connection):
         _PROCESS_ATTESTATION_PREFIX + canonical_json_bytes(process_doc),
     )
     valid_from = datetime(2026, 10, 1, tzinfo=UTC)
-    valid_until = datetime(2026, 11, 1, tzinfo=UTC)
+    valid_until = datetime(2100, 1, 1, tzinfo=UTC)
     await conn.execute("""
         INSERT INTO change_ledger.private_writer_service_bindings
             ("session_user",base_fingerprint,writer_service_id,writer_host_id)

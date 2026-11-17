@@ -12,6 +12,7 @@ from .adapters.onec.sidecar_client import ODataSidecarClient
 from .analytics_balance import ComBinding, load_com_bindings
 from .audit import Audit
 from .business_policy import CapabilityPolicy
+from .capability_client import CapabilityObserverClient
 from .company_scope import CompanyScopeResolver
 from .db import Database
 from .evidence_index import ApprovedEvidenceProvider
@@ -33,6 +34,18 @@ class Runtime:
             Database(settings.admin_control_database_url)
             if settings.admin_control_database_url
             else None
+        )
+        self.capability_observer = CapabilityObserverClient(
+            base_url=settings.capability_observer_url,
+            token=(
+                settings.capability_observer_token.get_secret_value()
+                if settings.capability_observer_token
+                else None
+            ),
+            production=settings.environment == "production",
+            timeout_seconds=settings.http_timeout_seconds,
+            max_response_bytes=settings.max_response_bytes,
+            transport=None,
         )
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
         self.synthetic_profiles = (
@@ -165,7 +178,11 @@ class Runtime:
     async def ready(self) -> bool:
         await self.start()
         admin_ready = self.admin_db is None or await self.admin_db.ping()
-        return await self.db.ping() and admin_ready and bool(await self.redis.ping())
+        capability_ready = (
+            self.settings.environment != "production"
+            and self.settings.capability_observer_url is None
+        ) or await self.capability_observer.ready()
+        return await self.db.ping() and admin_ready and capability_ready and bool(await self.redis.ping())
 
     async def close(self):
         await self.onec_client.close()
@@ -176,5 +193,6 @@ class Runtime:
         await self.redis.aclose()
         if self.admin_db is not None:
             await self.admin_db.close()
+        await self.capability_observer.close()
         await self.db.close()
         self._started = False

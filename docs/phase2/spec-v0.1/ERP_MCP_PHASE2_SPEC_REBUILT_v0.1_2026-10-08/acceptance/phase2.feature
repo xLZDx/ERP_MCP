@@ -1,11 +1,15 @@
-# Specification-only Gherkin: steps deliberately NOT implemented, product results NOT_RUN.
+# R2-TC-001 has an executable test-only runner; all other cases remain specification-only.
 Feature: Phase 2 acceptance specifications
 
-  @not_implemented @R2TC001
+  @executable @R2TC001
   Scenario: R2-TC-001 R1 unchanged
-    Given a scoped test environment for R2-US-001
-    When the relevant Phase 2 capability is exercised
-    Then the product must demonstrate R1 unchanged
+    Given exact baseline and candidate commits for R2-US-001
+    And separate server processes serve each revision over public MCP stdio
+    When every baseline R1 tool is inventoried and representative source_health success and error calls are dispatched
+    Then all baseline tool schemas and read-only annotations remain equivalent
+    And normalized MCP outputs, authorization, audit outcomes, and adapter side effects match
+    And altered schema, output, or audit evidence causes the differential oracle to fail
+    And evidence is limited to exercised R1 public MCP compatibility
 
   @not_implemented @R2TC002
   Scenario: R2-TC-002 R1 defects cannot be hidden in the future backlog

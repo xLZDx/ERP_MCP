@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     admin_source_allowed_hosts: str = ""
     admin_source_allowed_cidrs: str = ""
     business_capability_enforcement_enabled: bool = False
+    capability_observer_url: str | None = None
+    capability_observer_token: SecretStr | None = Field(default=None, repr=False)
 
     database_url: str = "postgresql://business_ai:business_ai@localhost:5432/business_ai"
     admin_database_url: str | None = None
@@ -158,6 +160,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if bool(self.capability_observer_url) != bool(self.capability_observer_token):
+            raise ValueError(
+                "BAG_CAPABILITY_OBSERVER_URL and BAG_CAPABILITY_OBSERVER_TOKEN "
+                "must be configured together"
+            )
         if self.machine_reconciled_source_items:
             if self.environment != "test":
                 raise ValueError("MACHINE_RECONCILED_SOURCES_REQUIRE_TEST_ENVIRONMENT")

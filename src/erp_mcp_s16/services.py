@@ -333,7 +333,7 @@ class ApprovalService:
                 receipt.requester_person_id, approver.person_id)
         except Exception:
             return Result.refused(ErrorCode.APPROVER_NOT_INDEPENDENT)
-        if not independent:
+        if type(independent) is not bool or independent is not True:
             return Result.refused(ErrorCode.APPROVER_NOT_INDEPENDENT)
         from business_ai_gateway.phase2.change.types import Authorization, Lifecycle
         if (receipt.s12_record is None or receipt.s12_record.lifecycle is not Lifecycle.VALIDATED

@@ -54,6 +54,8 @@ class LaneEnv:
             "admin": ("business_ai_admin", "pg_admin_password"),
             "control": ("business_ai_control_api", "pg_control_password"),
             "app": ("business_ai_app", "pg_app_password"),
+            "capability_writer": ("business_ai_capability_writer_login", "pg_capability_writer_password"),
+            "capability_acceptor": ("business_ai_capability_acceptor_login", "pg_capability_acceptor_password"),
             "owner": ("business_ai", "pg_owner_password"),
         }[role]
         return (f"postgresql://{user}:{self.secrets[key]}@{self.raw['host']}:"

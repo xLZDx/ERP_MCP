@@ -3,13 +3,13 @@
 Date: 2026-10-08. Branch: `phase2/living-model-connectors-reconciliation`. Release 2 status: **NO-GO**.
 Only items that engineering cannot close without the operator. G1-specific blockers stay in `G1_OPERATOR_BACKLOG.md`.
 
-## Deferred engineering dependency — FIN-S1.2 registered-source period status (2026-11-16)
+## Deferred through final project verification — FIN-S1.2 registered-source period status
 
-- Status: `BLOCKED_EXTERNAL`; this is not an operator-data request, and no user credential or accounting export is required.
+- Status: `BLOCKED_EXTERNAL` through final project verification; this is not an operator-data request, and no user credential or accounting export is required.
 - Finding: authenticated source lists on `ERP_MCP_Razer` and `ERP_MCP_Ivan` show the same three read-only sources. The registered reference source reports 920 OData EntitySets. Current catalog searches for `Закрытие`, `Регламентная`, `Период`, `closing`, `period`, and `month` return no matching EntitySet. The `accounting` search exposes accounting-register data with a `Period` field, not an authoritative month-close state.
-- Decision: do not infer `PERIOD_CLOSED` from a date-edit lock, posted documents, or `close_flow_ready` from the separate disposable COM clone. None proves the registered source's authenticated accounting-period state.
-- Owner: no implementation/provider owner is assigned. Codex owns resuming the adapter work once a supported operation is available; the source/configuration boundary remains external.
-- Next: expose an authenticated read-only period-status operation on the registered source, bind it to source/company/base/configuration-version/freshness, qualify the closed/open mapping against the fixed clone, then implement the typed `PeriodSnapshotReader` adapter. Preserve this task as externally blocked and continue with the next FIN task meanwhile.
+- Decision: use the operator-approved deferral until final project verification. The synthetic period/budget producer contract already has a recorded run of 18 passing tests at source HEAD `e30e2ec`; that result covers only synthetic producer behavior. Do not infer native `PERIOD_CLOSED` from those fixtures, a date-edit lock, posted documents, or `close_flow_ready` from the separate disposable COM clone.
+- Owner: no human provider/source owner is assigned. Codex owns the final project verification; no further source probe or adapter work is scheduled during the remaining implementation.
+- Next: at final project verification, make one bounded attempt to qualify an authenticated read-only period status on the registered source and bind it to source/company/base/configuration-version/freshness. If it is still unavailable, retain FIN-S1.2 as an explicit external project-acceptance blocker; do not reopen the question during implementation.
 - Evidence details: `docs/phase2/CHANGE_RECORD_403.md`, sections “FIN-S1.2 native close-flow status follow-up” and “FIN-S1.2 fresh source and period probe.”
 
 ## Deferred — move ERP_MCP ingress from Tailscale to Cloudflare (2026-11-07)

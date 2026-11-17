@@ -1888,9 +1888,13 @@ class AdminMutationService:
                 raise AdminValidationError("company scope mapping requires VALIDATED profile")
             try:
                 require_native_basis(profile["validation_evidence_json"])
-            except EvidenceBasisError as exc:
+                validate_native_reconciliation_evidence(
+                    profile["validation_evidence_json"]
+                )
+            except (EvidenceBasisError, ValueError) as exc:
                 raise AdminValidationError(
-                    "company scope mapping requires a natively validated profile"
+                    "native report evidence is not independently verifiable; "
+                    "company-scope mapping cannot be created"
                 ) from exc
             mapping_id = uuid.uuid4()
             try:

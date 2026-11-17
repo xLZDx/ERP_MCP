@@ -54,7 +54,7 @@ from .duplicate_counterparties import (
 )
 from .external_evidence import EvidenceRejected
 from .fixture_profiles import SYNTHETIC_PROFILE_KIND, profile_provenance
-from .principal import current_principal
+from .principal import current_access_token, current_principal
 from .runtime import Runtime
 from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
@@ -190,6 +190,20 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         if settings.oauth_required_scope not in principal.scopes:
             raise PermissionError("required scope missing")
         return principal
+
+    async def refresh_capabilities(source_id: str):
+        outcome = await runtime.capability_observer.refresh(
+            source_id=source_id,
+            access_token=current_access_token(),
+        )
+        capabilities, drift = await runtime.registry.get_capabilities(
+            source_id,
+            request_id=outcome["request_id"],
+            observation_id=outcome["observation_id"],
+        )
+        if drift["drift_status"] != outcome["status"]:
+            raise RuntimeError("CAPABILITY_OBSERVATION_STATE_MISMATCH")
+        return capabilities, drift
 
     async def resolve_source(principal, source_id, tool, started, query=None, company_id=None):
         try:
@@ -562,8 +576,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             {"refresh": refresh},
         )
         try:
-            capabilities = await runtime.onec.capabilities(source, refresh=refresh)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             result = capabilities.as_dict()
             result.update(drift)
             await runtime.audit.write(
@@ -723,8 +736,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_account_turnovers_mapping(
                 source_id, parsed_company_id
@@ -847,8 +859,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, ANALYTICS_BALANCE_CONCEPT
@@ -1124,8 +1135,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         capabilities = None
         try:
             await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, COUNTERPARTY_LOOKUP_CONCEPT
@@ -1207,8 +1217,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, INVENTORY_BALANCE_CONCEPT
@@ -1330,8 +1339,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, INVENTORY_MOVEMENTS_CONCEPT
@@ -1486,8 +1494,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, ACCOUNTING_POSTING_ROWS_CONCEPT
@@ -1631,8 +1638,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         capabilities = None
         try:
             company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, CASH_MOVEMENTS_CONCEPT
@@ -1741,8 +1747,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, BANK_BALANCE_CONCEPT
@@ -1847,8 +1852,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -1975,8 +1979,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         profile = None
         try:
             company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -2113,8 +2116,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         profile = None
         try:
             company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -2279,8 +2281,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -2433,8 +2434,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         }
         source = await resolve_source(principal, source_id, "onec_read", started, query)
         try:
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             result = await runtime.onec.read(
                 source,

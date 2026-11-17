@@ -5,7 +5,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('fake1c', 'sidecar', 'redis', 'postgres', 'idp', 'gateway')][string]$Component,
+    [Parameter(Mandatory)][ValidateSet('fake1c', 'sidecar', 'redis', 'postgres', 'idp', 'gateway', 'capability_observer', 'capability_acceptor')][string]$Component,
     [Parameter(Mandatory)][ValidateSet('stop', 'start', 'restart')][string]$Action
 )
 $ErrorActionPreference = 'Stop'

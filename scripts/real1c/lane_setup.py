@@ -59,6 +59,8 @@ def cli(env: LaneEnv, *args: str) -> subprocess.CompletedProcess:
 
     proc_env = dict(os.environ)
     proc_env.update({"BAG_ADMIN_DATABASE_URL": env.dsn("admin"), "BAG_DATABASE_URL": env.dsn("app"),
+                     "BAG_CAPABILITY_OBSERVATION_DATABASE_URL": env.dsn("capability_writer"),
+                     "BAG_CAPABILITY_ACCEPTANCE_DATABASE_URL": env.dsn("capability_acceptor"),
                      "BAG_ENVIRONMENT": "test", "PYTHONPATH": str(ROOT / "src") + ";" + str(ROOT)})
     return subprocess.run([sys.executable, str(ROOT / "scripts" / "admin.py"), *args], cwd=ROOT, env=proc_env,
                           capture_output=True, text=True, timeout=120, check=False)
