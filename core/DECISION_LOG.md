@@ -1767,3 +1767,102 @@ Decision: if scheduled-task registration or read-back fails, disable any remaini
 ## 2026-11-17 — Keep FIN-S3.2 acceptance open
 
 Decision: retain the source hardening commit, but do not accept FIN-S3.2. The focused installer test was denied by PreToolUse, and `ledger.py review` rejected recording the completed review because no finished post-commit reviewer run was present in its agent-visibility state. Record the task as `BLOCKED_PROHIBITED`, preserve the prior read-only connector and Redis-restart evidence as separate evidence, and do not fabricate a test or review receipt. The project-plan status remains `IN_REVIEW` until the test and ledger-recorded review are available.
+
+## 2026-11-17 — Refresh report at reconciled FIN status
+
+Decision: regenerate the Russian live report from the reconciled project plan, native ledger, and local Git at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`. Preserve project-document counts (FIN 2/10 accepted, 7/10 in review, 1/10 external block) separately from the native ledger's FIN-S3.2 `BLOCKED_PROHIBITED` acceptance gate. The report must not convert the historical Redis restart or current read-only health probe into new installer-test evidence.
+
+## 2026-11-17 — Rerun FIN-S2.1 approval core tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_approval_core.py` and `test_s16_conformance.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (57 passed, no skips or warnings). Keep the evidence synthetic and the project-plan status `IN_REVIEW`; do not infer live IdP, durable SQL, real 1C apply, or sprint acceptance from this focused run.
+
+## 2026-11-17 — Rerun FIN-S2.2 approval page tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_approval_page.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (7 passed, no skips or warnings, with phase2 conftest isolation). Keep the result synthetic and the project-plan status `IN_REVIEW`; it does not prove live browser, IdP, SQL, listener, or 1C behavior.
+
+## 2026-11-17 — Rerun FIN-S2.3 model-facing tools tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_tools.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (15 passed, no skips or warnings, with phase2 conftest isolation). Keep the evidence synthetic; deployed MCP/chat-client behavior and final FIN approval remain unverified.
+
+## 2026-11-17 — Rerun FIN-S2.4 private ingress tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_private_ingress.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (11 passed, one httpx2 deprecation warning, no skips; phase2 conftest isolation). Preserve synthetic-only scope and keep FIN-S2.4 `IN_REVIEW`; no live listener/IdP, SQL persistence, deployed binding, or 1C apply was established.
+
+## 2026-11-17 — Rerun FIN-S3.1 named selection at current status head
+
+Decision: record the assigned functional-test-reviewer run of the exact 21-module selection at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (1,048 passed, 2 warnings, 56 subtests; no failures or skips). The selection used dirty-tree inputs; keep FIN-S3.1 `IN_REVIEW` and do not promote downstream runtime, S12/S13/G8, writer, or production gates.
+
+## 2026-11-17 — Reconcile FIN-S3.3 after named verification runs
+
+Decision: preserve the separate project-plan and native-ledger counts after recording FIN-S2.1 through FIN-S3.1 current-head test runs. Project-plan status remains 2/10 accepted, 7/10 in review, 1/10 external block; FIN-S3.2's native PROHIBITED gate remains separate from project-plan `IN_REVIEW`. Do not claim final sprint review, Release 2 readiness, G8, writer qualification, production authorization, or any 1C mutation.
+
+## 2026-11-17 — Resolve FIN-S3.3 reconciliation review findings
+
+Decision: update the FIN-S3.1 plan and report details from stale 21-module evidence at HEAD `82648cc` to the newer exact-head run at `240070b` (1,048 passed, two warnings, 56 subtests in 34.05s; selected test inputs were dirty). Reject the second reliability MINOR: current source lines 80-95 unconditionally attempt `Disable-TaskAndConfirm` after registration failure whether task-state inspection fails or finds an existing task; the review statement was contradicted by the inspected source. No code change was needed. Keep S3.3 `IN_REVIEW`; the ledger's formal review receipt could not be recorded because post-commit agent visibility is absent.
+
+## 2026-11-17 — FIN-S2.2 exact-boolean independence guard
+
+Decision: make `ApprovalService.open_preview` reject any `are_independent` result other than the exact boolean `True`, matching the core and apply paths. Reason: accepting a truthy malformed registry result would render an approval preview despite an invalid dependency response. The focused regression was denied by the repository GO gate, so this source change is unverified, no acceptance state is promoted, and FIN-S2.2 remains `IN_REVIEW`.
+
+## 2026-11-17 — Record limited FIN-S2.2 page-test rerun
+
+Decision: record the assigned functional-test-reviewer run of the existing `test_s16_approval_page.py` selection at dirty working tree HEAD `240070b` (7 passed, one pytest-asyncio deprecation warning). The strict-boolean source guard was present, but the existing tests do not exercise a truthy non-boolean registry response. Keep its focused regression `NOT_RUN` and FIN-S2.2 `IN_REVIEW`.
+
+## 2026-11-17 — FIN-S1.2 current provider discovery
+
+Decision: retain FIN-S1.2 as `BLOCKED_EXTERNAL`. Current read-only discovery through both ERP_MCP_Ivan and ERP_MCP_Razer found the same three registered sources; refreshed `onec-818ha-reference` metadata returned 920 EntitySets, and searches for `Закрытие` and `Регламентная` returned no matches. No authenticated period-status contract or closed/open mapping is available in these profiles. Provider owner remains unassigned. Existing synthetic producer evidence cannot stand in for native 1C period closure.
+
+## 2026-11-17 — Defer FIN-S1.2 live-source acceptance to project close
+
+Decision: honor the operator's existing choice: retain FIN-S1.2 as `BLOCKED_EXTERNAL` until final project verification, and do not repeat source discovery or synthetic producer work during implementation. The recorded 18-pass run at source HEAD `e30e2ec` is synthetic contract evidence only; it does not establish native 1C period closure. At the final project pass, qualify the registered read-only source once; if still absent, keep the task as an explicit final project-acceptance blocker. Human provider owner remains unassigned.
+
+## 2026-11-17 — Align the primary FIN-S1.2 plan row with the deferral
+
+The deferral was first added to the backlog and a supplemental project-plan note while the primary FIN-S1.2 table row still said to qualify the source immediately. That stale summary could send the operator back into the same search. Updated the primary row, reconciled its hash-bound ledger overlay across 103 refs/21 sprints/104 tasks, and regenerated the live report. The decision remains `BLOCKED_EXTERNAL` through final project verification; no source, project acceptance, or DoD gate was promoted.
+
+## 2026-11-17 — Distinguish historical reviews in the live report
+
+Decision: in `.harness-tools/report.py`, label an accepted review as historical when its `task_commit` no longer covers the latest task commit, and count only fresh accepted reviews in the `REVIEWED` evidence total. This fixes FIN-S3.2's report row, where an earlier accepted review at `e30e2ec` appeared beside later task code at `240070b` without showing that the later code was not reviewed. Task/project status remains `IN_REVIEW`; no review or acceptance evidence was changed. Regenerated `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` and confirmed the row binds the old review and latest task commit explicitly.
+
+
+## 2026-11-17 — FIN-S3.2 installer regression and routed review
+
+The assigned functional-test-reviewer ran only `tests/phase2/register_lane_task.Tests.ps1` using Windows PowerShell 5.1.26100.9818 and Pester 3.4.0 at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`. Exit code 0: 7 passed, 0 failed, 0 skipped, 0 pending, 0 inconclusive in 4.22 seconds. The test invokes an in-memory isolated copy of the installer body after removing only `#Requires -RunAsAdministrator` and the in-script admin guard; a separate assertion verifies both guard requirements. Every ScheduledTasks cmdlet is mocked. No real task, service, Docker lane, credential, or 1C data was touched. Current test SHA-256: `58C3508F2F0C9BCC49CCBB8D51182CD6EBD0961963C2F12258C819319399903C`.
+
+The routed code-reviewer and silent-failure-hunter reviews are both accepted with zero remaining findings. The initial review's recurrence concern was resolved by the operator-authored instruction to remove five-minute periodic checks after the already evidenced bounded Redis restart; the current installer correctly preserves only the one-minute logon trigger. The native ledger now records FIN-S3.2 verification and review against task head `240070b`; its task state is `done`. The project-plan overlay intentionally remains `IN_REVIEW` pending the final FIN sprint review. This does not establish a live scheduler run on the current installer or change release/production status.
+
+
+## 2026-11-17 — Correct FIN-S1.2 deferral wording in FIN-S3.2 response
+
+Decision: preserve FIN-S1.2 as `BLOCKED_EXTERNAL` in the ledger for final project acceptance, as already deferred by commit `8d627de`. The prior FIN-S3.2 completion response incorrectly repeated that item as an active blocker for the just-completed S3.2 test/review. The deferral remains through final project verification; it does not block unrelated FIN-S3.2 work. No ledger status, acceptance evidence, report count, source search, or project scope changed in this correction.
+
+
+## 2026-11-17 — Operator-authorized full program rebaseline
+
+The operator replaced the FIN-only pass with a full code/design/document/all-ref rebaseline and main-integration/cleanup preparation. Preserved all refs in an external Git bundle, both dirty patches, untracked project files and file inventory under D:/ERP_MCP_Testbed/rebaseline/2026-11-17. Audit artifacts live in docs/rebaseline/2026-11-17. Project plan recognizes S14-S16 implementation as PARTIAL rather than NOT_STARTED; source presence does not establish full acceptance. Restored omitted S11 sprint milestone in native ledger without inventing child stories. Original 104 program positions are distinct from three new audit tasks. All verify/review receipts retained; FIN-S1.2 remains deferred through final project verification. Enabled GitHub deleteBranchOnMerge and read back true. No branch deletion, merge, test, build, CI, migration or runtime mutation performed during this inventory. Architecture A-01 packaging separation, A-02 historical handoff drift and A-03 mode metadata enter the integration backlog. Full patch-equivalence and per-worktree audit are running; the work is not represented as finished.
+
+
+## 2026-11-17 — Rebaseline S5 correction and integration preparation
+
+Detailed TASK_LEDGER rows US024-US027 document bounded S5 approval at af9f287; the reporting analyst independently confirmed that head is an ancestor of origin/main. Corrected S5 from stale 0/6 to 4/6 bounded accepted; US021/022 remain unstarted. Current program reconciliation therefore has 48 bounded accepted task positions out of the original 104, plus three separate rebaseline tasks. All 63 local branches received patch-equivalence comparison; twelve have zero unique non-merge patches. All 47 original worktrees received tracked/untracked status inspection; 19 dirty. Prepared a new clean integration worktree from origin/main at 7c1f69c, without touching main or root dirty files. Merge-tree preview for committed 240070b versus origin/main exited 0, excluding uncommitted work. No branch deletion or integration merge occurred.
+
+
+## 2026-11-17 — Fast-forward local main after preservation
+
+Verified local main had no unique commits and was 113 behind remote main, then
+used git fetch origin main:main to fast-forward it from 4dfceed to 7c1f69c.
+Read-back confirms main equals origin/main. The prepared integration worktree
+at that head is clean; no root branch switch, dirty-file reset, force-push,
+code integration merge or deletion occurred. Historical PR46/47/48 merge commits
+remain on the remote integration branch but are absent from main; record both
+facts rather than erase their bounded acceptance history.
+
+
+2026-11-17 cleanup follow-up: removed the empty prepared scratch worktree
+D:/tmp/scratch_worktrees/erp-rebaseline-main-20261117 and deleted its temporary
+codex/rebaseline-main-20261117 branch with git branch -d. Its tip was exactly
+origin/main; ancestry verified, tracked/untracked status empty, no reparse points,
+and no observable process cwd in the target. Process cwd could not be read for
+198 protected/inaccessible processes; no such process was identified as using
+the target. Git removal completed successfully. Main/master were retained.
+The integration plan remains prepared; no code integration candidate was merged.
