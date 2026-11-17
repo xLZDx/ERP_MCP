@@ -573,3 +573,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SUCCESS: full evidence reconciliation retained historical bounded acceptance while exposing unmerged code and concrete integration defects. Rule: keep original task denominator, sprint milestones, audit tasks, branch reachability and runtime readiness separate. Never replace missing native receipts with invented passes.
 
 - 2026-11-17 SUCCESS: cleanup preparation now distinguishes local branches from remote-tracking refs and future GitHub merged-head deletion. Rule: listing every ref is not the same as authorizing its deletion.
+
+- 2026-11-17 SUCCESS: correlated PM approval retained exact code scope and did not unlock promotion of unrelated historical commits. Rule: a bounded tool review cannot become a repository-wide push/merge authorization; qualify the actual consolidation candidate separately.

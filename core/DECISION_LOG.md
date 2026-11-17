@@ -1966,3 +1966,7 @@ RB-01..03 now have real named functional qualification and four routed independe
 ## 2026-11-17 — Complete remote cleanup preparation coverage
 
 Added explicit disposition for all40 captured remote-tracking refs alongside63 local branches; retain default/HEAD aliases, unmerged work and archive/helper history. This extends the cleanup preparation manifest and executes no deletion. Final source bytes still equal ae48e290; generated evidence is non-runtime metadata.
+
+## 2026-11-17 — Correlated bounded PM approval and clean review-copy removal
+
+GPT-PM request5690d981-f15c-4d39-a3d4-51eb7f47bd7d/reply3313217b-dd70-57ff-a0dc-b8aac542e69a approved only four audit-tool files at3c496f9. ZeroBLOCKER/MAJOR, one diagnosticMINOR. Do not convert that scope into a generic push receipt for the old branch or its87 earlier commits. Clean detached review copy removed with exit0; no branch removed. Root main-preview was conflict-free for committed history only. Preserved all refs in external42282636-byte bundle. Actual application consolidation is prepared, not executed.
