@@ -1914,3 +1914,19 @@ push/PR triggers, while the actual GitHub workflow is already disabled_manually;
 the disable retry returned403 for inactive state and read-back remained disabled.
 Preserve manual-only workflow source in the future integration candidate.
 This completes cleanup preparation, not integration or old-branch deletion.
+
+
+## 2026-11-17 — Repair final audit-tool coverage and provenance findings
+
+Final routed review found omitted YAML/CSV/Gherkin spec versions, mutable
+origin/main comparison in the details tool, and mixed-run/unknown-ancestry risks.
+The collector now inventories all blobs under document/report/core roots plus
+spec formats, includes relevant current root/config files, freezes refs and
+baseline SHA, caches immutable trees, distinguishes ancestry exit0/1/other,
+and writes an exclusive-lock-protected run manifest with status and artifact
+hashes. Details collection requires that completed source manifest, checks its
+branch-file hash/run ID, uses saved SHA for every cherry call, and writes its
+own completion manifest; unknown/error counts remain null. These are audit
+infrastructure fixes only. A named isolated functional test is being authored
+by the designated role; no whole suite, CI, production operation or branch
+cleanup was run.
