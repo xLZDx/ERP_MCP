@@ -2125,3 +2125,7 @@ Close S2 (four bounded task acceptances) and then S3 (six) to match PROJECT_PLAN
 ## 2026-11-17 - Define S4 promotion evidence and replay boundaries
 
 R2-US-016 is in progress. Historical adc5ec7 included an Admin API, PostgreSQL adapter, and focused tests, but its revision/reference digest did not independently authenticate the artifact bytes. Retain it as a reference. The architect found two major design gaps: revocation ordering across the commit boundary and incomplete replay identity. The revised S4 design specifies shared-lock eligibility revocation, immutable artifact pinning, and a canonical durable request fingerprint. Keep the first implementation slice offline and review the revised contract before changing source. No tests or migrations executed.
+
+## 2026-11-17 - Accept the S4 offline evidence design for implementation
+
+GPT-PM design request 68f7b4a3-8a29-439e-ba16-3a579d844395, correlated reply 2aa8aa8a-e465-5f88-b1db-e26949932f69, approved the bounded offline first slice at 2b46bdd9f14630a5225c0b693c3fdd99bc725b13. The architect independently confirmed that the revised contract addresses both major findings. The decision did not accept TC046-TC048 or any code, durable provider, migration, production operation or release. The implementation branch stays offline.

@@ -634,3 +634,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SUCCESS: reconciled consecutive S2 and S3 historical sprint dispositions from all ten recorded task decisions. Layer: plan and ledger consistency. Rule: synchronize consecutive fully accepted historical sprints and stop status promotion at the first unresolved criterion.
 
 - 2026-11-17 SHORTCOMING: the first S4 promotion design described verification and replay without defining where external revocation and full request equality are enforced. Layer: architecture review. Rule: specify the transaction linearization point and durable replay fingerprint before implementing a write boundary.
+
+- 2026-11-17 SUCCESS: bounded offline promotion verifies content bytes before new writes and keeps the historical reference-only path explicitly unqualified. Layer: integration design. Rule: carry trusted company scope separately and require a durable full fingerprint before claiming replay-safe promotion.
