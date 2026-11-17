@@ -2165,3 +2165,7 @@ The target run at 5a24093 cleared the duplicate scope setup and exposed a signat
 ## 2026-11-18 - Disambiguate the S4 rollback history lookup
 
 The disposable PostgreSQL run reached all seven scenario bodies. Six passed; rollback exposed an ambiguous reference to to_version in its historical target lookup. Qualify the accepted-event columns with their table alias. Retain failure evidence and rerun the named module on a committed correction.
+
+## 2026-11-18 - Preserve S4 disposable acceptance and content test inputs
+
+All seven disposable PostgreSQL scenarios passed at 40d4547; the invocation-owned cleanup completed without exception. Add the focused service-level content test so the byte-verification path is exercised directly, independently of SQL fixture registration. Run the named content module as the next verification step.

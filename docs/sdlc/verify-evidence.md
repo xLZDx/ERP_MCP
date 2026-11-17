@@ -876,3 +876,13 @@ The e2e-runner ran the named PostgreSQL module with --maxfail=1 on 5a24093. One 
 ## 2026-11-18 - S4 disposable scenarios reached the transaction
 
 The assigned e2e-runner reported six passed and one failed in 52.17s on fb8539d with --maxfail=1. The rollback scenario raised AmbiguousColumnError because its historical lookup named to_version without a table alias, colliding with the PL/pgSQL output variable. The owned container context exited without a cleanup exception. This is product-fixture SQL evidence for the six successful scenarios; rollback remains open pending the rerun.
+
+## 2026-11-18 - S4 focused disposable transaction acceptance run
+
+The assigned e2e-runner ran the named PostgreSQL module at HEAD `40d4547f602cdbc4d2759046444bcc000d93a567`, using only an invocation-owned loopback cluster. The configured PostgreSQL DSN was excluded. The run used ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1, ERP_PHASE2_REQUIRE_PG=1 and scratch source/root imports:
+
+```powershell
+& 'D:/Repo/ERP_MCP/.venv/Scripts/python.exe' -m pytest -q --maxfail=1 --confcutdir=tests/phase2 tests/phase2/test_s4_promotion_transaction_e2e.py
+```
+
+Result: 7 passed in 62.17s (0:01:02). All seven scenarios executed. The owned-cluster context exited without a cleanup exception; the harness checks ownership labels before removing the exact invocation-owned containers. Coverage: concurrent CAS, legacy fencing and historical isolation, atomic rollback between event and fingerprint insertion, read-back after a discarded response, revoke-before-write, wrong company and role refusal, and rollback to the accepted target. This is synthetic transactional evidence only. The discarded response represents a client-side loss after commit, not a live network partition. Real provider, production and 1C are NOT_RUN.

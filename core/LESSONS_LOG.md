@@ -654,3 +654,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 FAILURE: the S4 test copied an obsolete observation function call instead of using the shared harness statement. Layer: fixture setup. Rule: reuse existing SQL statements inside the required scope transaction and inspect all remaining function signatures before retrying.
 
 - 2026-11-18 FAILURE: the PL/pgSQL rollback lookup used an unqualified name shared by a history column and a RETURNS TABLE output variable. Layer: source review and E2E. Rule: qualify query columns in procedural functions wherever they can overlap with input or result variable names.
+
+- 2026-11-18 SUCCESS: the S4 transaction scenarios isolate the actual PostgreSQL commit and recovery behavior from 1C and runtime provider integration. Layer: disposable E2E. Rule: preserve the precise source head and label-scope cleanup evidence with the named result.
