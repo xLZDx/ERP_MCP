@@ -1747,3 +1747,7 @@ The operator requested that the recurring local check be stopped. Verified that 
 The operator also wanted the ERP lane's recurring five-minute check removed. Current Task Scheduler state already contains exactly one enabled `MSFT_TaskLogonTrigger` with a one-minute delay and no repetition; the separate completion watchdog remains disabled. Updated `register_lane_task.ps1` so future registrations create and verify only that logon trigger, preserving interactive/highest-privilege startup and adding no periodic check. The lane task itself was not re-registered or otherwise changed in this step.
 
 Follow-up review confirmed the registration and post-registration failure paths disable and verify the task when recurrence remains or the schedule cannot be inspected; an unconfirmed disable is reported as an error, not success. No additional scheduler state was changed.
+
+## 2026-11-17 — Bind the live report to the status commit
+
+After commit `13cbd2d` recorded the project-plan/Git reconciliation and the periodic-check change, regenerated the live report so its provenance bar names `13cbd2d` and checked its rendered FIN count and historical sprint note. This refresh changes no task state, test evidence, or release gate.
