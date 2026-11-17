@@ -638,3 +638,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SUCCESS: bounded offline promotion verifies content bytes before new writes and keeps the historical reference-only path explicitly unqualified. Layer: integration design. Rule: carry trusted company scope separately and require a durable full fingerprint before claiming replay-safe promotion.
 
 - 2026-11-17 SHORTCOMING: the first durable promotion draft did not name every legacy entry point or lock eligibility registration. Layer: architecture review. Rule: specify how legacy clients and concurrent registration share the same lock before enabling a stronger transaction boundary.
+
+- 2026-11-18 SUCCESS: isolated the S4 request encoder from authority and storage and recorded independent SHA-256 examples before integration. Layer: implementation contract. Rule: freeze framing examples at the byte level and reject field representations that cannot be shared with PostgreSQL.

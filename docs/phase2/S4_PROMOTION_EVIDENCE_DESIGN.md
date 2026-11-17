@@ -1,6 +1,6 @@
 # S4 R2-US-016 promotion evidence design
 
-Status: offline design approved at `2b46bdd` (GPT-PM request `68f7b4a3-8a29-439e-ba16-3a579d844395`), offline source implemented at `7e3b2b5`. The durable design below is a candidate for review. This document does not accept TC046–TC048.
+Status: offline design approved at `2b46bdd` (GPT-PM request `68f7b4a3-8a29-439e-ba16-3a579d844395`), offline source implemented at `7e3b2b5`. GPT-PM approved pure framing and disposable SQL implementation at `cb29e43` (request `c4b15625-134f-4dff-b026-5a128602162d`, reply `92606631-a8e0-5ce3-b5f0-40375fb03bd5`). No provider, production enablement, or TC046–TC048 acceptance follows from that decision.
 
 ## Current and retained implementation
 
@@ -44,8 +44,15 @@ Implementation order: define the canonical encoding and offline contract cases, 
 
 The digest input starts with the ASCII bytes `erp-mcp:promotion-request:v1` followed by one NUL. Fields follow in this fixed order: tenant, source, company, model, operation, requested rollback version, expected version, target revision, requester, approver, attestation, evidence reference, artifact version, content digest. The acceptance ID is the database key and is not part of the digest. Each nonnull field uses a `1` byte (ASCII), canonical decimal UTF-8 byte length, a colon, and exactly those bytes. Null uses the single ASCII `0` byte and is allowed only for the requested rollback version on promotion. Reject out-of-range integers and noncanonical identifier or digest representations before encoding. The operation is exactly `promote` or `rollback`, UUIDs are lowercase canonical text, and content digests are 64 lowercase hexadecimal characters. Use the exact authenticated and resolved string values rather than normalization performed by the encoder. Hash the framed bytes using SHA-256. Freeze golden byte vectors for null, multibyte text, delimiters inside strings, and the maximum signed database version before enabling more than one implementation.
 
+Reference vectors, independently constructed from the framing rule. Both use tenant `t`, source `s`, company `c`, target UUID `00000000-0000-0000-0000-000000000001`, requester `u`, approver `v`, and attestation UUID `00000000-0000-0000-0000-000000000002`.
+
+| Operation | Model | Rollback version | Expected version | Evidence reference | Artifact version | Content digest | Expected request SHA-256 |
+|---|---|---|---|---|---|---|---|
+| `promote` | `m` | null | `0` | `ref` | `version` | 64 `a` characters | `f3f373edfe8377abd39fa25dc0e7f0d0f821f8bf146bbacb04e06d568b149c58` |
+| `rollback` | `m:é` | `1` | `9223372036854775807` | `x:0:y` | `v:1` | 64 `b` characters | `99adccfdc14b532e6bcebd848ba1a2bfc14b2b59b38a0a0a78285d8b66551d1d` |
+
 ### Rollout and rollback
 
-1. Expand on a disposable database with additive records and restricted entry points. Old consumers continue their existing behavior for unenrolled models. Existing acceptance events remain unchanged. Exercise an old client and a new client against the expanded schema, including a denied legacy write after enrolment.
+1. Expand on a disposable database with additive records and restricted entry points. Keep the fixture outside the normal migration directory and apply it only through an explicitly selected disposable test setup. Old consumers continue their existing behavior for unenrolled models. Existing acceptance events remain unchanged. Exercise an old client and a new client against the expanded schema, including a denied legacy write after enrolment.
 2. Verify constraints and the lock order before enrolment. Confirm no companion record can exist without an acceptance event, no head change can commit without its companion in the new path, and direct writes by application roles are denied. Roll back an injected error between event and companion insertion to prove the head also rolls back.
 3. Enable only an explicitly enrolled model with a qualifying provider. If promotion is paused or the provider fails, retain both records and reject new writes. Do not reopen the legacy write path for that model. A rollback of the deployment leaves enrolment enforced until a reviewed replacement can safely resume it. Defer contraction and any destructive schema change.

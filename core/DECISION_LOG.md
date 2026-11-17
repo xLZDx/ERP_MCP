@@ -2133,3 +2133,7 @@ GPT-PM design request 68f7b4a3-8a29-439e-ba16-3a579d844395, correlated reply 2aa
 ## 2026-11-17 - Specify the durable S4 promotion transaction
 
 The offline implementation at 7e3b2b5 is retained. The durable design keeps the historical acceptance key, adds a companion fingerprint, defines a versioned length-framed encoding, and serializes eligibility, enrolment, head update, and authoritative read-back via the source row. Architecture review identified a legacy-call bypass and a registration race; the revised design places both paths under the same transaction lock and records role and row-level security rules. No code or migration was executed. This is a design candidate, not broadening the prior GPT-PM approval.
+
+## 2026-11-17 - Approve bounded S4 fingerprint and disposable SQL implementation
+
+GPT-PM request c4b15625-134f-4dff-b026-5a128602162d, correlated reply 92606631-a8e0-5ce3-b5f0-40375fb03bd5, approved pure framing and the synthetic transaction implementation at cb29e43fca1038cffd819c0c6e337f0fe18445e4. The attached record retains the independent reference digests. The SQL fixture belongs outside db/phase2 because the migration command enumerates SQL files in the selected directory. No approval for production schema application, real provider qualification, release, or TC046-TC048 acceptance.
