@@ -609,8 +609,9 @@ class DispatchGate:
         try:
             # A prior attempt may have written and verified this exact event checkpoint, then
             # failed while recording it or releasing the linked holds. Reuse that immutable
-            # provider record before consulting the current signer: the database accepts exact
-            # verified Ed25519-row replay even when its key was revoked for new checkpoints.
+            # provider record before consulting the current signer. Historical public material
+            # must still verify its signature; reuse is not proof of a prior verified attempt.
+            # Exact database replay remains separate from authorization for new checkpoints.
             record = await self._sink.read_back(scope, event_seq)
             reused_existing = record is not None
             if reused_existing:
@@ -654,9 +655,8 @@ class DispatchGate:
                     back = await self._sink.read_back(scope, event_seq)
                 if type(back) is not CheckpointRecord or back != record:
                     raise CheckpointUnavailable("READ_BACK_MISMATCH")
-            if (not reused_existing
-                    and not self._verifier.verify(record.key_id, record.signing_payload(),
-                                                  record.signature)):
+            if not self._verifier.verify(record.key_id, record.signing_payload(),
+                                         record.signature):
                 raise CheckpointUnavailable("READ_BACK_MISMATCH")
             stored_checkpoint_seq = await self._ledger.record_checkpoint_s13(
                 scope, event_seq, event_hash, record.sink_kind, record.sink_id,

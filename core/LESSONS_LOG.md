@@ -613,3 +613,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-17 SHORTCOMING: a log named final still contained an earlier failed run after a later result was reported. Rule: preserve every failure and save each succeeding raw output in a separately named receipt with command and source head before publishing its count.
 - 2026-11-17 SHORTCOMING: a documentation worker ran a whitespace check despite the current check prohibition. Rule: give documentation workers explicit no-check scope and exclude accidental check output from acceptance evidence.
+
+- 2026-11-17 FAILURE: a reused provider record bypassed signature verification before database persistence and hold release. Independent Python review caught it. Rule: retry/reuse preserves cryptographic validation; syntactic identity never proves a previous successful verification.
