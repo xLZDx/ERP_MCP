@@ -854,3 +854,17 @@ The assigned functional-test-reviewer was asked to check for `Invoke-Pester` and
 The assigned functional-test-reviewer ran only `tests/phase2/register_lane_task.Tests.ps1` using Windows PowerShell 5.1.26100.9818 and Pester 3.4.0 at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`. Exit code 0: 7 passed, 0 failed, 0 skipped, 0 pending, 0 inconclusive in 4.22 seconds. The test invokes an in-memory isolated copy of the installer body after removing only `#Requires -RunAsAdministrator` and the in-script admin guard; a separate assertion verifies both guard requirements. Every ScheduledTasks cmdlet is mocked. No real task, service, Docker lane, credential, or 1C data was touched. Current test SHA-256: `58C3508F2F0C9BCC49CCBB8D51182CD6EBD0961963C2F12258C819319399903C`.
 
 The routed code-reviewer and silent-failure-hunter reviews are both accepted with zero remaining findings. The initial review's recurrence concern was resolved by the operator-authored instruction to remove five-minute periodic checks after the already evidenced bounded Redis restart; the current installer correctly preserves only the one-minute logon trigger. The native ledger now records FIN-S3.2 verification and review against task head `240070b`; its task state is `done`. The project-plan overlay intentionally remains `IN_REVIEW` pending the final FIN sprint review. This does not establish a live scheduler run on the current installer or change release/production status.
+
+## 2026-11-18 - S4 promotion request fingerprint verification
+
+The assigned functional-test-reviewer ran the named fingerprint module at source and test HEAD `54a5c83b98c92ac7dd2aaf83b6ed05560e4515a4` with scratch-worktree `src` as PYTHONPATH and the existing project Python environment:
+
+```powershell
+& 'D:/Repo/ERP_MCP/.venv/Scripts/python.exe' -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s4_promotion_fingerprint.py
+```
+
+Result: 36 passed in 0.46s. This supersedes the earlier 35 passed / 1 failed result at `676302d` for the corrected negative UUID case only. Covers independent byte/digest vectors, field binding and malformed inputs. No durable transaction, real provider or production behavior is established by this module.
+
+## 2026-11-18 - First S4 disposable transaction run
+
+At HEAD 54a5c83b98c92ac7dd2aaf83b6ed05560e4515a4, the assigned e2e-runner reported seven setup errors in 54.82 seconds. No scenario body ran. The test fixture attempted to insert an existing living_reader scope for A/s4/c1 already created by seed_basic(), and PostgreSQL rejected it with role_scope_uniq. The invocation-owned cluster context exited without a cleanup exception. This result supplies no transaction acceptance evidence.

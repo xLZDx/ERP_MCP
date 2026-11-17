@@ -2153,3 +2153,7 @@ The named offline test module fixes two independently derived v1 digests and the
 ## 2026-11-18 - Pin the S4 disposable acceptance inputs
 
 The first named fingerprint run at 676302d reported 35 passed and one false negative: a lowercase canonical UUID had been labelled invalid. Use the uppercase form for that negative case. Add the focused disposable PostgreSQL scenarios for concurrency, commit recovery, scope, revocation, legacy fencing and rollback. The fixture never reads the configured PostgreSQL DSN and uses invocation-owned loopback resources.
+
+## 2026-11-18 - Correct S4 synthetic scenario setup
+
+The corrected offline fingerprint run passed all 36 cases at 54a5c83. The PostgreSQL run on the same head did not reach a scenario because fixture setup repeated an existing role grant. Keep the original result, correct only fixture setup, and rerun the named disposable scenarios against the revised committed inputs. PostgreSQL holds the ERP_MCP model acceptance state and its atomic journal; the 1C copies are relevant to connector checks and were not used by this transaction fixture.

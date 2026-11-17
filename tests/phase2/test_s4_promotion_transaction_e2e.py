@@ -42,7 +42,6 @@ async def s4db():
             await conn.execute("""
               INSERT INTO living.role_scope(role_name,tenant_id,source_id,company_id) VALUES
                 ('living_worker','A','s4','c1'),
-                ('living_reader','A','s4','c1'),
                 ('living_promoter','A','s4','c1');
               INSERT INTO living.accepted_heads(tenant_id,source_id,model_key)
                 VALUES ('A','s4','s4-contract-model');
