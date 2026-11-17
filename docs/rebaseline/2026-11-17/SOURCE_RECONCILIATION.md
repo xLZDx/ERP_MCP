@@ -1,6 +1,6 @@
 # Main candidate source reconciliation
 
-Source checkpoint: `0d02626b7b0e620b3443ad3357bee10701c5fba9` on
+Source checkpoint: `a9f03cfa4ee4bfca1667b1db4c12ec7a399b6951` on
 `codex/main-consolidation-20261117`. This is a local candidate snapshot, not a
 published baseline, runtime qualification or merge approval.
 
@@ -29,6 +29,9 @@ queued-call cancellation and lifecycle branches in initially ported features.
 Their source repairs are retained in commits through the checkpoint above;
 original failed runs remain in the external evidence archive. No disposition
 alone upgrades a task to accepted or establishes behavioral equivalence.
+Independent Python review subsequently found a reused-checkpoint signature
+verification bypass; a9f03cf repairs it and the named regression preserves both
+forged-record refusal and valid historical-key replay. See CONSOLIDATION_REVIEW.md.
 
 ## Cumulative source changes
 

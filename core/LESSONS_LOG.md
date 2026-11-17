@@ -615,3 +615,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: a documentation worker ran a whitespace check despite the current check prohibition. Rule: give documentation workers explicit no-check scope and exclude accidental check output from acceptance evidence.
 
 - 2026-11-17 FAILURE: a reused provider record bypassed signature verification before database persistence and hold release. Independent Python review caught it. Rule: retry/reuse preserves cryptographic validation; syntactic identity never proves a previous successful verification.
+
+- 2026-11-17 SHORTCOMING: an agent follow-up retained its original start timestamp, so the ledger correctly refused it as proof of a role started after the source commit. Rule: respect the provenance refusal, obtain a fresh role run on the committed source, and never synthesize visibility events or weaken the guard.
+- 2026-11-17 SUCCESS: real-source access was explicitly deferred while independent local audit, synthetic regression and Git consolidation continued. Rule: scope an unavailable credential to its actual runtime action instead of blocking unrelated engineering work.

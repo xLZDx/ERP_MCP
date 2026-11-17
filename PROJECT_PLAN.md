@@ -13,7 +13,7 @@ Source: project plans, `docs/phase2/TASK_LEDGER.md`, decision/evidence records, 
 
 ## Current rebaseline authority — 2026-11-17
 
-The operator authorized a full program rebaseline across source, architecture, all refs, documents and reports. This plan retains the original task identifiers and bounded acceptances. The old native ledger is evidence input, not a replacement for document/Git reconciliation. Audit and integration execution is now REBASELINE (RB-01..03); historical FIN stays in final-review state. FIN-S1.2 remains deferred to final project verification and is not a current rebaseline dependency.
+The operator authorized a full program rebaseline across source, architecture, all refs, documents and reports. This plan retains the original task identifiers and bounded acceptances. The old native ledger is evidence input, not a replacement for document/Git reconciliation. The bounded audit/preparation sprint REBASELINE is closed locally; current execution is MAIN_CONSOLIDATION (MC-01..04), with named candidate qualification in progress. Historical FIN stays in final-review state. FIN-S1.2 remains deferred to final project verification and is not a current dependency.
 
 Source inventory: docs/rebaseline/2026-11-17/FILE_INVENTORY.json. Branch inventory and integration sequence: docs/rebaseline/2026-11-17/BRANCH_INVENTORY.json and BRANCH_INTEGRATION_AUDIT.md. Architecture: ARCHITECTURE_AUDIT.md in the same folder. Per-task basis: TASK_EVIDENCE_AUDIT.md.
 
@@ -35,10 +35,10 @@ The audit/preparation sprint completed locally in its bounded scope. Its PM appr
 
 | ID | Title | Acceptance criteria | Status | Evidence | Owner | Dependency | Commits |
 |---|---|---|---|---|---|---|---|
-| MC-01 | Preserved main-based candidate | Both histories and selected dirty work retained with provenance; unique refs classified; no history rewrite | IN_PROGRESS | Integration manifest, external bundle and main-based scratch candidate | Codex | | |
-| MC-02 | Concurrent capability observation isolation | Live requests coexist, latest accepted pointer monotonic, retries/crashes fail closed, grants unchanged | NOT_STARTED | Consolidation design; future018 migration | Codex | MC-01 | |
-| MC-03 | Gateway artifact package boundary | Explicit gateway/S15 discovery and image roots, writer/S16 excluded, private sources retained | NOT_STARTED | Consolidation design; ADR-0009 | Codex | MC-01 | |
-| MC-04 | Exact-candidate qualification and merge | Named tests, applicable reviews and exact-head PM approval; merge then safe cleanup | NOT_STARTED | Final evidence pending actual candidate | Codex | MC-02, MC-03 | |
+| MC-01 | Preserved main-based candidate | Both histories and selected dirty work retained with provenance; unique refs classified; no history rewrite | IN_REVIEW | SOURCE_RECONCILIATION.md and residual49-source dispositions; selected source and historical proof retained; named core1086 passed/1 skipped; full-candidate review pending | Codex | | b3888d4, b1e2605, 8c0d70b, 6ec0ba0, 49e4503, 1fbbb7c, 0d02626 |
+| MC-02 | Concurrent capability observation isolation | Live requests coexist, latest accepted pointer monotonic, retries/crashes fail closed, grants unchanged | IN_REVIEW | Forward018; disposable concurrent/ACL PostgreSQL4 passed and observer-order5 passed, raw receipts in CONSOLIDATION_QUALIFICATION.md; final review pending | Codex | MC-01 | 486a844 |
+| MC-03 | Gateway artifact package boundary | Explicit gateway/S15 discovery and image roots, writer/S16 excluded, private sources retained | IN_REVIEW | Explicit package/image roots and named package-boundary tests in151-pass contract group; artifact build NOT_RUN under operator prohibition, no artifact-execution claim | Codex | MC-01 | 812122d |
+| MC-04 | Exact-candidate qualification and merge | Named tests, applicable reviews and exact-head PM approval; merge then safe cleanup | IN_PROGRESS | Named qualification receipts retained, S13 assigned files executed; Python-review signature-reuse MAJOR fixed in a9f03cf with regression; final SQL review and exact-head GPT-PM remain before push | Codex | MC-02, MC-03 | 0c43751, a9f03cf |
 
 ## Roadmap
 | Sprint | Title | Status | Goal |

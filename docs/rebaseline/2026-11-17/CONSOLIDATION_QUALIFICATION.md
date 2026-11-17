@@ -29,6 +29,7 @@ External raw evidence directory:
 | Runtime authority/private-writer barrier and suffix classifier | 25 passed, 1 warning, 1.37s | s13-qualification/qualification-runs-2026-11-17.txt | Warning: historical classifier returns assertion count; no real COM. |
 | New split-authority service and DPAPI role domains | Final3 passed, 1.57s | s13-qualification/qualification-runs-2026-11-17.txt | Includes CurrentUser DPAPI with distinct temporary synthetic keys; not service-account key access or provider qualification. |
 | Complete anchor CLI preflight E2E | Final6 passed, 35.47s | s13-qualification/qualification-runs-2026-11-17.txt | Signed synthetic checkpoint and owned PostgreSQL; exact ledger head/event-count unchanged; NOT_READY/SHARED_FENCE_UNAVAILABLE. |
+| Operator-resolution checkpoint readback plus runtime authority | 21 passed, 1.70s | checkpoint-final-role-run.txt | Exact committed source a9f03cf; forged-signature refusal before effects and historical-key replay. Explicit synthetic authority/signer stubs despite enabled-branch flags. |
 
 ## Failures and limits
 
@@ -42,6 +43,11 @@ historical later-release skips remain skips, not newly qualified behavior.
 Private runtime/COM, actual external-provider trust, native reconciliation,
 production release and image/wheel execution remain unqualified in this pass.
 FIN-S1.2 remains deferred until final project verification by operator decision.
+
+Operator steering on2026-11-17 defers live ERP MCP starts/reachability and
+credential investigation because credentials may have changed. Do not launch
+ERP MCP or probe those credentials during this pass. Local source review and
+in-memory/disposable qualification receipts above are separate from live access.
 
 The documentation worker inadvertently ran `git diff --check` despite the
 current automatic-check prohibition. Its output is not acceptance evidence;
