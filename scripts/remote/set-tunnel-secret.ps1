@@ -41,3 +41,29 @@ $blob = [Security.Cryptography.ProtectedData]::Protect($bytes, $null, 'CurrentUs
 @{ tunnel_id = $TunnelId; endpoint = 'http://100.88.71.74:21000/mcp'; configured_at_utc = (Get-Date).ToUniversalTime().ToString('o') } |
     ConvertTo-Json | Set-Content -Path (Join-Path $envDir 'tunnel.json') -Encoding UTF8
 'Saved: tunnel id ' + $TunnelId + ' and an encrypted key blob (' + (Get-Item (Join-Path $envDir 'tunnel_api_key.dpapi')).Length + ' bytes).'
+
+# Start the stack through its existing logon task so the long-running services are
+# detached from this provisioning session. Match the complete task action first;
+# never start a task that happens to have the expected name but runs another script.
+$StackTaskName = 'ERP_MCP_Ivan_Stack'
+$ExpectedStackScript = [IO.Path]::GetFullPath((Join-Path $Root 'run-mcp-stack.ps1'))
+try {
+    $StackTask = Get-ScheduledTask -TaskName $StackTaskName -ErrorAction Stop
+    $TaskActions = @($StackTask.Actions)
+    $MatchingAction = @($TaskActions | Where-Object {
+        $IsPowerShell = $_.Execute -match '(^|\\)powershell(?:\.exe)?$'
+        $FileArgument = [regex]::Match([string]$_.Arguments, '(?i)^\s*-NoProfile\s+-ExecutionPolicy\s+Bypass\s+-WindowStyle\s+Hidden\s+-File\s+"([^"]+\.ps1)"\s*$')
+        $IsPowerShell -and $FileArgument.Success -and
+            [IO.Path]::GetFullPath($FileArgument.Groups[1].Value) -ieq $ExpectedStackScript
+    })
+    if (-not $StackTask.Settings.Enabled -or $TaskActions.Count -ne 1 -or $MatchingAction.Count -ne 1) {
+        Write-Warning ($StackTaskName + ' was not started: the task must be enabled with exactly one action targeting ' + $ExpectedStackScript + '.')
+    } elseif ($StackTask.State -eq 'Running') {
+        Write-Warning ($StackTaskName + ' is already running; no overlapping start was requested.')
+    } else {
+        Start-ScheduledTask -TaskName $StackTaskName -ErrorAction Stop
+        Write-Output ('Stack start requested via enabled task ' + $StackTaskName + '; tunnel connection is not verified.')
+    }
+} catch {
+    Write-Warning ($StackTaskName + ' could not be started after saving the tunnel key: ' + $_.Exception.Message)
+}

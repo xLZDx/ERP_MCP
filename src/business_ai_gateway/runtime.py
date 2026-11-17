@@ -17,7 +17,11 @@ from .company_scope import CompanyScopeResolver
 from .db import Database
 from .evidence_index import ApprovedEvidenceProvider
 from .evidence_store import PrivateEvidenceStore
-from .fixture_profiles import ProvisionalProfiles, SyntheticFixtureProfiles
+from .fixture_profiles import (
+    ProvisionalProfiles,
+    SyntheticFixtureProfiles,
+    UnreconciledTestLaneProfiles,
+)
 from .observability import OperationalMetrics
 from .rate_limit import RateLimiter
 from .registry import Registry
@@ -66,6 +70,15 @@ class Runtime:
             if settings.provisional_profiles_file
             else None
         )
+        self.test_lane_profiles = (
+            UnreconciledTestLaneProfiles(
+                settings.test_lane_profiles_file,
+                settings.test_lane_profiles_sha256,
+                environment=settings.environment,
+            )
+            if settings.test_lane_profiles_file
+            else None
+        )
         self.registry = Registry(
             self.db,
             production=settings.environment == "production",
@@ -73,6 +86,8 @@ class Runtime:
             synthetic_profiles=self.synthetic_profiles,
             machine_reconciled_sources=settings.machine_reconciled_source_items,
             provisional_profiles=self.provisional_profiles,
+            test_lane_profiles=self.test_lane_profiles,
+            test_lane_sources=settings.test_lane_unreconciled_source_items,
         )
         self.secrets = build_secret_provider(settings)
         self.audit = Audit(

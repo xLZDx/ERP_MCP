@@ -133,10 +133,130 @@ try {
         Log ('gateway: ' + $gatewayReady)
         Assert-RequiredGatewayReady -Ready $gatewayReady
     }
-    # 7. OpenAI tunnel-client for the ChatGPT connector (only when the operator has stored a tunnel id and key)
-    if ((Test-Path (Join-Path $EnvDir 'tunnel.json')) -and (Test-Path (Join-Path $EnvDir 'tunnel_api_key.dpapi')) -and -not (Test-Port 21090)) {
-        Start-Hidden 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Root 'run-tunnel.ps1'), '-Action', 'Run') $Root 'tunnel'
-        Log ('tunnel-client: ' + (Wait-Port 21090 30))
+    # 7. Reconcile only the tunnel process whose executable and complete argument list
+    # match run-tunnel.ps1. A port listener alone does not prove tunnel identity.
+    $TunnelConfig = Join-Path $EnvDir 'tunnel.json'
+    $TunnelKey = Join-Path $EnvDir 'tunnel_api_key.dpapi'
+    if ((Test-Path $TunnelConfig) -and (Test-Path $TunnelKey)) {
+        try {
+            $TunnelDocument = Get-Content $TunnelConfig -Raw | ConvertFrom-Json -ErrorAction Stop
+            $ConfiguredTunnelId = [string]$TunnelDocument.tunnel_id
+            if ($ConfiguredTunnelId -notmatch '^tunnel_[A-Za-z0-9_-]+$') {
+                Log 'tunnel-client: invalid or missing configured tunnel id; startup skipped'
+            } else {
+                $ExpectedTunnelClient = [IO.Path]::GetFullPath((Join-Path $Root 'tunnel\tunnel-client.exe'))
+                $TunnelRunScript = [IO.Path]::GetFullPath((Join-Path $Root 'run-tunnel.ps1'))
+                # These values mirror run-tunnel.ps1 defaults. That script currently does not
+                # read the endpoint field from tunnel.json.
+                $ExpectedTunnelArguments = @(
+                    'run', '--control-plane.tunnel-id', $ConfiguredTunnelId,
+                    '--control-plane.api-key', 'env:CONTROL_PLANE_API_KEY',
+                    '--mcp.server-url', 'http://100.88.71.74:21000/mcp',
+                    '--mcp.oauth-trusted-origin', 'https://ivan.tail08f9f9.ts.net',
+                    '--harpoon.allow-plaintext-http',
+                    '--health.listen-addr', '127.0.0.1:21090'
+                ) -join ' '
+                $ExpectedTunnelCommandLine = '"' + $ExpectedTunnelClient + '" ' + $ExpectedTunnelArguments
+
+                function Get-TunnelListenerState {
+                    $currentListener = Get-NetTCPConnection -State Listen -LocalPort 21090 -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if (-not $currentListener) { return $null }
+                    $currentProcess = Get-CimInstance Win32_Process -Filter ("ProcessId=" + [uint32]$currentListener.OwningProcess) -ErrorAction SilentlyContinue
+                    if (-not $currentProcess) { return @{ Listener = $currentListener; Process = $null } }
+                    return @{ Listener = $currentListener; Process = $currentProcess }
+                }
+
+                function Test-ExpectedTunnelProcess($State) {
+                    if (-not $State -or -not $State.Process -or $State.Process.ExecutablePath -ine $ExpectedTunnelClient) { return $false }
+                    $commandLine = [string]$State.Process.CommandLine
+                    $quotedPrefix = '"' + $ExpectedTunnelClient + '" '
+                    $plainPrefix = $ExpectedTunnelClient + ' '
+                    if ($commandLine.StartsWith($quotedPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+                        $actualArguments = $commandLine.Substring($quotedPrefix.Length)
+                    } elseif ($commandLine.StartsWith($plainPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+                        $actualArguments = $commandLine.Substring($plainPrefix.Length)
+                    } else {
+                        return $false
+                    }
+                    return ($actualArguments -ceq $ExpectedTunnelArguments)
+                }
+
+                function Start-ConfiguredTunnelClient {
+                    for ($launchAttempt = 1; $launchAttempt -le 2; $launchAttempt++) {
+                        Start-Hidden 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $TunnelRunScript, '-Action', 'Run') $Root 'tunnel'
+                        $startDeadline = (Get-Date).AddSeconds(30)
+                        while ((Get-Date) -lt $startDeadline) {
+                            $newState = Get-TunnelListenerState
+                            if ($newState) {
+                                if (Test-ExpectedTunnelProcess $newState) {
+                                    $keyUpdatedAfterStart = ([datetime]$newState.Process.CreationDate) -lt (Get-Item $TunnelKey).LastWriteTime
+                                    if ($keyUpdatedAfterStart) {
+                                        Log 'tunnel-client: matching process started before current key file; leaving it untouched for next reconciliation'
+                                    } else {
+                                        Log ('tunnel-client: local listener verified for configured id ' + $ConfiguredTunnelId + '; control-plane registration is not verified')
+                                    }
+                                } else {
+                                    Log 'tunnel-client: port 21090 opened by a process that does not match the configured client; leaving it untouched'
+                                }
+                                return
+                            }
+                            Start-Sleep -Seconds 1
+                        }
+                        if (Test-Port 21090) { break }
+                        if ($launchAttempt -lt 2) {
+                            Log ('tunnel-client: listener did not appear; one bounded launch retry; attempt=' + ($launchAttempt + 1))
+                            Start-Sleep -Seconds 1
+                        }
+                    }
+                    if (Test-Port 21090) {
+                        Log 'tunnel-client: port is open but managed process identity could not be verified'
+                    } else {
+                        Log 'tunnel-client: local listener did not become ready after bounded startup attempts'
+                    }
+                }
+
+                $state = $null
+                $inspectDeadline = (Get-Date).AddSeconds(5)
+                while ((Get-Date) -lt $inspectDeadline) {
+                    $state = Get-TunnelListenerState
+                    if ($state -or -not (Test-Port 21090)) { break }
+                    Start-Sleep -Seconds 1
+                }
+
+                if (-not $state) {
+                    Start-ConfiguredTunnelClient
+                } elseif (-not (Test-ExpectedTunnelProcess $state)) {
+                    $ownerPid = if ($state.Process) { $state.Process.ProcessId } else { $state.Listener.OwningProcess }
+                    Log ('tunnel-client: port 21090 is owned by an unmanaged or unverified process; leaving it untouched; pid=' + $ownerPid)
+                } else {
+                    $keyUpdatedAfterStart = ([datetime]$state.Process.CreationDate) -lt (Get-Item $TunnelKey).LastWriteTime
+                    if (-not $keyUpdatedAfterStart) {
+                        Log ('tunnel-client: local listener verified for configured id ' + $ConfiguredTunnelId + '; control-plane registration is not verified')
+                    } else {
+                        $currentState = Get-TunnelListenerState
+                        if ($currentState -and $currentState.Listener.OwningProcess -eq $state.Process.ProcessId -and
+                            (Test-ExpectedTunnelProcess $currentState) -and
+                            $currentState.Process.CreationDate -eq $state.Process.CreationDate) {
+                            Log ('tunnel-client: replacing managed process because its key predates the current key file; pid=' + $currentState.Process.ProcessId)
+                            Stop-Process -Id $currentState.Process.ProcessId -ErrorAction Stop
+                            $stopDeadline = (Get-Date).AddSeconds(15)
+                            while ((Test-Port 21090) -and (Get-Date) -lt $stopDeadline) { Start-Sleep -Seconds 1 }
+                            if (Test-Port 21090) {
+                                Log 'tunnel-client: managed process stopped but port 21090 remains occupied; replacement skipped'
+                            } else {
+                                Start-ConfiguredTunnelClient
+                            }
+                        } else {
+                            Log 'tunnel-client: listener changed before replacement; leaving current owner untouched'
+                        }
+                    }
+                }
+            }
+        } catch {
+            Log ('tunnel-client: reconciliation failed: ' + $_.Exception.Message)
+        }
+    } else {
+        Log 'tunnel-client: runtime id or DPAPI key file missing; startup skipped'
     }
     Log ('summary: ' + ((($ports.Keys | ForEach-Object { $_ + '=' + (Test-Port $ports[$_]) })) -join ' '))
 }

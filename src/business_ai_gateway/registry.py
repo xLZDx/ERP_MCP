@@ -29,9 +29,12 @@ from .fixture_profiles import (
     SYNTHETIC_AUDIT_CODE,
     SYNTHETIC_PROFILE_KIND,
     SYNTHETIC_SOURCE_TAG,
+    TEST_LANE_AUDIT_CODE,
+    TEST_LANE_PROFILE_KIND,
     ProvisionalProfiles,
     SyntheticFixtureProfiles,
     SyntheticFixtureUnavailable,
+    UnreconciledTestLaneProfiles,
 )
 from .models import Company, Source, company_from_record, source_from_record
 from .principal import Principal
@@ -77,6 +80,8 @@ class Registry:
         synthetic_profiles: SyntheticFixtureProfiles | None = None,
         machine_reconciled_sources: tuple[str, ...] = (),
         provisional_profiles: ProvisionalProfiles | None = None,
+        test_lane_profiles: UnreconciledTestLaneProfiles | None = None,
+        test_lane_sources: tuple[str, ...] = (),
     ):
         if production and synthetic_profiles is not None:
             raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")
@@ -84,10 +89,14 @@ class Registry:
             raise ValueError("MACHINE_RECONCILED_SOURCES_FORBIDDEN_IN_PRODUCTION")
         if production and provisional_profiles is not None:
             raise ValueError("PROVISIONAL_PROFILES_FORBIDDEN_IN_PRODUCTION")
+        if production and (test_lane_profiles is not None or test_lane_sources):
+            raise ValueError("TEST_LANE_PROFILES_FORBIDDEN_IN_PRODUCTION")
         self.machine_reconciled_sources = frozenset(machine_reconciled_sources)
         self.provisional_profiles = provisional_profiles
         self.synthetic_profiles = synthetic_profiles
         self.provisional_profiles = provisional_profiles
+        self.test_lane_profiles = test_lane_profiles
+        self.test_lane_sources = frozenset(test_lane_sources)
         self.db = db
         self.production = production
         self.allowed_source_hosts = allowed_source_hosts
@@ -517,7 +526,9 @@ class Registry:
             )
 
     async def _fallback_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
-        """No VALIDATED DB row: consult the test-only synthetic provider, then the provisional one."""
+        """No VALIDATED DB row: prefer an explicitly enabled lane, then other pinned profiles."""
+        if source_id in self.test_lane_sources:
+            return await self._test_lane_mapping(source_id, company_id, concept)
         try:
             return await self._synthetic_mapping(source_id, company_id, concept)
         except SemanticProfileUnavailable as refusal:
@@ -533,6 +544,13 @@ class Registry:
             except SemanticProfileUnavailable:
                 raise refusal from None
 
+    async def _test_lane_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
+        """Use L1 mappings only for a source explicitly allow-listed in the test environment."""
+        return await self._pinned_mapping(
+            self.test_lane_profiles, None, TEST_LANE_PROFILE_KIND,
+            TEST_LANE_AUDIT_CODE, source_id, company_id, concept,
+        )
+
     async def _synthetic_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
         """Test-only reviewed fixture profile; consulted only when no VALIDATED DB row exists."""
         return await self._pinned_mapping(
@@ -541,7 +559,7 @@ class Registry:
         )
 
     async def _pinned_mapping(
-        self, provider, source_tag: str, profile_kind: str, audit_code: str,
+        self, provider, source_tag: str | None, profile_kind: str, audit_code: str,
         source_id: str, company_id: UUID, concept: str,
     ) -> dict:
         """Shared pinned-provider lookup; a DB profile of any live status always shadows it."""
@@ -558,7 +576,9 @@ class Registry:
             """,
             source_id,
         )
-        if row is None or not row["enabled"] or source_tag not in (row["tags"] or []):
+        if row is None or not row["enabled"] or (
+            source_tag is not None and source_tag not in (row["tags"] or [])
+        ):
             raise SemanticProfileUnavailable(unavailable)
         # Any live (non-retired) DB profile for this scope/concept means the DB is authoritative:
         # a stale/invalid/unvalidated row must never silently fall through to a fixture.

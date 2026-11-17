@@ -1,0 +1,2693 @@
+{
+  "candidate": "b1e260583b24b90288ac67f65d2f0040c27129cf",
+  "commits": [
+    {
+      "commit": "015e9fc0967d3a98466e9e03033b4500181f1c1c",
+      "subject": "feat(fin): expose scoped in-flight change status",
+      "paths": [
+        "db/phase2/030_s13_inflight_status_reads.sql",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+        "tests/phase2/test_s13_inflight_status.py"
+      ],
+      "source_paths": [
+        "db/phase2/030_s13_inflight_status_reads.sql",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "01ae922caf12332492e42f1f506d8ade45bc26a3",
+      "subject": "Fix inherited lint in the English policy scanner checks",
+      "paths": [
+        "scripts/check_english_policy.py",
+        "tests/test_english_policy_scanner.py"
+      ],
+      "source_paths": [
+        "scripts/check_english_policy.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "04ec959072d95bfa03c104cb8839f300198937d5",
+      "subject": "snapshot: full non-ignored content of D:\\Repo\\Trash\\ERP_MCP-chatgpt saved on 2026-10-20 (worktree admin entry missing)",
+      "paths": [],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "0509dca4af0bdb047e4de127b0bd8924e7dfe21d",
+      "subject": "feat(phase2): model S12-03 TEST-lane approvals",
+      "paths": [
+        "src/business_ai_gateway/phase2/simulation/principal_registry.py",
+        "tests/phase2/test_s12_03_principal_registry_offline.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/simulation/principal_registry.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "061e921a595a9df7fc648dc9db5e19842a65ff8d",
+      "subject": "S12: record approved bounded contract baseline",
+      "paths": [
+        "docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "06b6895c162aececba26bdb210b94deac75db794",
+      "subject": "test(S13-03): add synthetic key-authorization window coverage",
+      "paths": [
+        "tests/phase2/test_s13_lifecycle_preflight.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "06cedd9aaea0aaa215837ed6f10b93f5fc49c0aa",
+      "subject": "docs(S11): record reconciliation delivery",
+      "paths": [
+        "docs/phase2/S11_EXIT_DECISION_2026-11-09.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "07dddbc792a62ad8b2e26a8fc2ef5020e226c588",
+      "subject": "security(phase2): redact adapter exceptions from job results",
+      "paths": [
+        "docs/phase2/SCHEDULER_ERROR_REDACTION_REVIEW_2026-10-09.md",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "tests/phase2/test_scheduler.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/scheduler.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "07edc1945c7c5190ced93ad79c7235f9ce7b3a7e",
+      "subject": "S13-03: add dev-only signed anchor service",
+      "paths": [
+        "docs/phase2/S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md",
+        "src/business_ai_gateway/phase2/change_ledger/anchor_client.py",
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/__init__.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/__main__.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/runtime.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/service.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py",
+        "src/erp_mcp_private_writer/dpapi_signer.py",
+        "tests/phase2/test_s13_checkpoint_suffix_e2e.py",
+        "tests/phase2/test_s13_dev_anchor_service.py",
+        "tests/phase2/test_s13_dev_anchor_service_e2e.py",
+        "tests/phase2/test_s13_lifecycle_preflight.py",
+        "tests/phase2/test_s13_lifecycle_preflight_e2e.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change_ledger/anchor_client.py",
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/__init__.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/__main__.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/runtime.py",
+        "src/business_ai_gateway/phase2/change_ledger/dev_anchor_service/service.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py",
+        "src/erp_mcp_private_writer/dpapi_signer.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "0a55936a6e3625fe78a0ddc073336694a04630e9",
+      "subject": "S10 R2-US-048: parse test evidence worktree status safely",
+      "paths": [
+        "tests/phase2/conftest.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "0b4c3955e9366ca0e3d591b55e7e9a0143a45c24",
+      "subject": "Fix inherited lint in PostgreSQL and synthetic test harnesses",
+      "paths": [
+        "tests/phase2/r03_application_e2e.py",
+        "tests/phase2/test_g1_crash.py",
+        "tests/phase2/test_r03_migration019.py",
+        "tests/phase2/test_synthetic_dispatch.py",
+        "tests/test_registry_postgres_integration.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "0cc704c4b12ec984d0917a51f33687dd3efb7967",
+      "subject": "docs: update tunnel key rotation instructions",
+      "paths": [
+        "docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "0de9a2e4e6f815e8db9bdc3dbe8336a8dc35da54",
+      "subject": "test(phase2): verify secret failure stays live and redact logs",
+      "paths": [
+        "tests/e2e/admin/test_a16_a26_sources_companies.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "0e414d763d326fb2ea83dfa6bf5048a48779875d",
+      "subject": "fix(phase2): bound scheduler numeric configuration and preserve drift review",
+      "paths": [
+        "docs/phase2/COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md",
+        "docs/phase2/SCHEDULER_DRIFT_CLIENT_SAFETY_REVIEW_2026-10-09.md",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "tests/phase2/test_scheduler.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/scheduler.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "0e4bb017ce26cc187b16cb6caf5293712fc137b5",
+      "subject": "Fix audit intent capacity race",
+      "paths": [
+        "src/business_ai_gateway/phase2/audit_gate.py",
+        "tests/phase2/test_audit_gate.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/audit_gate.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "0f1ae7d476797830d99b89b96862119222f78f9e",
+      "subject": "Phase 2: G3 engineering reconciliation evidence index and token re-issue note",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "101e8f69b40eb072a1d68cd440f5afd3008ee9de",
+      "subject": "Prove scoped budget-revoke race safety",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "1083e7ed44400c4a42d3fdd6605fe2ef7448342d",
+      "subject": "Exercise synthetic T16 evidence resolver boundary",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_t16_evidence_verifier_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "1092bc1dcb489034ea4d870890c2e33f8a7fcfc0",
+      "subject": "Record S10 exact-head evidence checkpoint",
+      "paths": [
+        "docs/phase2/S10_RELEASE_HANDOFF.md",
+        "docs/phase2/SPRINT_S10_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "docs/sdlc/verify-evidence.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "11304e2e4eb6dfad18bf753cd2e05a22c102cd5e",
+      "subject": "docs(report): record bounded S4 US013 acceptance [skip ci]",
+      "paths": [
+        "docs/phase2/TASK_LEDGER.md",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.en.html",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "11c15be62a105af5853a557dfe9f60ac291ed357",
+      "subject": "[S5] Enforce the Windows parser memory bound [skip ci]",
+      "paths": [
+        "src/business_ai_gateway/phase2/safe_parser.py",
+        "tests/phase2/test_safe_parser.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/safe_parser.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "120e147e86926557b550a2b19b54187fdd1f941c",
+      "subject": "Clarify test fixture literals and pin the approval migration chain",
+      "paths": [
+        "tests/phase2/_change_helpers.py",
+        "tests/phase2/test_change_approval_digest2.py",
+        "tests/phase2/test_change_hardening_b_sql.py",
+        "tests/phase2/test_change_ledger_dump_restore.py",
+        "tests/phase2/test_change_sweeps_sql.py",
+        "tests/phase2/test_ed25519_offline.py",
+        "tests/phase2/test_ed25519_sql.py",
+        "tests/phase2/test_wp5_json_decoder_contracts.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "1294b42a280f429d329acf523f0d4d6f1858e50b",
+      "subject": "Load the real-1C reader pair at gateway launch and record the ChatGPT connection repair",
+      "paths": [
+        "ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
+        "core/DECISION_LOG.md",
+        "docs/CHATGPT_PLUGIN_USER_GUIDE_RU.md",
+        "docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
+        "reports/CHATGPT_READER_BOOTSTRAP_REPAIR_2026-10-07.md",
+        "reports/CURRENT_ENGINEERING_CHECKPOINT.json",
+        "reports/DOD_STATUS.md",
+        "reports/EXECUTION_LOG.md",
+        "reports/IMPLEMENTATION_STATUS.md",
+        "reports/RISK_STATUS.md",
+        "scripts/e2e/_common.ps1",
+        "scripts/e2e/fault.ps1",
+        "scripts/e2e/reset.ps1",
+        "scripts/real1c/qa_reader_environment/pytest.ini",
+        "scripts/real1c/qa_reader_environment/test_gateway_launch_integration.py",
+        "scripts/real1c/qa_reader_environment/test_reader_environment.py",
+        "scripts/real1c/reader_environment.ps1"
+      ],
+      "source_paths": [
+        "scripts/e2e/_common.ps1",
+        "scripts/e2e/fault.ps1",
+        "scripts/e2e/reset.ps1",
+        "scripts/real1c/qa_reader_environment/pytest.ini",
+        "scripts/real1c/qa_reader_environment/test_gateway_launch_integration.py",
+        "scripts/real1c/qa_reader_environment/test_reader_environment.py",
+        "scripts/real1c/reader_environment.ps1"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "13fac1fad9cf2ddcb50623cabf675be3f9e519bd",
+      "subject": "fix: reconcile tunnel identity during stack autostart",
+      "paths": [
+        "scripts/remote/run-mcp-stack.ps1",
+        "tests/powershell/test_run_mcp_stack_tunnel.ps1"
+      ],
+      "source_paths": [
+        "scripts/remote/run-mcp-stack.ps1"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "159f0372c8f390dfa08c24928de6304b09ded8dc",
+      "subject": "S10 R2-US-048: record exact-head JUnit evidence",
+      "paths": [
+        "reports/evidence/s10/R2-US-048-manifest-input-490d763.json",
+        "reports/evidence/s10/test-runs/R2-US-048-e2e-capture.xml",
+        "reports/evidence/s10/test-runs/R2-US-048-e2e-manifest-cli.xml",
+        "reports/evidence/s10/test-runs/R2-US-048-functional-capture.xml",
+        "reports/evidence/s10/test-runs/R2-US-048-functional-manifest.xml"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "182f788debbeb04b2b6b1be8651a89bc2b8cf3c3",
+      "subject": "docs: correct runtime key and readiness findings",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "1aa2ec5cc3ac248b49ff73f631c25d9a4f458e55",
+      "subject": "Preserve naive-date tests and pin the migration 023 fixture",
+      "paths": [
+        "tests/phase2/test_alert_rules.py",
+        "tests/phase2/test_ap_account_strategy.py",
+        "tests/phase2/test_artifact_vault.py",
+        "tests/phase2/test_audit_gate.py",
+        "tests/phase2/test_capacity_model.py",
+        "tests/phase2/test_capture_permit.py",
+        "tests/phase2/test_change_offline.py",
+        "tests/phase2/test_comparison_snapshot.py",
+        "tests/phase2/test_delivery_replay.py",
+        "tests/phase2/test_dpapi_signer_provisioning.py",
+        "tests/phase2/test_drive_oauth.py",
+        "tests/phase2/test_drive_port_fake.py",
+        "tests/phase2/test_evidence_attestation.py",
+        "tests/phase2/test_export_safety.py",
+        "tests/phase2/test_jobs_api.py",
+        "tests/phase2/test_jobs_api_bypass.py",
+        "tests/phase2/test_ops_types.py",
+        "tests/phase2/test_posted_receipts.py",
+        "tests/phase2/test_release_rollback.py",
+        "tests/phase2/test_restore_verify.py",
+        "tests/phase2/test_retention_hold.py",
+        "tests/phase2/test_s11_sql_code_parity.py",
+        "tests/phase2/test_s13_migration022.py",
+        "tests/phase2/test_s13_migration023.py",
+        "tests/phase2/test_scheduler.py",
+        "tests/phase2/test_timeline_view.py",
+        "tests/phase2/test_workbench_review.py",
+        "tests/real1c/test_native_engine_reports.py",
+        "tests/test_com_bridge_client.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "2082ce420f9b5cdf85e85b512db7775e50e53cf7",
+      "subject": "Keep the S0 evidence bundle reproducible and fix scoped lint",
+      "paths": [
+        "docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/MANIFEST.sha256",
+        "scripts/phase2/build_spec_bundle.py",
+        "scripts/render_full_program_status.py",
+        "tests/phase2/r2_tc001_stdio_server.py",
+        "tests/phase2/run_tc001_r1_preservation.py",
+        "tests/phase2/test_r2_tc001_product_acceptance.py",
+        "tests/phase2/test_spec_catalog.py"
+      ],
+      "source_paths": [
+        "scripts/phase2/build_spec_bundle.py",
+        "scripts/render_full_program_status.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "2236f06087631a4f0b70fcc404b579783123c91f",
+      "subject": "fix(S8): bind timeline feeds to owned sources",
+      "paths": [
+        "src/business_ai_gateway/phase2/timeline_view.py",
+        "tests/phase2/test_timeline_view.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/timeline_view.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "22647667e25fdd39ce26f48641c490eba1074f2b",
+      "subject": "Strengthen S0 TC002 register integrity guard",
+      "paths": [
+        "tests/phase2/test_spec_bundle_mapping.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "246785ce2700251c4d9148e0e0c03b319eae70a2",
+      "subject": "Qualify the signed evidence legacy bridge in disposable PostgreSQL",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_record_evidence_legacy_bridge_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "2629aa2a20f6e40641a5ece7de42a1587a2748a1",
+      "subject": "S12-07: add provenance-bound CT14 E47 qualification record",
+      "paths": [
+        "docs/phase2/artifacts/CT14_QUALIFICATION_RECORD_V1.json",
+        "src/business_ai_gateway/phase2/change/ct14_qualification.py",
+        "tests/phase2/test_s12_07_ct14_e47.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/ct14_qualification.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "2755defb6180f0f7fc9c6c2323a2baf336d58532",
+      "subject": "S10: bind R2-US-048 evidence to accepted exact head",
+      "paths": [
+        "reports/S10_RELEASE_EVIDENCE_MANIFEST.json",
+        "reports/evidence/s10/test-runs/R2-US-048-e2e-cleanrun-37157e4.xml",
+        "reports/evidence/s10/test-runs/R2-US-048-functional-clean-37157e4.xml"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "27d1cbff78ca55b5a63ed707e6d256541d968a7c",
+      "subject": "index on e2e/admin-flows: 38501ec Add Admin E2E rows A34-A37 (platform roles, step-up)",
+      "paths": [],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "2964d64f7d8b85018b3f71076035f1725fc007c1",
+      "subject": "S10 R2-US-048: reject symlinked manifest destination",
+      "paths": [
+        "scripts/assemble_s10_release_manifest.py",
+        "src/business_ai_gateway/phase2/release_manifest.py",
+        "tests/phase2/test_s10_release_manifest.py",
+        "tests/phase2/test_s10_release_manifest_cli_e2e.py"
+      ],
+      "source_paths": [
+        "scripts/assemble_s10_release_manifest.py",
+        "src/business_ai_gateway/phase2/release_manifest.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "2c2798e2c0b967d9dc9bacab79a6c2bbf1494059",
+      "subject": "Add exact-head R2 TC001 compatibility harness",
+      "paths": [
+        "src/business_ai_gateway/server.py",
+        "src/business_ai_gateway/tool_errors.py",
+        "tests/phase2/r2_tc001_fixture.json",
+        "tests/phase2/r2_tc001_oracle.py",
+        "tests/phase2/r2_tc001_stdio_server.py",
+        "tests/phase2/run_r2_tc001.py",
+        "tests/phase2/test_r2_tc001_product_acceptance.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/server.py",
+        "src/business_ai_gateway/tool_errors.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "2c731147deb541afde8cb62ba9c9a022495d99ac",
+      "subject": "S3: prepare PR without CI [skip ci]",
+      "paths": [],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "2d12b95c0cd79fb832e36a6d5cc51701527b71d3",
+      "subject": "docs(s4): record merged sprint closeout [skip ci]",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.en.html",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "2f606c2f2c773331c11db58de4121c411a90ad35",
+      "subject": "Record bounded TC003 deployment-evidence acceptance",
+      "paths": [
+        "artifacts/phase2/r2-tc003-deployment-identity-evidence.json",
+        "artifacts/phase2/r2-tc003-gpt-pm-adjudication.json",
+        "docs/phase2/TC003_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/MANIFEST.sha256",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/13_TC003_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-tc003-deployment-identity-evidence.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-tc003-gpt-pm-adjudication.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/test_cases.yaml",
+        "scripts/phase2/build_spec_bundle.py",
+        "tests/phase2/test_spec_catalog.py"
+      ],
+      "source_paths": [
+        "scripts/phase2/build_spec_bundle.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "309b4d296f40af81d5f2c6a863f870ae9bded40a",
+      "subject": "test(S13-03): verify synthetic checkpoint keys and restore anchors",
+      "paths": [
+        "tests/phase2/test_s13_checkpoint_suffix_e2e.py",
+        "tests/phase2/test_s13_lifecycle_preflight.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "31afbc5c1ea205cc9d088e8c6ecb030e0c253f23",
+      "subject": "Sort Phase 2 exports and slot declarations",
+      "paths": [
+        "src/business_ai_gateway/phase2/change/__init__.py",
+        "src/business_ai_gateway/phase2/change/evidence.py",
+        "src/business_ai_gateway/phase2/change/policy.py",
+        "src/business_ai_gateway/phase2/change/proposal.py",
+        "src/business_ai_gateway/phase2/change/trust_registry.py",
+        "src/business_ai_gateway/phase2/change/types.py",
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+        "src/business_ai_gateway/phase2/simulation/clone_1c.py",
+        "src/business_ai_gateway/phase2/simulation/governed_write_v2.py",
+        "src/business_ai_gateway/phase2/simulation/simulated_write_port.py",
+        "src/erp_mcp_s16/__init__.py",
+        "src/erp_mcp_s16/approval_page.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/__init__.py",
+        "src/business_ai_gateway/phase2/change/evidence.py",
+        "src/business_ai_gateway/phase2/change/policy.py",
+        "src/business_ai_gateway/phase2/change/proposal.py",
+        "src/business_ai_gateway/phase2/change/trust_registry.py",
+        "src/business_ai_gateway/phase2/change/types.py",
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+        "src/business_ai_gateway/phase2/simulation/clone_1c.py",
+        "src/business_ai_gateway/phase2/simulation/governed_write_v2.py",
+        "src/business_ai_gateway/phase2/simulation/simulated_write_port.py",
+        "src/erp_mcp_s16/__init__.py",
+        "src/erp_mcp_s16/approval_page.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "3225af765887bb5d6d9235b073c2cd67303df4bd",
+      "subject": "feat(real1c): read-only reference lane runner, probes, story evaluator, per-test documentation and offline tests for the 818HA clone",
+      "paths": [
+        ".gitattributes",
+        ".gitignore",
+        "core/DECISION_LOG.md",
+        "scripts/real1c/__init__.py",
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/disposition.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/evidence.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_proxy.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/manifest.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/report.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py",
+        "tests/real1c/__init__.py",
+        "tests/real1c/test_catalog.py",
+        "tests/real1c/test_details_report.py",
+        "tests/real1c/test_disposition.py",
+        "tests/real1c/test_evidence_guard.py",
+        "tests/real1c/test_manifest_schema_sanitize.py",
+        "tests/real1c/test_oracle_guard.py",
+        "tests/real1c/test_public_sanitizer.py",
+        "tests/real1c/test_report.py",
+        "tests/real1c/test_run_lane.py",
+        "tests/real1c/test_stories.py"
+      ],
+      "source_paths": [
+        "scripts/real1c/__init__.py",
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/disposition.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/evidence.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_proxy.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/manifest.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/report.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "33fc453246356d24c7e7dc6336aecf41a2e98def",
+      "subject": "snapshot: uncommitted work saved on 2026-10-20 (temporary-index commit, working tree untouched)",
+      "paths": [
+        "MCP-RSV-Data.zip"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "3410869017a860caedab09904e80211e708af873",
+      "subject": "S3: deliver bounded R2-US-007/008/009/012/019/020 changes. Product scenarios remain NOT_RUN.",
+      "paths": [
+        "src/business_ai_gateway/phase2/backend_budget.py",
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/drift.py",
+        "src/business_ai_gateway/phase2/onec_composition.py",
+        "src/business_ai_gateway/phase2/onec_discovery.py",
+        "src/business_ai_gateway/phase2/resnapshot.py",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "tests/phase2/test_backend_budget.py",
+        "tests/phase2/test_capture_loop.py",
+        "tests/phase2/test_drift.py",
+        "tests/phase2/test_onec_composition.py",
+        "tests/phase2/test_scheduler.py",
+        "tests/phase2/test_scheduler_fairness.py",
+        "tests/phase2/test_scheduler_resume.py",
+        "tests/phase2/test_structural_diff.py",
+        "tests/phase2/test_structural_hash.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/backend_budget.py",
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/drift.py",
+        "src/business_ai_gateway/phase2/onec_composition.py",
+        "src/business_ai_gateway/phase2/onec_discovery.py",
+        "src/business_ai_gateway/phase2/resnapshot.py",
+        "src/business_ai_gateway/phase2/scheduler.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "37157e41b0d9d21abb1b0d77fda640dabd0aa34c",
+      "subject": "Fix S10 capture scope and shutdown ownership",
+      "paths": [
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/capture_runtime.py",
+        "tests/phase2/test_capture_loop.py",
+        "tests/phase2/test_capture_runtime.py",
+        "tests/phase2/test_capture_runtime_e2e.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/capture_runtime.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "3742eb7aa1fef633d1940fcd7b6734d2137d9dbb",
+      "subject": "feat(real1c): per-test request/answer/rationale documentation and detailed ru/en HTML report; tolerate malformed owner rule codes",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/run_lane.py",
+        "tests/real1c/test_details_report.py",
+        "tests/real1c/test_oracle_guard.py",
+        "tests/real1c/test_run_lane.py"
+      ],
+      "source_paths": [
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/run_lane.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "38cf6743cc00eb18cc312b431f6e2e0c99f463c3",
+      "subject": "Close S11 evidence pointer reconciliation",
+      "paths": [
+        "docs/phase2/S11_ACCEPTANCE_CORRELATION_ADDENDUM_2026-11-09.md",
+        "docs/phase2/S11_ACCEPTANCE_CORRELATION_DIFF_2026-11-09.patch",
+        "docs/phase2/S11_EXIT_DECISION_2026-11-09.md",
+        "docs/phase2/S11_EXIT_PACKAGE_2026-10-12.md",
+        "governance/GATE_MANIFEST.json"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "3928177988f4ca8d2f26408d5f29663ec90ede64",
+      "subject": "fix: start stack after tunnel secret provisioning",
+      "paths": [
+        "scripts/remote/set-tunnel-secret.ps1",
+        "tests/powershell/test_set_tunnel_secret_autostart.ps1"
+      ],
+      "source_paths": [
+        "scripts/remote/set-tunnel-secret.ps1"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "3ab770e1756e0e4795220f3180be15803641e101",
+      "subject": "S9: fail closed on migration checksum conflicts.",
+      "paths": [
+        "src/business_ai_gateway/phase2/ops_types.py",
+        "src/business_ai_gateway/phase2/release_migration.py",
+        "tests/phase2/test_ops_types.py",
+        "tests/phase2/test_release_migration.py",
+        "tests/phase2/test_s9_scenarios.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/ops_types.py",
+        "src/business_ai_gateway/phase2/release_migration.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "3b2bd0acb5a061f798c288b7671c9639f89e1269",
+      "subject": "docs: record bounded S0 closure",
+      "paths": [
+        "PROJECT_PLAN.md",
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "3bc8be5ab40a60df955d3341d63b128a81d5dfa5",
+      "subject": "docs(S13-03): record key registry boundary",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "3cfd9bac2889fc2aa39f67a100d9343e000b7a38",
+      "subject": "security(phase2): converge S1-S4 fixes and eliminate exception metadata leaks",
+      "paths": [
+        "docs/phase2/CONVERGENCE_SECURITY_REVIEW_2026-10-09.md",
+        "src/business_ai_gateway/phase2/drift.py",
+        "src/business_ai_gateway/phase2/promotion.py",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "tests/phase2/test_drift.py",
+        "tests/phase2/test_promotion.py",
+        "tests/phase2/test_scheduler.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/drift.py",
+        "src/business_ai_gateway/phase2/promotion.py",
+        "src/business_ai_gateway/phase2/scheduler.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "3eb7691fa2373606836711429651cd73f19c6c13",
+      "subject": "Record S12-02 bounded approval",
+      "paths": [
+        "docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "3f318c9bf35f7719bf5f6c12dcecf63bfc1b2afd",
+      "subject": "Bind S13 dispatch permits to lifecycle epoch.",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "db/phase2/027_private_writer_admission_schema.sql",
+        "docs/phase2/CHANGE_RECORD_400.md",
+        "tests/phase2/test_s13_completion_outcome_e2e.py"
+      ],
+      "source_paths": [
+        "db/phase2/027_private_writer_admission_schema.sql"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "3f438b57bddda5f74db49d300b20b0b6e20b0ded",
+      "subject": "docs(phase2): close bounded S6 attestation task",
+      "paths": [
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "3f6f2e60c62bd28dff562f57996d3987683245d9",
+      "subject": "Use equivalent standard library aliases in Phase 2",
+      "paths": [
+        "src/business_ai_gateway/phase2/change/proposal.py",
+        "src/business_ai_gateway/phase2/change/trust_registry.py",
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/write_port.py",
+        "src/business_ai_gateway/phase2/simulation/clone_1c.py",
+        "src/business_ai_gateway/phase2/simulation/governed_write_v2.py",
+        "src/business_ai_gateway/phase2/simulation/simulated_write_port.py",
+        "src/business_ai_gateway/phase2/simulation/synthetic_data.py",
+        "src/erp_mcp_s16/approval_page.py",
+        "src/erp_mcp_s16/contracts.py",
+        "src/erp_mcp_s16/fakes.py",
+        "src/erp_mcp_s16/ingress.py",
+        "src/erp_mcp_s16/services.py",
+        "src/erp_mcp_s16/tools.py",
+        "tests/phase2/test_s13_checkpoint_runtime_authority.py",
+        "tests/phase2/test_s14_simulated_write_port.py",
+        "tests/phase2/test_s14_simulated_write_port_protocol_e2e.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/proposal.py",
+        "src/business_ai_gateway/phase2/change/trust_registry.py",
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/write_port.py",
+        "src/business_ai_gateway/phase2/simulation/clone_1c.py",
+        "src/business_ai_gateway/phase2/simulation/governed_write_v2.py",
+        "src/business_ai_gateway/phase2/simulation/simulated_write_port.py",
+        "src/business_ai_gateway/phase2/simulation/synthetic_data.py",
+        "src/erp_mcp_s16/approval_page.py",
+        "src/erp_mcp_s16/contracts.py",
+        "src/erp_mcp_s16/fakes.py",
+        "src/erp_mcp_s16/ingress.py",
+        "src/erp_mcp_s16/services.py",
+        "src/erp_mcp_s16/tools.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "414aeac28c3e5af0767598d29233d1569e1b7060",
+      "subject": "Reconcile S8 closeout status",
+      "paths": [
+        "PROJECT_PLAN.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "41cf0f3c88930d59b7bb78a2c900d42e343ea793",
+      "subject": "Align the sidecar audit pin and sort TC001 test imports",
+      "paths": [
+        "scripts/audit_node_runtime.mjs",
+        "tests/phase2/test_tc001_http_documents.py"
+      ],
+      "source_paths": [
+        "scripts/audit_node_runtime.mjs"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "427d2440591fcd8b1ae1f0d9451b3f51d92f1d69",
+      "subject": "Record bounded R2-US-002 acceptance",
+      "paths": [
+        "artifacts/phase2/r2-us-002-bounded-evidence.json",
+        "artifacts/phase2/r2-us-002-gpt-pm-adjudication-initial.json",
+        "artifacts/phase2/r2-us-002-gpt-pm-adjudication.json",
+        "docs/phase2/R2US002_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/MANIFEST.sha256",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/14_R2US002_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-us-002-bounded-evidence.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-us-002-gpt-pm-adjudication-initial.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-us-002-gpt-pm-adjudication.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/test_cases.yaml",
+        "scripts/phase2/build_spec_bundle.py",
+        "tests/phase2/test_spec_catalog.py"
+      ],
+      "source_paths": [
+        "scripts/phase2/build_spec_bundle.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "42da6b59c7caa2582a3b6000ac3f569bf31e4e09",
+      "subject": "feat(fin): add scoped budget snapshot for S1.2 AC-3",
+      "paths": [
+        "db/phase2/029_s12_budget_snapshot.sql",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+        "tests/phase2/test_s12_sql_budget_snapshot.py"
+      ],
+      "source_paths": [
+        "db/phase2/029_s12_budget_snapshot.sql",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "43c0271278f25efef0db7e05d2481f8754607aa2",
+      "subject": "Close bounded S10 engineering evidence",
+      "paths": [
+        "docs/phase2/S10_RELEASE_HANDOFF.md",
+        "docs/phase2/SPRINT_S10_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "docs/sdlc/verify-evidence.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "4445dd2c5d84011bdc6327bc314f599b75843dab",
+      "subject": "Add approved S10 engineering evidence manifest",
+      "paths": [
+        "reports/S10_RELEASE_EVIDENCE_MANIFEST.json"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "44fc5ec99dfde404d8e0544621f98cedaa39427f",
+      "subject": "Switch auto-triggered workflows to manual dispatch (operator rule 4: no CI on push, pull request or schedule).",
+      "paths": [
+        ".github/workflows/ci.yml",
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "47e2e306f9b3218362e9dafc5c2d831cbba963cf",
+      "subject": "Sort Phase 2 test imports without changing test behavior",
+      "paths": [
+        "tests/phase2/_change_helpers.py",
+        "tests/phase2/s13_migration020_e2e.py",
+        "tests/phase2/s16_helpers.py",
+        "tests/phase2/test_change_approval_digest2.py",
+        "tests/phase2/test_change_hardening_b2_sql.py",
+        "tests/phase2/test_change_hardening_b3_sql.py",
+        "tests/phase2/test_change_hardening_b_sql.py",
+        "tests/phase2/test_change_hardening_c_sql.py",
+        "tests/phase2/test_change_hardening_d_sql.py",
+        "tests/phase2/test_change_hardening_e_sql.py",
+        "tests/phase2/test_change_hardening_f_sql.py",
+        "tests/phase2/test_change_hardening_g_sql.py",
+        "tests/phase2/test_change_hardening_h_sql.py",
+        "tests/phase2/test_change_hardening_i_sql.py",
+        "tests/phase2/test_change_ledger_port.py",
+        "tests/phase2/test_change_sweeps_sql.py",
+        "tests/phase2/test_dpapi_signer_provisioning.py",
+        "tests/phase2/test_private_writer_barrier_ack.py",
+        "tests/phase2/test_reference_writer_offline.py",
+        "tests/phase2/test_s11_sql_code_parity.py",
+        "tests/phase2/test_s12_evidence_v2.py",
+        "tests/phase2/test_s12_governed_write_v2_e2e.py",
+        "tests/phase2/test_s12_reconciliation_immutability.py",
+        "tests/phase2/test_s12_reconciliation_immutability_e2e.py",
+        "tests/phase2/test_s13_adapter_claim_release_bridge_e2e.py",
+        "tests/phase2/test_s13_barrier_ack_protocol.py",
+        "tests/phase2/test_s13_barrier_ack_service_e2e.py",
+        "tests/phase2/test_s13_barrier_ack_sql.py",
+        "tests/phase2/test_s13_barrier_ack_verifier.py",
+        "tests/phase2/test_s13_budget_reservation_concurrency.py",
+        "tests/phase2/test_s13_checkpoint_runtime_authority.py",
+        "tests/phase2/test_s13_checkpoint_suffix_e2e.py",
+        "tests/phase2/test_s13_checkpoint_suffix_functional.py",
+        "tests/phase2/test_s13_current_turn_sql.py",
+        "tests/phase2/test_s13_evidence_provider_composition.py",
+        "tests/phase2/test_s13_global_id_contention_e2e.py",
+        "tests/phase2/test_s13_lifecycle_preflight.py",
+        "tests/phase2/test_s13_lifecycle_preflight_e2e.py",
+        "tests/phase2/test_s13_migration020.py",
+        "tests/phase2/test_s13_migration022.py",
+        "tests/phase2/test_s13_migration022_e2e.py",
+        "tests/phase2/test_s13_migration023.py",
+        "tests/phase2/test_s13_migration023_e2e.py",
+        "tests/phase2/test_s13_release_claim_fence.py",
+        "tests/phase2/test_s13_universal_fence_matrix.py",
+        "tests/phase2/test_s14_simulated_write_port.py",
+        "tests/phase2/test_s14_simulated_write_port_protocol_e2e.py",
+        "tests/phase2/test_s14_vat_amount_contract.py",
+        "tests/phase2/test_s14_wire_receipt_sql.py",
+        "tests/phase2/test_s16_approval_core.py",
+        "tests/phase2/test_simulation_e2e_sql.py",
+        "tests/phase2/test_simulation_identity_offline.py",
+        "tests/phase2/test_simulation_offline.py",
+        "tests/phase2/test_simulation_scenarios_offline.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "490cfb744f8322d87107e361455e84618d78b7d0",
+      "subject": "Record bounded TC001 acceptance with immutable evidence",
+      "paths": [
+        ".gitattributes",
+        "artifacts/phase2/r2-tc001-5336867-evidence.json",
+        "docs/phase2/TC001_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip",
+        "docs/phase2/spec-v0.1/.gitattributes",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/MANIFEST.sha256",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/README.md",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/11_TC001_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-tc001-5336867-evidence.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/test_cases.yaml",
+        "scripts/phase2/build_spec_bundle.py",
+        "tests/phase2/test_spec_catalog.py"
+      ],
+      "source_paths": [
+        "scripts/phase2/build_spec_bundle.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "490d7638ea6ec84ccf856312237161fbfa94f584",
+      "subject": "S10 R2-US-048: parse candidate status without ambiguity",
+      "paths": [
+        "src/business_ai_gateway/phase2/release_manifest.py",
+        "tests/phase2/test_s10_release_manifest.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/release_manifest.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "4b59d3de4e6d73359fc8ea2ef2588ef6d442cc17",
+      "subject": "S12-06: adapt offline crash-window checks to S12",
+      "paths": [
+        "src/business_ai_gateway/phase2/change/proposal.py",
+        "src/business_ai_gateway/phase2/simulation/synthetic_data.py",
+        "tests/phase2/_change_helpers.py",
+        "tests/phase2/test_s12_crash_windows.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/proposal.py",
+        "src/business_ai_gateway/phase2/simulation/synthetic_data.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "4bf347e0be47e64e91bf4214aa8728d95742e21c",
+      "subject": "Record bounded S8 and S9 closeout evidence",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/SPRINT_S8_PLAN.md",
+        "docs/phase2/SPRINT_S9_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "docs/sdlc/verify-evidence.md",
+        "tests/phase2/test_restore_verify.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "5336867aab8070139e61fb39b6b4ba73a9ac59b0",
+      "subject": "fix(S0): restore pinned R1 tool schemas",
+      "paths": [
+        "src/business_ai_gateway/server.py",
+        "tests/test_chatgpt_mcp_contract.py",
+        "tests/test_server_audit.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "53fa0515c0ea0d8b3275d03bf82502a81d6c1e02",
+      "subject": "S12-01: enforce frozen proposal scope",
+      "paths": [
+        "src/business_ai_gateway/phase2/change/proposal.py",
+        "tests/phase2/test_change_offline.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/proposal.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "549f9205222ccb30438d21b9231500df6b13943d",
+      "subject": "Simplify test contexts and pin the checkpoint fixture migration chain",
+      "paths": [
+        "tests/phase2/test_dpapi_signer_provisioning.py",
+        "tests/phase2/test_s12_evidence_v2.py",
+        "tests/phase2/test_s13_barrier_ack_sql.py",
+        "tests/phase2/test_s13_checkpoint_suffix_e2e.py",
+        "tests/phase2/test_s13_checkpoint_suffix_functional.py",
+        "tests/phase2/test_s13_current_turn_sql.py",
+        "tests/phase2/test_s13_lifecycle_preflight.py",
+        "tests/phase2/test_s13_migration020.py",
+        "tests/phase2/test_wp5_json_decoder_contracts.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "5655a2c61954cc48673ff5a19d6834373f46c5da",
+      "subject": "Qualify scoped budget-revoke replay",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_budget_revoke_scoped_replay_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "571115a09019b303ea78775b42935a5e0b470282",
+      "subject": "Reconcile R2-US-002 task status",
+      "paths": [
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "572a9cda2877c20831171f227fd4ba34e5992a3c",
+      "subject": "fix(S6b): enforce evaluation-only receipt authority",
+      "paths": [
+        "src/business_ai_gateway/phase2/posted_receipts.py",
+        "tests/phase2/test_trust_label_fail_closed.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/posted_receipts.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "57842bbc75699151d4d88b8c6730fe9cd54fae11",
+      "subject": "docs(report): clarify US015 reviewed code head [skip ci]",
+      "paths": [
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.en.html",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "5803c2061bc48fc4226c729d4eb9e071e6d07a01",
+      "subject": "docs(S11): align pointer delivery status",
+      "paths": [
+        "docs/phase2/S11_EXIT_DECISION_2026-11-09.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "588ddd1f1bd08c8fe7579d3c03345de722eb07b0",
+      "subject": "Close S9 capacity task bounded acceptance",
+      "paths": [
+        "src/business_ai_gateway/phase2/capacity_interference.py",
+        "src/business_ai_gateway/phase2/capacity_model.py",
+        "tests/phase2/test_capacity_interference.py",
+        "tests/phase2/test_capacity_model.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/capacity_interference.py",
+        "src/business_ai_gateway/phase2/capacity_model.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "58c168d4b2970d2a8a41d7aca9323ff167c264c1",
+      "subject": "docs(phase2): record bounded S6 acceptance for US-029 and US-030",
+      "paths": [
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "5935a6831bb6bf81ac51b53462b5ebf0d9556f2a",
+      "subject": "Narrow S13 role scope conflict handling",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "db/phase2/027_private_writer_admission_schema.sql"
+      ],
+      "source_paths": [
+        "db/phase2/027_private_writer_admission_schema.sql"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "5a63da880f5a3897fbfdbaf6370399a32447509c",
+      "subject": "security(phase2): reject stale and spoofed promotion attestations before write",
+      "paths": [
+        "docs/phase2/PROMOTION_PM1_HARDENING_REVIEW_2026-10-09.md",
+        "src/business_ai_gateway/phase2/promotion.py",
+        "tests/phase2/test_promotion.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/promotion.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "5aaa5ae16957326227ca8634f95dc295474b8999",
+      "subject": "feat(real1c): read-only reference lane runner, probes, story evaluator, per-test documentation and offline tests for the 818HA clone",
+      "paths": [
+        ".gitattributes",
+        ".gitignore",
+        "core/DECISION_LOG.md",
+        "scripts/real1c/__init__.py",
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/disposition.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/evidence.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_proxy.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/manifest.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/report.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py",
+        "tests/real1c/__init__.py",
+        "tests/real1c/test_catalog.py",
+        "tests/real1c/test_details_report.py",
+        "tests/real1c/test_disposition.py",
+        "tests/real1c/test_evidence_guard.py",
+        "tests/real1c/test_manifest_schema_sanitize.py",
+        "tests/real1c/test_oracle_guard.py",
+        "tests/real1c/test_public_sanitizer.py",
+        "tests/real1c/test_report.py",
+        "tests/real1c/test_run_lane.py",
+        "tests/real1c/test_stories.py"
+      ],
+      "source_paths": [
+        "scripts/real1c/__init__.py",
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/disposition.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/evidence.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_proxy.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/manifest.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/report.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "5d3e97ba5fcfb060658b02e151ffe54a58848167",
+      "subject": "S13-03: add synthetic historical key authorization preflight contract",
+      "paths": [
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py",
+        "tests/phase2/test_s13_lifecycle_preflight.py",
+        "tests/phase2/test_s13_lifecycle_preflight_e2e.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "5ed9c52f3879932f1877521d5b787966cd0f534a",
+      "subject": "S13-03: model latestness rollback and replay refusal",
+      "paths": [
+        "tests/phase2/test_s13_lifecycle_preflight.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "65c408657d5cae857c66ecfeef74028475680ad3",
+      "subject": "Pin T16 coordinator replay and refusal semantics",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_t16_recovery_error_mapping.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "66e20eb74c7d6a73428477b34e18dd9ed1e9609e",
+      "subject": "Add offline S12-04 grant policy and CT13 accounting",
+      "paths": [
+        "src/business_ai_gateway/phase2/simulation/grant_policy.py",
+        "tests/phase2/test_s12_04_grant_policy_offline.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/simulation/grant_policy.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "66ef76c37209e29273a8fd82f6d668e448458bcc",
+      "subject": "S10 R2-US-048: reject symlink and junction output paths",
+      "paths": [
+        "scripts/assemble_s10_release_manifest.py",
+        "src/business_ai_gateway/phase2/release_manifest.py",
+        "tests/phase2/test_s10_release_manifest.py",
+        "tests/phase2/test_s10_release_manifest_cli_e2e.py"
+      ],
+      "source_paths": [
+        "scripts/assemble_s10_release_manifest.py",
+        "src/business_ai_gateway/phase2/release_manifest.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "6aaed8c732e8c8546fa171d61044dd88ce1d9947",
+      "subject": "docs(adr): ADR-0008 hybrid OData+COM analytics balance route and threat-model delta",
+      "paths": [
+        "core/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "6eb0c8229839db6f8901fc589e7321855d91e550",
+      "subject": "Add S13-03 restore-skew E2E evidence",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_checkpoint_restore_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "6ecd6e9a984ea5eb8adc816bb67bff2591033556",
+      "subject": "docs(phase2): record R2-US-005 bounded evidence",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/EVIDENCE_MATRIX.md",
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "6f57fa2293b6a3476d4b5405540b10fb1437dfa3",
+      "subject": "docs: publish full ERP_MCP program status",
+      "paths": [
+        "PROJECT_PLAN.md",
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/EVIDENCE_MATRIX.md",
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "reports/ERP_MCP_FULL_PROGRAM_STATUS_2026-11-05.html",
+        "reports/ERP_MCP_FULL_PROGRAM_STATUS_2026-11-05.ru.html",
+        "reports/ERP_MCP_PROJECT_PLAN.html",
+        "reports/ERP_MCP_PROJECT_PLAN.ru.html",
+        "scripts/render_full_program_status.py"
+      ],
+      "source_paths": [
+        "scripts/render_full_program_status.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "7147ac71e90da0a16234e4f4d5bad07aac050c14",
+      "subject": "docs(S13-03): clarify approved code head",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "7211f76d0d6babd58a8d34215ae84aa799121e9a",
+      "subject": "Qualify the anchor-gap cosign bridge",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_anchor_gap_cosign_legacy_bridge_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "727b2dac91b8da0fdaac237d1b8b7cd94a0654b8",
+      "subject": "docs: record ERP_MCP1 OAuth readiness state",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "72a65b6fd0ca2e903d1e1e2ceb5b19457851d5f9",
+      "subject": "S13-03: bind latestness receipts to fresh challenge",
+      "paths": [
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py",
+        "tests/phase2/test_s13_checkpoint_suffix_e2e.py",
+        "tests/phase2/test_s13_lifecycle_preflight.py",
+        "tests/phase2/test_s13_lifecycle_preflight_e2e.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "72d90a8156fa3055d753395900cc1ee62cd1f76e",
+      "subject": "Enforce company-scoped RLS metadata isolation.",
+      "paths": [
+        "db/phase2/029_company_scope_rls.sql",
+        "tests/phase2/_pg_harness.py",
+        "tests/phase2/test_ports_contract.py"
+      ],
+      "source_paths": [
+        "db/phase2/029_company_scope_rls.sql"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "747ef854e0dfa7e7228da85b2d61b2c4bbc2b0de",
+      "subject": "docs: record tunnel target mismatch recheck",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "75718fbc38de2b882f0ba6caab42b6325332801e",
+      "subject": "Docs: record approved S10 exact-head evidence refresh",
+      "paths": [
+        "docs/sdlc/verify-evidence.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "77318d9e8fb01daec58e009f283397d62d9cda48",
+      "subject": "Document R2-US-002 bounded delivery",
+      "paths": [
+        "PROJECT_PLAN.md",
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "79cf9f61eefafd3811916bad68df2e204c9a0e22",
+      "subject": "S13-03: add synthetic provider latestness preflight",
+      "paths": [
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py",
+        "tests/phase2/test_s13_checkpoint_suffix_e2e.py",
+        "tests/phase2/test_s13_lifecycle_preflight.py",
+        "tests/phase2/test_s13_lifecycle_preflight_e2e.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+        "src/business_ai_gateway/phase2/change_ledger/lifecycle.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "7b5d5c5b648d77d93f900c9d27e6b20ac5e40d0a",
+      "subject": "docs(S13-03): record dev anchor acceptance evidence",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "7d9bbc00006be30b1e85610d379d5a23eca4693d",
+      "subject": "fix: reconcile tunnel identity during stack autostart",
+      "paths": [
+        "scripts/remote/run-mcp-stack.ps1",
+        "tests/powershell/test_run_mcp_stack_tunnel.ps1"
+      ],
+      "source_paths": [
+        "scripts/remote/run-mcp-stack.ps1"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "7dae6554491491bd70e8b5d46c50be27dcb18127",
+      "subject": "Phase 2: record the drive.readonly probe result for G4",
+      "paths": [
+        "core/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "7e1e732ead6a130c9e39159c8a2efbe72c4411b8",
+      "subject": "Revert \"Close S11 evidence pointer reconciliation\"",
+      "paths": [
+        "docs/phase2/S11_ACCEPTANCE_CORRELATION_ADDENDUM_2026-11-09.md",
+        "docs/phase2/S11_ACCEPTANCE_CORRELATION_DIFF_2026-11-09.patch",
+        "docs/phase2/S11_EXIT_DECISION_2026-11-09.md",
+        "docs/phase2/S11_EXIT_PACKAGE_2026-10-12.md",
+        "governance/GATE_MANIFEST.json"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "80dd8a271e8795943ad8cb953d758e301f040cbf",
+      "subject": "Resolve remaining lint diagnostics in the S0 branch scope",
+      "paths": [
+        "scripts/render_full_program_status.py",
+        "src/business_ai_gateway/server.py",
+        "tests/phase2/test_connector_sdk.py",
+        "tests/phase2/test_ports_contract.py",
+        "tests/phase2/test_tc001_r1_preservation.py"
+      ],
+      "source_paths": [
+        "scripts/render_full_program_status.py",
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "82f76201256a128efd8e5e7d271b0ecce2ec7a37",
+      "subject": "Clarify T16 failure boundaries and withheld ACLs",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "docs/phase2/S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md",
+        "tests/phase2/test_s13_checkpoint_runtime_authority.py",
+        "tests/phase2/test_s13_current_turn_sql.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "88818b603a867c2f109135afb32fc56e6f952644",
+      "subject": "Fix S13 pre-write terminal replay.",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "db/phase2/027_private_writer_admission_schema.sql",
+        "docs/phase2/CHANGE_RECORD_401.md",
+        "tests/phase2/test_s13_completion_outcome_e2e.py"
+      ],
+      "source_paths": [
+        "db/phase2/027_private_writer_admission_schema.sql"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "88903ae8d38ed030d5ba943b77677ea768450555",
+      "subject": "docs: record FIN-S1.2 tunnel autostart status",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "8948c234e94135150452824594838cd702fc221d",
+      "subject": "Docs: reconcile accepted S10 evidence and ordered S11 exit",
+      "paths": [
+        "docs/phase2/SPRINT_S10_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "8c138f94951f3c882596420ced91ef150e9072d1",
+      "subject": "snapshot: full non-ignored content of D:\\Repo\\Trash\\ERP_MCP-phase2 saved on 2026-10-20 (worktree admin entry missing)",
+      "paths": [],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "903eaba54785ff8da2605a99535f558a9e367f91",
+      "subject": "Phase 2: record the real Google Drive scope probe result for G4",
+      "paths": [
+        "core/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "95a6a92c94935673d92f1e46e9da7738e156bf59",
+      "subject": "docs(phase2): reconcile G0-G7 gates with exact local engineering evidence",
+      "paths": [
+        "docs/phase2/COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md",
+        "docs/phase2/EVIDENCE_MATRIX.md",
+        "docs/phase2/G0_DONOR_PROVENANCE_REVIEW_2026-10-09.md",
+        "docs/phase2/G1_OPERATOR_BACKLOG.md",
+        "docs/phase2/G2_REAL_SOURCE_FEASIBILITY_2026-10-09.md",
+        "docs/phase2/IMPLEMENTATION_STATUS.md",
+        "docs/phase2/OPERATOR_BACKLOG.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "docs/phase2/TERMINAL_ACCEPTANCE_LEDGER_2026-10-09.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "969d0b7d767b334a497d6e5ff41510c9303a4bc8",
+      "subject": "Switch auto-triggered workflows to manual dispatch (operator rule 4: no CI on push, pull request or schedule).",
+      "paths": [
+        ".github/workflows/ci.yml",
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "97a8916e264d9646094fb1fc9533bc06a622e5dc",
+      "subject": "Reconcile S4 closeout status",
+      "paths": [
+        "PROJECT_PLAN.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "985d6f4f2eb35544e30f666526d4b7fc7a5a2e37",
+      "subject": "Record R2-US-004 bounded acceptance evidence.",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/EVIDENCE_MATRIX.md",
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "99b091da80dff38727021c8f48f372624233b288",
+      "subject": "docs: record branch consolidation of 2026-10-20",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "docs/CONSOLIDATION_RECORD_2026-10-20.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "9b61e73a690df70710dbd828c9f01d29d4b38461",
+      "subject": "Implement bounded S12-05 kill-switch evaluation. Add offline acceptance coverage.",
+      "paths": [
+        "src/business_ai_gateway/phase2/change/__init__.py",
+        "src/business_ai_gateway/phase2/change/killswitch.py",
+        "tests/phase2/test_s12_05_killswitch_offline.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/__init__.py",
+        "src/business_ai_gateway/phase2/change/killswitch.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "9bd6d3840437a811db4f3f8ad7e12619e102c57b",
+      "subject": "Fix async restore E2E lint findings",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_checkpoint_restore_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "9cbfbf252a494c675760d31ea92b91ef8313d002",
+      "subject": "test(phase2): cover R2-US-005 revocation criteria",
+      "paths": [
+        "tests/phase2/test_ports_contract.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "9d3cb5f833a9763c4c3d09f4274c77ee99921b71",
+      "subject": "S13-02: cover transactional claim atomicity and contention",
+      "paths": [
+        "tests/phase2/test_change_ledger_sql.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "9e3ed8e55991a1d8ff800418df2d90330c5f1acc",
+      "subject": "fix(auth): accept the ChatGPT tunnel resource as an additional OAuth audience",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "scripts/e2e/envctl.py",
+        "src/business_ai_gateway/auth.py",
+        "src/business_ai_gateway/settings.py",
+        "tests/test_auth.py"
+      ],
+      "source_paths": [
+        "scripts/e2e/envctl.py",
+        "src/business_ai_gateway/auth.py",
+        "src/business_ai_gateway/settings.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "a177f8cf7651080c9277cde18dae52c1c501f9ae",
+      "subject": "docs(report): record US015 P2 closure [skip ci]",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.en.html",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "a20c5685624371165617174fab16b1a4c8f83dd0",
+      "subject": "test(phase2): align fail-closed graph expectations [skip ci]",
+      "paths": [
+        "tests/phase2/test_model_graph.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "a3eff9e12857f42dc2384d60b34378ac78441c09",
+      "subject": "docs(S13-03): document missing provider implementation",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "a55e626138e2f098eb6bd7f4f1c7ed8a45801fbe",
+      "subject": "Test dev anchor process restart persistence",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_dev_anchor_service_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "a93359677916a4250381e9b273b2472da92a89b0",
+      "subject": "Qualify the signed witness-cosign bridge",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_witness_cosign_legacy_bridge_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "ab0e179130783d1416f98eb7cde0efb263c1e804",
+      "subject": "S10 R2-US-048: bind JUnit cases to candidate HEAD",
+      "paths": [
+        "tests/phase2/conftest.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "ac97a979f814832fa2af8b22eda1e3a6f9480689",
+      "subject": "Refresh the pinned sidecar runtime and sort TC001 test imports",
+      "paths": [
+        ".github/workflows/ci.yml",
+        "adapters/odata-sidecar/Dockerfile",
+        "tests/phase2/test_tc001_http_cash_bank.py",
+        "tests/phase2/test_tc001_http_inventory.py",
+        "tests/phase2/test_tc001_http_postings.py",
+        "tests/phase2/test_tc001_http_settlements.py",
+        "tests/phase2/test_tc001_http_turnover.py"
+      ],
+      "source_paths": [
+        "adapters/odata-sidecar/Dockerfile"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "aca610e22acdebbf8a68421f3faacffbdb07d121",
+      "subject": "feat(real1c): read-only reference lane runner, probes, story evaluator, per-test documentation and offline tests for the 818HA clone",
+      "paths": [
+        ".gitattributes",
+        ".gitignore",
+        "core/DECISION_LOG.md",
+        "scripts/real1c/__init__.py",
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/disposition.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/evidence.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_proxy.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/manifest.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/report.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py",
+        "tests/real1c/__init__.py",
+        "tests/real1c/test_catalog.py",
+        "tests/real1c/test_details_report.py",
+        "tests/real1c/test_disposition.py",
+        "tests/real1c/test_evidence_guard.py",
+        "tests/real1c/test_manifest_schema_sanitize.py",
+        "tests/real1c/test_oracle_guard.py",
+        "tests/real1c/test_public_sanitizer.py",
+        "tests/real1c/test_report.py",
+        "tests/real1c/test_run_lane.py",
+        "tests/real1c/test_stories.py"
+      ],
+      "source_paths": [
+        "scripts/real1c/__init__.py",
+        "scripts/real1c/catalog.py",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/details_report.py",
+        "scripts/real1c/disposition.py",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/evidence.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_proxy.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/manifest.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/report.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "adc5ec7799b87f23abde350e68abc8ae5149f056",
+      "subject": "feat(phase2): wire evidence-backed model promotion TC046-048 [skip ci]",
+      "paths": [
+        "src/business_ai_gateway/admin_api.py",
+        "src/business_ai_gateway/db.py",
+        "src/business_ai_gateway/phase2/promotion.py",
+        "src/business_ai_gateway/phase2/promotion_sql.py",
+        "src/business_ai_gateway/runtime.py",
+        "src/business_ai_gateway/settings.py",
+        "tests/phase2/test_promotion_api_contract.py",
+        "tests/phase2/test_promotion_api_postgres.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/admin_api.py",
+        "src/business_ai_gateway/db.py",
+        "src/business_ai_gateway/phase2/promotion.py",
+        "src/business_ai_gateway/phase2/promotion_sql.py",
+        "src/business_ai_gateway/runtime.py",
+        "src/business_ai_gateway/settings.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "ae82c286eb6d94282c3ae705ed272c136817a0ce",
+      "subject": "Test dev anchor revocation across restarts",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_dev_anchor_service_e2e.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "aed0948fb1da1b72f76d5e46a9e3ab5c688ba97e",
+      "subject": "security(phase2): redact adapter exceptions from job results",
+      "paths": [
+        "docs/phase2/SCHEDULER_ERROR_REDACTION_REVIEW_2026-10-09.md",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "tests/phase2/test_scheduler.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/scheduler.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "b156154cf195e438e9dc057c408fe0f2e692d3a3",
+      "subject": "[S5] Enforce the Windows parser memory bound [skip ci]",
+      "paths": [
+        "src/business_ai_gateway/phase2/safe_parser.py",
+        "tests/phase2/test_safe_parser.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/safe_parser.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "b22a446b9d5b8e34fe24cee9c432323a44046d69",
+      "subject": "S10: implement bounded dev/test capture runtime",
+      "paths": [
+        "PROJECT_PLAN.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "docs/GOVERNANCE.md",
+        "docs/MASTER_PLAN.md",
+        "docs/REQUIREMENTS_TRACEABILITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/SCOPE_FREEZE_BASELINE_2026-10-06.md",
+        "docs/TDD.md",
+        "docs/THREAT_MODEL.md",
+        "docs/phase2/S10_RELEASE_HANDOFF.md",
+        "docs/phase2/SPRINT_S10_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "docs/sdlc/verify-evidence.md",
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/capture_runtime.py",
+        "src/business_ai_gateway/phase2/fakes.py",
+        "src/business_ai_gateway/phase2/ports.py",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "src/business_ai_gateway/runtime.py",
+        "tests/phase2/test_capture_runtime.py",
+        "tests/phase2/test_capture_runtime_e2e.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/capture_runtime.py",
+        "src/business_ai_gateway/phase2/fakes.py",
+        "src/business_ai_gateway/phase2/ports.py",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "src/business_ai_gateway/runtime.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "b354df58ac5671cda81646713e994fe16c3c9b54",
+      "subject": "docs(real1c): record the 818HA L2 lane run, ru/en reports, per-test details and re-pinned checkpoint",
+      "paths": [
+        "ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
+        "core/DECISION_LOG.md",
+        "docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
+        "docs/REQUIREMENTS_TRACEABILITY.md",
+        "reports/CURRENT_ENGINEERING_CHECKPOINT.json",
+        "reports/DOD_STATUS.md",
+        "reports/ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md",
+        "reports/EXECUTION_LOG.md",
+        "reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md",
+        "reports/IMPLEMENTATION_STATUS.md",
+        "reports/INTEGRATION_PR_DESCRIPTION.md",
+        "reports/RISK_STATUS.md",
+        "reports/real1c/REAL_1C_818HA_L2_REPORT.html",
+        "reports/real1c/REAL_1C_818HA_L2_REPORT.ru.html",
+        "reports/real1c/REAL_1C_818HA_L2_TEST_DETAILS.html",
+        "reports/real1c/REAL_1C_818HA_L2_TEST_DETAILS.ru.html",
+        "reports/real1c/case_results.csv",
+        "reports/real1c/case_results.json",
+        "reports/real1c/summary.json"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "b4859c67e58e6f6515eb681e89b419c6bc1b3c9e",
+      "subject": "docs(phase2): close bounded S6 validation coverage",
+      "paths": [
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "b6557547075df0b9864fd0a8f8d51a067e748d35",
+      "subject": "feat(fin): expose scoped in-flight status",
+      "paths": [
+        "db/phase2/030_s13_inflight_status_reads.sql",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+        "tests/phase2/test_s13_inflight_status.py"
+      ],
+      "source_paths": [
+        "db/phase2/030_s13_inflight_status_reads.sql",
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "b885f03ffd752b9b30a365fb0294c7e53f24a785",
+      "subject": "Record bounded TC002 register acceptance and receipt",
+      "paths": [
+        "artifacts/phase2/r2-tc002-gpt-pm-adjudication.json",
+        "artifacts/phase2/r2-tc002-register-integrity-evidence.json",
+        "docs/phase2/TC002_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/MANIFEST.sha256",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/12_TC002_BOUNDED_ACCEPTANCE.yaml",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-tc002-gpt-pm-adjudication.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/evidence/r2-tc002-register-integrity-evidence.json",
+        "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/test_cases.yaml",
+        "scripts/phase2/build_spec_bundle.py",
+        "tests/phase2/test_spec_catalog.py"
+      ],
+      "source_paths": [
+        "scripts/phase2/build_spec_bundle.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e",
+      "subject": "test(S8): fix timeline source ownership fixture",
+      "paths": [
+        "tests/phase2/test_s8_gpt_fix_views.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "bc25fb6d723382683cfe22e723002011b0020730",
+      "subject": "Phase 2: record the Google Drive changes-feed probe for G4",
+      "paths": [
+        "core/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "beaca9608632ae9c72dead665ea1d6f2d7ebadac",
+      "subject": "fix(phase2): classify missing 521.1 rows as inconclusive (R2-US-030)",
+      "paths": [
+        "src/business_ai_gateway/phase2/reconciliation.py",
+        "tests/phase2/test_reconciliation.py",
+        "tests/phase2/test_reconciliation_521.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/reconciliation.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "c0a51357b722a5599ef64ba1fac6fa477f4c8e0a",
+      "subject": "docs(phase2): close bounded S6 snapshot task",
+      "paths": [
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "c0fa07748894eb83b5d56e7a07988baf3cffe184",
+      "subject": "Canonicalize S10 evidence input digests",
+      "paths": [
+        "reports/evidence/s10/R2-US-048-manifest-input-490d763.json"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "c1b97bb88cfacb5d902a16c94c716713c9265ea3",
+      "subject": "docs(report): clarify accepted code revision [skip ci]",
+      "paths": [
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.en.html",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "c2317d93c75a50f8a19c5a3c0e3202105cce735f",
+      "subject": "S10 R2-US-048: reject unapproved dirty test inputs",
+      "paths": [
+        "tests/phase2/conftest.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "c393efdbc71ca7ba8cedd33ad89d24b4f1c42726",
+      "subject": "Preserve R1 document responses and expose explicit R2 sales provenance",
+      "paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py",
+        "tests/e2e/user/test_u05_u08_company_scope.py",
+        "tests/e2e/user/test_u09_u10_grant_lifecycle.py",
+        "tests/e2e/user/test_u14_u16_outages.py",
+        "tests/functional/support/specs.py",
+        "tests/functional/test_10_scenarios_sc01_sc12.py",
+        "tests/functional/test_30_authz_and_isolation.py",
+        "tests/functional/test_40_discovery.py",
+        "tests/phase2/test_tc001_http_documents.py",
+        "tests/test_chatgpt_mcp_contract.py",
+        "tests/test_sc_public_scenarios_chain.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "c624b701e8f42076441f9b8c6a3cf4dbe60414e7",
+      "subject": "Record bounded R2-US-001 completion and S0 handoff",
+      "paths": [
+        "PROJECT_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "d21b4ac1a97b0f178ec8d9fe46579e4cb6e17644",
+      "subject": "S10 R2-US-048: add bounded release evidence manifest",
+      "paths": [
+        "scripts/assemble_s10_release_manifest.py",
+        "src/business_ai_gateway/phase2/release_manifest.py",
+        "tests/phase2/test_s10_release_manifest.py",
+        "tests/phase2/test_s10_release_manifest_cli_e2e.py"
+      ],
+      "source_paths": [
+        "scripts/assemble_s10_release_manifest.py",
+        "src/business_ai_gateway/phase2/release_manifest.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "d3d329e23d7495aec998a1ad85d72ca1c9c8971c",
+      "subject": "docs: record bounded license diagnostic",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39",
+      "subject": "security(phase2): fail closed on untrusted promotion error metadata",
+      "paths": [
+        "docs/phase2/CONVERGENCE_FINAL_SECURITY_REVIEW_2026-10-09.md",
+        "docs/phase2/CONVERGENCE_SECURITY_REVIEW_2026-10-09.md",
+        "src/business_ai_gateway/phase2/promotion.py",
+        "tests/phase2/test_promotion.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/promotion.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "d5b3dcd3cdc9a8ceb246519251cb6f2733f1ef19",
+      "subject": "Clean up inherited imports in Phase 2 source and tests",
+      "paths": [
+        "src/business_ai_gateway/phase2/change/__init__.py",
+        "src/business_ai_gateway/phase2/change/trust_registry.py",
+        "src/business_ai_gateway/phase2/simulation/clone_1c.py",
+        "src/business_ai_gateway/phase2/simulation/governed_write_v2.py",
+        "src/business_ai_gateway/phase2/simulation/reference_writer.py",
+        "src/business_ai_gateway/phase2/simulation/simulated_write_port.py",
+        "src/erp_mcp_s16/__init__.py",
+        "src/erp_mcp_s16/contracts.py",
+        "src/erp_mcp_s16/core.py",
+        "src/erp_mcp_s16/fakes.py",
+        "src/erp_mcp_s16/registries.py",
+        "src/erp_mcp_s16/services.py",
+        "tests/phase2/s16_helpers.py",
+        "tests/phase2/test_change_hardening_b3_sql.py",
+        "tests/phase2/test_change_hardening_f_sql.py",
+        "tests/phase2/test_change_ledger_port.py",
+        "tests/phase2/test_s13_barrier_ack_protocol.py",
+        "tests/phase2/test_s13_barrier_ack_verifier.py",
+        "tests/phase2/test_s13_migration020.py",
+        "tests/phase2/test_s16_approval_core.py",
+        "tests/phase2/test_simulation_e2e_sql.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/__init__.py",
+        "src/business_ai_gateway/phase2/change/trust_registry.py",
+        "src/business_ai_gateway/phase2/simulation/clone_1c.py",
+        "src/business_ai_gateway/phase2/simulation/governed_write_v2.py",
+        "src/business_ai_gateway/phase2/simulation/reference_writer.py",
+        "src/business_ai_gateway/phase2/simulation/simulated_write_port.py",
+        "src/erp_mcp_s16/__init__.py",
+        "src/erp_mcp_s16/contracts.py",
+        "src/erp_mcp_s16/core.py",
+        "src/erp_mcp_s16/fakes.py",
+        "src/erp_mcp_s16/registries.py",
+        "src/erp_mcp_s16/services.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "d85cfeb30832292c3ae54d755a24f599896e502b",
+      "subject": "Integrate cash and bank R1 compatibility with inventory",
+      "paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py",
+        "tests/functional/support/specs.py",
+        "tests/functional/test_10_scenarios_sc01_sc12.py",
+        "tests/functional/test_20_raw_l1_cross_checks.py",
+        "tests/functional/test_40_discovery.py",
+        "tests/phase2/test_tc001_http_cash_bank.py",
+        "tests/test_chatgpt_mcp_contract.py",
+        "tests/test_sc_public_scenarios_chain.py",
+        "tests/test_synthetic_fixture_profiles.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "da79ff968d232f2591b437d73f271ea0676979fd",
+      "subject": "docs: record tunnel helper approval and deployment",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "dba68fbf5aaf64a4f1de2617a219cfaa83e216ab",
+      "subject": "Reconcile S9 closeout status",
+      "paths": [
+        "PROJECT_PLAN.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "ddb49d6a05a5c90b12e35cce4a8e2597ff5d2748",
+      "subject": "docs(report): refresh ERP Phase 2 snapshot 2026-11-06 [skip ci]",
+      "paths": [
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.en.html",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "debf62f5deccf35239ed154c7215144e8e6533b9",
+      "subject": "fix(real1c): public reports carry no exact business figures; candidate assertions read from the private owner file",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "tests/real1c/test_public_sanitizer.py",
+        "tests/real1c/test_run_lane.py"
+      ],
+      "source_paths": [
+        "scripts/real1c/documentation.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "df1036cfc2955534058082c09281c7c0845715ac",
+      "subject": "Phase 2: record receipt and private storage of the Google OAuth client",
+      "paths": [
+        "core/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "e35497f839673f74e80df93d1918f0eb65756d9d",
+      "subject": "Implement capability-gated snapshot fallback for R2-US-003",
+      "paths": [
+        "src/business_ai_gateway/phase2/connector_sdk.py",
+        "tests/phase2/test_connector_sdk.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/connector_sdk.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "e3c98f2d514f2d25981030379558a1ab4b0a9407",
+      "subject": "S13-01: verify PostgreSQL ledger privileges and rollback",
+      "paths": [
+        "tests/phase2/test_change_ledger_sql.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "e44bf3ec23e4737c338935b18606015843df6b9d",
+      "subject": "Preserve R1 posting rows and expose explicit R2 provenance",
+      "paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py",
+        "tests/functional/test_40_discovery.py",
+        "tests/phase2/test_tc001_http_postings.py",
+        "tests/test_chatgpt_mcp_contract.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "e51e698f4f4de5fa930299d0e1dcd73a0541f1e6",
+      "subject": "docs: record Credential Manager query limitation",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "e738ef35c4c7453af32a54a53b15bb148d5d2968",
+      "subject": "docs: record inherited defects backlog 2026-10-21 (docs only)",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "core/LESSONS_LOG.md",
+        "docs/BACKLOG_INHERITED_2026-10-21.md",
+        "governance/DOCUMENT_REGISTRY.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "e833fd0c2bb6dceb8ae85bcf23d17df4842ccc6a",
+      "subject": "S11: reconcile approved exit evidence pointer",
+      "paths": [
+        "docs/phase2/S11_ACCEPTANCE_CORRELATION_ADDENDUM_2026-11-09.md",
+        "docs/phase2/S11_ACCEPTANCE_CORRELATION_DIFF_2026-11-09.patch",
+        "docs/phase2/S11_EXIT_DECISION_2026-11-09.md",
+        "docs/phase2/S11_EXIT_PACKAGE_2026-10-12.md",
+        "governance/GATE_MANIFEST.json"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "e9fdcf467105f1ca1a1b1853760ac597fa8be269",
+      "subject": "Fix test binding lint and anchor the barrier fixture to database time",
+      "paths": [
+        "tests/phase2/s13_migration020_e2e.py",
+        "tests/phase2/test_change_hardening_b3_sql.py",
+        "tests/phase2/test_change_hardening_b_sql.py",
+        "tests/phase2/test_change_hardening_e_sql.py",
+        "tests/phase2/test_change_hardening_f_sql.py",
+        "tests/phase2/test_change_hardening_g_sql.py",
+        "tests/phase2/test_change_ledger_dump_restore.py",
+        "tests/phase2/test_change_ledger_port.py",
+        "tests/phase2/test_change_sweeps_sql.py",
+        "tests/phase2/test_s12_governed_write_v2_e2e.py",
+        "tests/phase2/test_s13_barrier_ack_sql.py",
+        "tests/phase2/test_s13_migration020.py",
+        "tests/phase2/test_s13_migration023_e2e.py",
+        "tests/phase2/test_simulation_e2e_sql.py",
+        "tests/phase2/test_simulation_identity_offline.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56",
+      "subject": "Add opt-in test-lane unreconciled profiles for the real test source",
+      "paths": [
+        "core/DECISION_LOG.md",
+        "docs/SEMANTIC_PROFILES.md",
+        "scripts/test_lane_profiles.py",
+        "src/business_ai_gateway/fixture_profiles.py",
+        "src/business_ai_gateway/registry.py",
+        "src/business_ai_gateway/runtime.py",
+        "src/business_ai_gateway/server.py",
+        "src/business_ai_gateway/settings.py",
+        "testbed/real1c/fixtures/test_lane_profiles.json",
+        "tests/test_test_lane_profiles.py"
+      ],
+      "source_paths": [
+        "scripts/test_lane_profiles.py",
+        "src/business_ai_gateway/fixture_profiles.py",
+        "src/business_ai_gateway/registry.py",
+        "src/business_ai_gateway/runtime.py",
+        "src/business_ai_gateway/server.py",
+        "src/business_ai_gateway/settings.py",
+        "testbed/real1c/fixtures/test_lane_profiles.json"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "eaad33437f92e786f780efeb4ea09d8f4e749804",
+      "subject": "Preserve the R1 turnover response contract",
+      "paths": [
+        "src/business_ai_gateway/server.py",
+        "tests/phase2/test_tc001_http_turnover.py",
+        "tests/test_sc10_account_turnover_chain.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "ed795e22fdbed1632e764955a39302240da38b4e",
+      "subject": "docs(report): close bounded S4 scope for US014 [skip ci]",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S1_S4_TRACEABILITY.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.en.html",
+        "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "edc8d9dad9e1b9d6e388c044473ab7ebb6f8bedc",
+      "subject": "fix(phase2): preserve accepted model head on structural observation",
+      "paths": [
+        "docs/phase2/COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md",
+        "docs/phase2/DRIFT_ACCEPTANCE_BOUNDARY_REVIEW_2026-10-09.md",
+        "docs/phase2/IMPLEMENTATION_STATUS.md",
+        "src/business_ai_gateway/phase2/drift.py",
+        "tests/phase2/test_drift.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/drift.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "eeded141ec8af381a3af01ecc1fac82cfa29bf10",
+      "subject": "Preserve R1 settlement responses and expose R2 provenance",
+      "paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py",
+        "tests/functional/test_40_discovery.py",
+        "tests/phase2/test_tc001_http_settlements.py",
+        "tests/test_chatgpt_mcp_contract.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "f05bacb406e3c541d7ef1fb279cd4fc5d4d0a3bb",
+      "subject": "Preserve pytest fixture bindings while resolving lint",
+      "paths": [
+        "tests/phase2/test_s13_adapter_claim_release_bridge_e2e.py",
+        "tests/phase2/test_s13_release_claim_fence.py",
+        "tests/phase2/test_s13_universal_fence_matrix.py",
+        "tests/phase2/test_s14_wire_receipt_sql.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "f1dac78c6dd2b37a27fd4c5278cbbc2b40b55e44",
+      "subject": "docs(phase2): record combined client-safety acceptance and NO-GO gates",
+      "paths": [
+        "docs/phase2/COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "f28b8d3784522b6d328ed60e3f53f8a871c54110",
+      "subject": "fix(real1c): close sprint-end reviewer findings (typed refusals, verified fault injection, stricter sweeps, offline tests)",
+      "paths": [
+        ".gitignore",
+        "core/DECISION_LOG.md",
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py",
+        "tests/real1c/test_manifest_schema_sanitize.py",
+        "tests/real1c/test_oracle_guard.py",
+        "tests/real1c/test_run_lane.py",
+        "tests/real1c/test_stories.py"
+      ],
+      "source_paths": [
+        "scripts/real1c/com_oracle.py",
+        "scripts/real1c/gateway_client.py",
+        "scripts/real1c/lane.py",
+        "scripts/real1c/lane_setup.py",
+        "scripts/real1c/native_checks.py",
+        "scripts/real1c/probes.py",
+        "scripts/real1c/raw_l2.py",
+        "scripts/real1c/run_lane.py",
+        "scripts/real1c/sanitize.py",
+        "scripts/real1c/schema.py",
+        "scripts/real1c/stories.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "f59db79ac9be7170f830c955838b0a44679458c9",
+      "subject": "fix(fin): reject malformed budget snapshot results",
+      "paths": [
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+        "tests/phase2/test_s12_period_producer.py",
+        "tests/phase2/test_s12_sql_budget_snapshot_result_validation.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "f5ecb5d4607ed4a1ee7b615ec86108ccfc0426ad",
+      "subject": "docs: record Platform login handoff blocker",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "f5f210864ac40101f77ba17d69c4a7cf2e759d1b",
+      "subject": "Record bounded R2-US-003 status",
+      "paths": [
+        "PROJECT_PLAN.md",
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/TASK_LEDGER.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "f5fc733f0a1c09bf86d961eb3cd485fa33d500d0",
+      "subject": "S3: apply bounded R2-US-007/008/009/012/019/020 [skip ci]",
+      "paths": [
+        "src/business_ai_gateway/phase2/backend_budget.py",
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/drift.py",
+        "src/business_ai_gateway/phase2/onec_composition.py",
+        "src/business_ai_gateway/phase2/onec_discovery.py",
+        "src/business_ai_gateway/phase2/resnapshot.py",
+        "src/business_ai_gateway/phase2/scheduler.py",
+        "tests/phase2/test_backend_budget.py",
+        "tests/phase2/test_capture_loop.py",
+        "tests/phase2/test_drift.py",
+        "tests/phase2/test_onec_composition.py",
+        "tests/phase2/test_scheduler.py",
+        "tests/phase2/test_scheduler_fairness.py",
+        "tests/phase2/test_scheduler_resume.py",
+        "tests/phase2/test_structural_diff.py",
+        "tests/phase2/test_structural_hash.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/backend_budget.py",
+        "src/business_ai_gateway/phase2/capture_loop.py",
+        "src/business_ai_gateway/phase2/drift.py",
+        "src/business_ai_gateway/phase2/onec_composition.py",
+        "src/business_ai_gateway/phase2/onec_discovery.py",
+        "src/business_ai_gateway/phase2/resnapshot.py",
+        "src/business_ai_gateway/phase2/scheduler.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "f79d34eacc80439d150d52cd2ad45a4a2b3ed934",
+      "subject": "Close S12-02 CT10 recovery guards",
+      "paths": [
+        "docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md",
+        "src/business_ai_gateway/phase2/change/transitions.py",
+        "tests/phase2/_change_helpers.py",
+        "tests/phase2/test_change_offline.py",
+        "tests/phase2/test_s12_ct10_literal_oracle.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/phase2/change/transitions.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "f7afebb7e87c690e7afa53e4fcfa61507dcc53d1",
+      "subject": "docs(S13-03): keep code approval binding exact",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    },
+    {
+      "commit": "f8260da96b578176d7e06353b12d8a3e04d1256b",
+      "subject": "Preserve R1 inventory responses and expose R2 provenance",
+      "paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py",
+        "tests/functional/support/specs.py",
+        "tests/functional/test_10_scenarios_sc01_sc12.py",
+        "tests/functional/test_20_raw_l1_cross_checks.py",
+        "tests/functional/test_40_discovery.py",
+        "tests/phase2/test_tc001_http_inventory.py",
+        "tests/test_chatgpt_mcp_contract.py",
+        "tests/test_sc_public_scenarios_chain.py",
+        "tests/test_synthetic_fixture_profiles.py"
+      ],
+      "source_paths": [
+        "src/business_ai_gateway/observability.py",
+        "src/business_ai_gateway/server.py"
+      ],
+      "classification": "SOURCE_REVIEW_REQUIRED"
+    },
+    {
+      "commit": "f93b6aac19448f5264cfb6d7ec338c51b015775b",
+      "subject": "Verify S13 role scope conflict replay",
+      "paths": [
+        "core/LESSONS_LOG.md",
+        "tests/phase2/test_s13_current_turn_sql.py"
+      ],
+      "source_paths": [],
+      "classification": "TEST_ALTERNATIVE_REVIEW"
+    },
+    {
+      "commit": "fb520659952c9ec25b648ec0bbb55a4dff20240d",
+      "subject": "docs(S13-03): reconcile accepted synthetic evidence",
+      "paths": [
+        "docs/phase2/DECISION_LOG.md",
+        "docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md"
+      ],
+      "source_paths": [],
+      "classification": "HISTORICAL_DOCUMENT_EVIDENCE_RETAIN"
+    }
+  ],
+  "limits": "Classification only, not approval/discard. All original refs retained; metadata-only alternatives do not overwrite the current plan."
+}

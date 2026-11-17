@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import replace
 
@@ -19,6 +20,20 @@ from .client import OneCReadClient
 from .metadata import MetadataIndex, parse_metadata
 from .rsv_bridge import RSVDataBridgeClient
 from .sidecar_client import ODataSidecarClient
+
+
+_PERIOD_SCHEMA_NAME = re.compile(
+    r"period|период|закры|откры|месяц|month|квартал|quarter|годовой|year.?end|fiscal|lock|clos(?:e|ing|ed|ure)?|open|регламент",
+    re.IGNORECASE,
+)
+_PERIOD_SCHEMA_PROPERTY = re.compile(
+    r"period|период|закры|откры|блокир|запрет|lock|clos(?:e|ing|ed|ure)?|open|status|статус|month.?end|quarter.?end|year.?end|fiscal",
+    re.IGNORECASE,
+)
+_MAX_PERIOD_SCHEMA_CANDIDATES = 250
+_MAX_SCHEMA_PROPERTIES = 100
+_MAX_SCHEMA_ANNOTATIONS = 20
+_MAX_SCHEMA_ANNOTATION_TEXT = 240
 
 
 def normalize_json_payload(payload):
@@ -193,17 +208,138 @@ class OneCAdapter:
         self._capabilities_expires_at.pop(source.id, None)
         return index
 
-    async def summary(self, source: Source):
+    async def summary(
+        self,
+        source: Source,
+        *,
+        include_information_register_schemas: bool = False,
+        include_period_schema_candidates: bool = False,
+    ):
         index = await self.metadata(source)
         groups: dict[str, int] = {}
         for item in index.entities:
             prefix = item.name.split("_", 1)[0]
             groups[prefix] = groups.get(prefix, 0) + 1
-        return {
+        result = {
             "source_id": source.id,
             "entity_set_count": len(index.entities),
             "groups": dict(sorted(groups.items())),
         }
+        if include_information_register_schemas:
+            registers = [
+                item for item in index.entities
+                if item.name.startswith("InformationRegister_")
+                and not source.entity_denied(item.name)
+            ]
+            if len(registers) > 6:
+                raise ValueError("information register metadata exceeds the authorized six-schema limit")
+            result["information_register_schemas"] = [
+                {
+                    "name": item.name[:_MAX_SCHEMA_ANNOTATION_TEXT],
+                    "name_truncated": len(item.name) > _MAX_SCHEMA_ANNOTATION_TEXT,
+                    "property_types_truncated": len(item.property_types) > _MAX_SCHEMA_PROPERTIES,
+                    "property_types": [
+                        {"name": name[:_MAX_SCHEMA_ANNOTATION_TEXT], "type": type_name[:_MAX_SCHEMA_ANNOTATION_TEXT] if type_name else None, "identifier_truncated": len(name) > _MAX_SCHEMA_ANNOTATION_TEXT or bool(type_name and len(type_name) > _MAX_SCHEMA_ANNOTATION_TEXT)}
+                        for name, type_name in item.property_types[:_MAX_SCHEMA_PROPERTIES]
+                    ],
+                }
+                for item in registers
+            ]
+        if include_period_schema_candidates:
+            candidates = []
+            for item in index.entities:
+                # The metadata-only detail grant may expose schemas outside the normal
+                # entity allow patterns, but hard source deny patterns still apply.
+                if source.entity_denied(item.name):
+                    continue
+                label_by_name = dict(item.property_labels)
+                description_by_name = dict(item.property_descriptions)
+                matched_properties = [
+                    (name, type_name)
+                    for name, type_name in item.property_types[:_MAX_SCHEMA_PROPERTIES]
+                    if (
+                        _PERIOD_SCHEMA_PROPERTY.search(name)
+                        or _PERIOD_SCHEMA_PROPERTY.search(label_by_name.get(name, ""))
+                        or _PERIOD_SCHEMA_PROPERTY.search(description_by_name.get(name, ""))
+                    )
+                ]
+                name_matches = bool(_PERIOD_SCHEMA_NAME.search(item.name))
+                if not name_matches and not matched_properties:
+                    continue
+                properties = (
+                    list(item.property_types)
+                    if name_matches
+                    else matched_properties
+                )
+                candidates.append(
+                    (
+                        0 if name_matches else 1,
+                        -len(matched_properties),
+                        item.name,
+                        item.entity_type,
+                        properties,
+                        item.property_labels,
+                        item.property_descriptions,
+                        tuple(name for name, _ in matched_properties),
+                    )
+                )
+            candidates.sort(key=lambda row: row[:3])
+            result["period_schema_candidate_count"] = len(candidates)
+            result["period_schema_candidates_truncated"] = (
+                len(candidates) > _MAX_PERIOD_SCHEMA_CANDIDATES
+            )
+            result["period_schema_candidates"] = []
+            for (
+                _, _, name, entity_type, properties, labels, descriptions, matched_names
+            ) in candidates[:_MAX_PERIOD_SCHEMA_CANDIDATES]:
+                label_by_name = dict(labels)
+                description_by_name = dict(descriptions)
+                annotated_names = [
+                    property_name
+                    for property_name in matched_names
+                    if property_name in label_by_name or property_name in description_by_name
+                ]
+                annotation_items = []
+                for property_name in annotated_names[:_MAX_SCHEMA_ANNOTATIONS]:
+                    label = label_by_name.get(property_name)
+                    description = description_by_name.get(property_name)
+                    annotation_items.append(
+                        {
+                            "name": property_name[:_MAX_SCHEMA_ANNOTATION_TEXT],
+                            "name_truncated": len(property_name) > _MAX_SCHEMA_ANNOTATION_TEXT,
+                            "label": label[:_MAX_SCHEMA_ANNOTATION_TEXT] if label else None,
+                            "label_truncated": bool(label and len(label) > _MAX_SCHEMA_ANNOTATION_TEXT),
+                            "description": (
+                                description[:_MAX_SCHEMA_ANNOTATION_TEXT] if description else None
+                            ),
+                            "description_truncated": bool(
+                                description and len(description) > _MAX_SCHEMA_ANNOTATION_TEXT
+                            ),
+                        }
+                    )
+                result["period_schema_candidates"].append({
+                    "name": name[:_MAX_SCHEMA_ANNOTATION_TEXT],
+                    "name_truncated": len(name) > _MAX_SCHEMA_ANNOTATION_TEXT,
+                    "entity_type": entity_type[:_MAX_SCHEMA_ANNOTATION_TEXT],
+                    "entity_type_truncated": len(entity_type) > _MAX_SCHEMA_ANNOTATION_TEXT,
+                    "property_types": [
+                        {
+                            "name": property_name[:_MAX_SCHEMA_ANNOTATION_TEXT],
+                            "name_truncated": len(property_name) > _MAX_SCHEMA_ANNOTATION_TEXT,
+                            "type": type_name[:_MAX_SCHEMA_ANNOTATION_TEXT] if type_name else None,
+                            "type_truncated": bool(type_name and len(type_name) > _MAX_SCHEMA_ANNOTATION_TEXT),
+                        }
+                        for property_name, type_name in properties[:_MAX_SCHEMA_PROPERTIES]
+                    ],
+                    "property_types_truncated": len(properties) > _MAX_SCHEMA_PROPERTIES,
+                    "property_annotations": annotation_items,
+                    "property_annotations_truncated": (
+                        len(annotated_names) > _MAX_SCHEMA_ANNOTATIONS
+                    ),
+                })
+        if (include_information_register_schemas or include_period_schema_candidates) and len(json.dumps(result, ensure_ascii=False).encode("utf-8")) > self.settings.max_response_bytes:
+            raise ValueError("metadata detail exceeds the configured response limit")
+        return result
 
     async def find(self, source: Source, contains: str, limit: int,
                    include_property_types: bool = False):

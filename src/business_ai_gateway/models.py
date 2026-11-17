@@ -58,10 +58,13 @@ class Source:
             if production and fallback.scheme != "https":
                 raise ValueError("production 1C fallback must use HTTPS")
 
-    def entity_allowed(self, entity: str) -> bool:
-        if self.entity_deny_patterns and any(
+    def entity_denied(self, entity: str) -> bool:
+        return bool(self.entity_deny_patterns) and any(
             fnmatch(entity, pattern) for pattern in self.entity_deny_patterns
-        ):
+        )
+
+    def entity_allowed(self, entity: str) -> bool:
+        if self.entity_denied(entity):
             return False
         if not self.entity_allow_patterns:
             return True
@@ -75,6 +78,8 @@ class MetadataEntity:
     properties: tuple[str, ...]
     navigation_properties: tuple[str, ...] = ()
     property_types: tuple[tuple[str, str | None], ...] = ()
+    property_labels: tuple[tuple[str, str], ...] = ()
+    property_descriptions: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -66,6 +66,7 @@ class Settings(BaseSettings):
 
     odata_sidecar_url: str | None = None
     odata_sidecar_token: SecretStr | None = None
+    metadata_detail_source_allowlist: str = ""
     source_host_allowlist: str | None = None
     source_egress_cidrs: str | None = None
     sidecar_egress_cidrs: str | None = None
@@ -90,6 +91,10 @@ class Settings(BaseSettings):
     synthetic_fixture_profiles_sha256: str | None = Field(
         default=None, pattern=r'^[a-f0-9]{64}$'
     )
+    # Explicitly unreconciled test-source mappings, never native validation evidence.
+    test_lane_profiles_file: str | None = Field(default=None, repr=False, max_length=1024)
+    test_lane_profiles_sha256: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
+    test_lane_unreconciled_sources: str = ""
     # Reviewed, pinned profiles for a REAL source that is not yet natively validated. Results are
     # always labelled UNVALIDATED_INDEPENDENT_RECONCILIATION; test environment only.
     provisional_profiles_file: str | None = Field(default=None, repr=False, max_length=1024)
@@ -137,6 +142,14 @@ class Settings(BaseSettings):
         )
 
     @property
+    def metadata_detail_source_items(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(item.strip() for item in self.metadata_detail_source_allowlist.split(",") if item.strip()))
+
+    @property
+    def test_lane_unreconciled_source_items(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(item.strip() for item in self.test_lane_unreconciled_sources.split(",") if item.strip()))
+
+    @property
     def machine_reconciled_source_items(self) -> tuple[str, ...]:
         return tuple(
             dict.fromkeys(
@@ -160,6 +173,21 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if (self.test_lane_profiles_file or self.test_lane_profiles_sha256
+                or self.test_lane_unreconciled_source_items):
+            if self.environment == "production":
+                raise ValueError("TEST_LANE_PROFILES_FORBIDDEN_IN_PRODUCTION")
+            if self.environment != "test":
+                raise ValueError("TEST_LANE_PROFILES_REQUIRE_TEST_ENVIRONMENT")
+            if not (self.test_lane_profiles_file and self.test_lane_profiles_sha256
+                    and self.test_lane_unreconciled_source_items):
+                raise ValueError("TEST_LANE_PROFILES_SETTINGS_INCOMPLETE")
+            if not Path(self.test_lane_profiles_file).is_absolute() or any(
+                    not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", item)
+                    for item in self.test_lane_unreconciled_source_items):
+                raise ValueError("TEST_LANE_PROFILES_SETTINGS_INVALID")
+        if any(not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", item) for item in self.metadata_detail_source_items):
+            raise ValueError("BAG_METADATA_DETAIL_SOURCE_ALLOWLIST contains an invalid source id")
         if bool(self.capability_observer_url) != bool(self.capability_observer_token):
             raise ValueError(
                 "BAG_CAPABILITY_OBSERVER_URL and BAG_CAPABILITY_OBSERVER_TOKEN "

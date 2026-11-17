@@ -155,6 +155,13 @@ def to_tool_error(tool: str, arguments: dict[str, Any] | None, exc: BaseExceptio
 class StructuredErrorMCPServer(MCPServer):
     """MCPServer whose tool failures reach the client as safe structured payloads."""
 
+    def configure_structured_error_tools(self, tool_names: set[str] | frozenset[str]) -> None:
+        configured = frozenset(tool_names)
+        registered = {tool.name for tool in self._tool_manager.list_tools()}
+        if configured - registered:
+            raise RuntimeError("Structured error tool inventory is not registered")
+        self._structured_error_tool_names = configured
+
     async def call_tool(self, name, arguments, context=None):  # type: ignore[override]
         try:
             return await super().call_tool(name, arguments, context)
@@ -165,4 +172,10 @@ class StructuredErrorMCPServer(MCPServer):
             # deliberately raised ToolError already carry a safe message and pass through untouched.
             if not isinstance(exc.__cause__, Exception):
                 raise
-            raise to_tool_error(name, arguments, exc) from exc.__cause__
+            safe_error = to_tool_error(name, arguments, exc)
+            configured = getattr(self, "_structured_error_tool_names", None)
+            if configured is not None and name not in configured:
+                # Preserve the generic R1 wire contract without exposing the original
+                # cause/traceback to the SDK's outer logger.
+                raise UnexpectedToolError(f"Error executing tool {name}") from None
+            raise safe_error from None
