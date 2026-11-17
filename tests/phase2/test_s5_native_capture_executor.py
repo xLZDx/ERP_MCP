@@ -6,7 +6,8 @@ They do not launch a desktop, connect to 1C, or qualify a native capture adapter
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
+from threading import Lock
 
 import pytest
 
@@ -16,6 +17,7 @@ from business_ai_gateway.phase2.native_baseline_intake import (
     TrustedCaptureContext,
 )
 from business_ai_gateway.phase2.native_capture_executor import (
+    AttemptClaim,
     CapturePermit,
     CaptureRecipe,
     CaptureScope,
@@ -43,6 +45,14 @@ VAULT_PRINCIPAL = Principal("offline-vault")
 ARTIFACT = b"account,total\n1000,42.00\n"
 
 
+class RaisingTimezone(tzinfo):
+    def utcoffset(self, dt):
+        raise RuntimeError("synthetic malformed timezone")
+
+    def dst(self, dt):
+        raise RuntimeError("synthetic malformed timezone")
+
+
 def recipe() -> CaptureRecipe:
     operations = (
         DispatchOperation("open", "OPEN_REPORT", "report.open", "IDLE", "REPORT_OPEN"),
@@ -61,17 +71,38 @@ def recipe() -> CaptureRecipe:
 class Authority:
     def __init__(self) -> None:
         self.permits: dict[str, CapturePermit] = {}
+        self.claims_by_attempt: dict[str, CapturePermit] = {}
+        self.claims_by_request: dict[tuple[str, str], CapturePermit] = {}
+        self.lock = Lock()
         self.reads = 0
 
     def current(self, permit_id: str) -> PermitCheck:
-        self.reads += 1
-        return PermitCheck(self.permits.get(permit_id))
+        with self.lock:
+            self.reads += 1
+            return PermitCheck(self.permits.get(permit_id))
 
     def issue(self, value: CapturePermit) -> None:
-        self.permits[value.permit_id] = value
+        with self.lock:
+            self.permits[value.permit_id] = value
 
     def revoke(self, permit_id: str) -> None:
-        self.permits[permit_id] = replace(self.permits[permit_id], revoked=True)
+        with self.lock:
+            self.permits[permit_id] = replace(self.permits[permit_id], revoked=True)
+
+    def claim_attempt(self, permit: CapturePermit) -> AttemptClaim:
+        with self.lock:
+            if self.permits.get(permit.permit_id) != permit or permit.revoked:
+                return AttemptClaim.REFUSED
+            request_key = (permit.caller_namespace, permit.intake_request_id)
+            attempt_claim = self.claims_by_attempt.get(permit.attempt_id)
+            request_claim = self.claims_by_request.get(request_key)
+            if attempt_claim is None and request_claim is None:
+                self.claims_by_attempt[permit.attempt_id] = permit
+                self.claims_by_request[request_key] = permit
+                return AttemptClaim.CLAIMED
+            if attempt_claim == permit and request_claim == permit:
+                return AttemptClaim.ALREADY_CLAIMED
+            return AttemptClaim.REFUSED
 
 
 class SyntheticPort:
@@ -137,7 +168,7 @@ class SyntheticPort:
 
 
 def setup(*, port: SyntheticPort | None = None, authority: Authority | None = None,
-          intake_id_source=None, clock=lambda: NOW):
+          intake: BaselineIntake | None = None, intake_id_source=None, clock=lambda: NOW):
     current_recipe = recipe()
     registry = RecipeRegistry((current_recipe,))
     authority = authority or Authority()
@@ -149,7 +180,7 @@ def setup(*, port: SyntheticPort | None = None, authority: Authority | None = No
     authorize_request = lambda context, principal, request_id: (
         context == CONTEXT and principal == PRINCIPAL and request_id.startswith("request-")
     )
-    intake = BaselineIntake(
+    intake = intake or BaselineIntake(
         vault, VAULT_PRINCIPAL, authorize, authorize_request=authorize_request,
         id_source=intake_id_source or (lambda: "baseline-s5-1"),
     )
@@ -204,6 +235,22 @@ def test_tc065_wrong_scope_or_forged_permit_is_denied_before_any_dispatch(permit
 ])
 def test_tc065_expired_or_revoked_permit_is_denied_before_dispatch(clock_value, permit_change):
     current_recipe, authority, port, _, _, executor = setup(clock=lambda: clock_value)
+    authority.issue(permit_for(current_recipe, **permit_change))
+
+    result = execute(executor)
+
+    assert result.state is ExecutorState.REFUSED
+    assert port.observe_calls == 0
+    assert port.dispatch_calls == []
+    assert port.export_calls == []
+
+
+@pytest.mark.parametrize("malformed_field", ["clock", "not_before", "expires_at"])
+def test_tc065_timezone_conversion_failure_fails_closed_before_dispatch(malformed_field):
+    malformed_time = datetime(2026, 11, 18, tzinfo=RaisingTimezone())
+    clock = (lambda: malformed_time) if malformed_field == "clock" else (lambda: NOW)
+    current_recipe, authority, port, _, _, executor = setup(clock=clock)
+    permit_change = {} if malformed_field == "clock" else {malformed_field: malformed_time}
     authority.issue(permit_for(current_recipe, **permit_change))
 
     result = execute(executor)
@@ -323,6 +370,15 @@ def test_tc066_unknown_dispatch_outcome_cannot_be_retried_until_idle_reconciliat
     port.state, port.idle = "IDLE", True
     assert executor.reconcile_idle(attempt_id="attempt-1").code == "IDLE_RECONCILED_NEW_ATTEMPT_REQUIRED"
 
+    retry_port = SyntheticPort(session_id="recovery-session", output_id="recovery-output")
+    _, _, _, _, _, recovery_executor = setup(
+        port=retry_port, authority=authority, intake=intake,
+    )
+    old_permit_retry = execute(recovery_executor, "permit-1")
+    assert old_permit_retry.state is ExecutorState.REFUSED
+    assert retry_port.observe_calls == 0
+    assert retry_port.dispatch_calls == []
+
 
 def test_tc066_exact_completed_replay_reads_same_receipt_without_second_dispatch():
     current_recipe, authority, port, _, intake, executor = setup()
@@ -353,6 +409,27 @@ def test_tc066_exact_completed_replay_reads_same_receipt_without_second_dispatch
     assert code == "OK"
     assert tuple(port.dispatch_calls) == calls_after_first_capture
     assert len(port.export_calls) == 1
+
+
+def test_tc066_second_executor_replays_atomically_claimed_attempt_without_dispatch():
+    current_recipe, authority, first_port, _, intake, first_executor = setup()
+    permit = permit_for(current_recipe)
+    authority.issue(permit)
+    first = execute(first_executor)
+
+    second_port = SyntheticPort(session_id=first_port.session_id, output_id=first_port.output_id)
+    _, _, _, _, _, second_executor = setup(
+        port=second_port, authority=authority, intake=intake,
+    )
+    second = execute(second_executor)
+
+    assert first.state is ExecutorState.COMPLETE and first.code == "CAPTURED"
+    assert second.state is ExecutorState.COMPLETE and second.code == "REPLAYED"
+    assert second.attempt_id == permit.attempt_id
+    assert second.baseline == first.baseline
+    assert second_port.observe_calls == 0
+    assert second_port.dispatch_calls == []
+    assert second_port.export_calls == []
 
 
 def test_tc066_revocation_at_intake_publication_boundary_prevents_receipt_visibility():

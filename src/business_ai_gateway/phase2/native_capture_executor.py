@@ -24,7 +24,7 @@ from .native_baseline_intake import (
 )
 
 __all__ = [
-    "CapturePermit", "CapturePermitAuthority", "CaptureRecipe", "CaptureScope",
+    "AttemptClaim", "CapturePermit", "CapturePermitAuthority", "CaptureRecipe", "CaptureScope",
     "DispatchOperation", "ExecutorResult", "ExecutorState", "ObservedScreen", "OperationKind",
     "OfflineCapturePort", "PermitCheck", "RecipeRegistry", "SyntheticArtifact",
     "SyntheticCaptureExecutor",
@@ -144,10 +144,24 @@ class PermitCheck:
     permit: CapturePermit | None
 
 
+class AttemptClaim(StrEnum):
+    CLAIMED = "CLAIMED"
+    ALREADY_CLAIMED = "ALREADY_CLAIMED"
+    REFUSED = "REFUSED"
+
+
 class CapturePermitAuthority(Protocol):
     """Independent authority read; implementations must observe current revocation."""
 
     def current(self, permit_id: str) -> PermitCheck: ...
+
+    def claim_attempt(self, permit: CapturePermit) -> AttemptClaim:
+        """Atomically consume the exact issued binding, shared by all executors.
+
+        ALREADY_CLAIMED is reserved for the same binding. A changed permit, attempted
+        reuse of either identifier, revoked permit or unavailable authority must refuse.
+        """
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -388,6 +402,7 @@ class SyntheticCaptureExecutor:
         session_id = getattr(port, "session_id", None)
         output_id = getattr(port, "output_id", None)
         if (type(registry) is not RecipeRegistry or not callable(getattr(authority, "current", None))
+                or not callable(getattr(authority, "claim_attempt", None))
                  or not all(callable(getattr(port, method, None))
                            for method in ("observe", "dispatch", "export", "reconcile"))
                 or getattr(port, "environment", None) != "synthetic"
@@ -411,14 +426,20 @@ class SyntheticCaptureExecutor:
         self._attempts: dict[str, _Attempt] = {}
         self._active_attempt: str | None = None
 
-    def _now(self) -> datetime | None:
+    @staticmethod
+    def _utc(value: object) -> datetime | None:
         try:
-            value = self._clock()
+            if type(value) is not datetime or value.tzinfo is None or value.utcoffset() is None:
+                return None
+            return value.astimezone(timezone.utc)
         except Exception:
             return None
-        if type(value) is not datetime or value.tzinfo is None or value.utcoffset() is None:
+
+    def _now(self) -> datetime | None:
+        try:
+            return self._utc(self._clock())
+        except Exception:
             return None
-        return value.astimezone(timezone.utc)
 
     def _current_permit(self, permit_id: str, recipe: CaptureRecipe,
                         digest: str) -> CapturePermit | None:
@@ -454,16 +475,11 @@ class SyntheticCaptureExecutor:
                 scope.company_id, scope.report_object, recipe.recipe_id,
                 recipe.version, digest, self._principal.principal_id, self._context.caller_namespace):
             return None
-        if (type(permit.revoked) is not bool or permit.revoked or permit.approved is not True
-                or not _valid_text(permit.attempt_id, _MAX_ID)
-                or not _valid_text(permit.intake_request_id, _MAX_ID)
-                or type(permit.allowed_operations) is not tuple
+        not_before = self._utc(permit.not_before)
+        expires_at = self._utc(permit.expires_at)
+        if (permit.revoked or permit.approved is not True
                 or permit.allowed_operations != tuple(item.operation_id for item in recipe.operations)
-                or type(permit.not_before) is not datetime or type(permit.expires_at) is not datetime
-                or permit.not_before.tzinfo is None or permit.not_before.utcoffset() is None
-                or permit.expires_at.tzinfo is None or permit.expires_at.utcoffset() is None
-                or now < permit.not_before.astimezone(timezone.utc)
-                or now >= permit.expires_at.astimezone(timezone.utc)):
+                or not_before is None or expires_at is None or not not_before <= now < expires_at):
             return None
         return permit
 
@@ -524,6 +540,22 @@ class SyntheticCaptureExecutor:
                 return ExecutorResult(ExecutorState.REFUSED, "CAPTURE_REFUSED", "")
             attempt_id = permit.attempt_id
             if not self._claim_port(attempt_id):
+                return ExecutorResult(ExecutorState.REFUSED, "CAPTURE_REFUSED", attempt_id)
+            try:
+                claim = self._authority.claim_attempt(permit)
+            except Exception:
+                claim = AttemptClaim.REFUSED
+            if claim is not AttemptClaim.CLAIMED:
+                self._release_port(attempt_id)
+                if claim is AttemptClaim.ALREADY_CLAIMED:
+                    baseline, code = self._intake.recover(
+                        context=self._context, principal=self._principal,
+                        request_id=permit.intake_request_id,
+                    )
+                    if (baseline is not None and code == "OK"
+                            and self._publication_authorized(permit, recipe, digest)):
+                        return ExecutorResult(ExecutorState.COMPLETE, "REPLAYED", attempt_id,
+                                              digest, baseline)
                 return ExecutorResult(ExecutorState.REFUSED, "CAPTURE_REFUSED", attempt_id)
             try:
                 initial = self._port.observe()

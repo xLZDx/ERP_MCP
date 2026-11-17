@@ -2209,3 +2209,9 @@ Pin the two named S5 test modules after the bounded source was written. The manu
 ## 2026-11-18 - Distinguish pre-dispatch refusal from an uncertain capture
 
 The first S5 executor run at dcbc263 reached the missing-initial-selector case and returned UNKNOWN despite the adapter never receiving a dispatch. Record the attempt REFUSED and release the exact resource lease when an admission guard fails before the first dispatch. After dispatch starts, uncertain results still retain the lease pending idle reconciliation. Preserve the named prior failure and rerun after this correction.
+
+## 2026-11-18 - Prevent capture redispatch across executor instances
+
+Code and Python reviewers independently confirmed that a completed attempt was recorded only in its original executor, while the process resource lease was released. Keep a synthetic authority-side atomic claim for the exact issued permit, attempt ID and intake request ID. An already claimed attempt can only recover its scoped receipt; a changed or unresolved claim cannot dispatch. Model separate executor instances in the named regression. This does not establish cross-process or native authority durability.
+
+The Python reviewer also identified unguarded clock and permit timezone conversion. Normalize those values through a fixed fail-closed helper so malformed authority data returns refusal without dispatch.
