@@ -2157,3 +2157,7 @@ The first named fingerprint run at 676302d reported 35 passed and one false nega
 ## 2026-11-18 - Correct S4 synthetic scenario setup
 
 The corrected offline fingerprint run passed all 36 cases at 54a5c83. The PostgreSQL run on the same head did not reach a scenario because fixture setup repeated an existing role grant. Keep the original result, correct only fixture setup, and rerun the named disposable scenarios against the revised committed inputs. PostgreSQL holds the ERP_MCP model acceptance state and its atomic journal; the 1C copies are relevant to connector checks and were not used by this transaction fixture.
+
+## 2026-11-18 - Reuse the established S4 observation seed statement
+
+The target run at 5a24093 cleared the duplicate scope setup and exposed a signature mismatch in the test-only observation call. Use the established shared ingest statement inside the existing company-scoped role transaction. PostgreSQL is the transactional authority for the ERP_MCP accepted model head and related records, not just a diagnostic log. No 1C copy participates in this transaction.

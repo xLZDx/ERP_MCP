@@ -868,3 +868,7 @@ Result: 36 passed in 0.46s. This supersedes the earlier 35 passed / 1 failed res
 ## 2026-11-18 - First S4 disposable transaction run
 
 At HEAD 54a5c83b98c92ac7dd2aaf83b6ed05560e4515a4, the assigned e2e-runner reported seven setup errors in 54.82 seconds. No scenario body ran. The test fixture attempted to insert an existing living_reader scope for A/s4/c1 already created by seed_basic(), and PostgreSQL rejected it with role_scope_uniq. The invocation-owned cluster context exited without a cleanup exception. This result supplies no transaction acceptance evidence.
+
+## 2026-11-18 - S4 disposable rerun stopped at the ingest fixture
+
+The e2e-runner ran the named PostgreSQL module with --maxfail=1 on 5a24093. One scenario began and raised UndefinedFunctionError in seed_eligible before promotion, because the test passed twelve arguments to living.ingest_observation rather than using the shared ten-argument statement. Result: 1 failed in 9.86s. The owned disposable cluster exited without a cleanup exception. No promotion result was observed.

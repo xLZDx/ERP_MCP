@@ -650,3 +650,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 FAILURE: the fingerprint negative test used a valid lowercase UUID and failed despite correct encoder behavior. Layer: acceptance test authoring. Rule: verify every negative example independently against the framing specification before assigning its expected code.
 
 - 2026-11-18 FAILURE: the S4 PostgreSQL test setup inserted a role_scope row already seeded by the shared harness. Layer: E2E fixture authoring. Rule: inspect the shared seed inventory and add only the extra grants required by the scenario.
+
+- 2026-11-18 FAILURE: the S4 test copied an obsolete observation function call instead of using the shared harness statement. Layer: fixture setup. Rule: reuse existing SQL statements inside the required scope transaction and inspect all remaining function signatures before retrying.

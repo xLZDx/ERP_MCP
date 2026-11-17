@@ -101,10 +101,8 @@ class S4Database:
         object_id = object_id or "s4-object-" + uuid.uuid4().hex
         async with self.scoped(self.conn, "living_worker"):
             await self.conn.fetchval(
-                "SELECT living.ingest_observation($1,$2,$3::uuid,$4,$5::uuid,'OBSERVED',$6,"
-                "NULL,$7::timestamptz,NULL,NULL,'{}'::jsonb)",
-                TENANT, SOURCE, observation, object_id, revision, DIGEST,
-                datetime(2024, 1, 2, tzinfo=UTC))
+                pg.INGEST, TENANT, SOURCE, observation, object_id, revision, "OBSERVED",
+                DIGEST, None, datetime(2024, 1, 2, tzinfo=UTC), None)
         evidence = "synthetic-evidence-" + uuid.uuid4().hex
         evidence_digest = hashlib.sha256(f"{DIGEST}:{evidence}".encode()).hexdigest()
         async with self.scoped(self.conn, "living_worker"):
