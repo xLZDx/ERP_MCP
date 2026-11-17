@@ -1763,3 +1763,7 @@ After commit `69899f9` recorded FIN-S1.2's external source dependency in the nat
 ## 2026-11-17 — Fail closed on FIN-S3.2 task registration mismatch
 
 Decision: if scheduled-task registration or read-back fails, disable any remaining task and confirm `Disabled`; do not leave an unverified task runnable. Success requires exactly one expected action and a principal bound to the current interactive identity, as well as the one-minute non-periodic logon trigger. Two independent reviewers confirmed the original failure modes and the fixes. The parser and scoped whitespace check passed; the focused installer test is `NOT_RUN` because the test role's PreToolUse gate rejected test authoring. No scheduler state was changed. FIN-S3.2 remains in review until the test evidence is obtained.
+
+## 2026-11-17 — Keep FIN-S3.2 acceptance open
+
+Decision: retain the source hardening commit, but do not accept FIN-S3.2. The focused installer test was denied by PreToolUse, and `ledger.py review` rejected recording the completed review because no finished post-commit reviewer run was present in its agent-visibility state. Record the task as `BLOCKED_PROHIBITED`, preserve the prior read-only connector and Redis-restart evidence as separate evidence, and do not fabricate a test or review receipt. The project-plan status remains `IN_REVIEW` until the test and ledger-recorded review are available.
