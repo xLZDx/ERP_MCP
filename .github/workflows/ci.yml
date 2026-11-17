@@ -1,9 +1,12 @@
 name: ci
 
 on:
-  push:
-    branches: [main, bootstrap/1c-day1-production]
-  pull_request:
+  workflow_dispatch:
+# was (disabled by harness ci_triggers_off 2026-11-12, operator rule 4):
+# on:
+#   push:
+#     branches: [main, bootstrap/1c-day1-production]
+#   pull_request:
 
 permissions:
   contents: read
@@ -225,7 +228,7 @@ jobs:
           fi
       - run: >-
           psql "$BAG_PRIVILEGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1
-          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN; CREATE ROLE business_ai_control_api NOLOGIN;"
+          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN; CREATE ROLE business_ai_control_api NOLOGIN; CREATE ROLE business_ai_capability_writer NOLOGIN; CREATE ROLE business_ai_capability_acceptor NOLOGIN;"
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: uv run --locked python scripts/migrate.py

@@ -1,0 +1,9 @@
+{
+  "run_id": "2c1e6f82-04e8-475b-b0ac-7f1fc2b87e32",
+  "baseline": "7c1f69cf51b16d3849772fdb1e32015b17cb1aa7",
+  "status": "COMPLETE",
+  "files": {
+    "PATCH_EQUIVALENCE.json": "bedc2dc1bdd89b3096ea4880726315591cfa00046c7250638d4ebbf0e30649c1",
+    "WORKTREE_STATES.json": "c7420ae72e17939b944f7ddb9bc181d49b49cda7cfaaf160b48007fdf1f42653"
+  }
+}

@@ -55,6 +55,7 @@ def make_data():
         if m:
             requirements.append({"id": m.group(1), "statement": m.group(2), "status": "PLANNED"})
     stories, tests = [], []
+    seen_story_ids = set()
     for line in stories_md.splitlines():
         if not re.match(r"^\|\s*R2-US-\d{3}\s*\|", line):
             continue
@@ -62,7 +63,15 @@ def make_data():
         if len(cols) != 5:
             raise ValueError(f"story table row structure changed: {line[:100]}")
         story_id, stage, title, reqs, cases = cols
-        req_ids = [f"R2-REQ-{x[3:]}" for x in reqs.split(",") if x.startswith("REQ")]
+        # Later rows may repeat a canonical story to append implementation notes.
+        # The first row remains the acceptance source for the 48-story spec bundle.
+        if story_id in seen_story_ids:
+            continue
+        seen_story_ids.add(story_id)
+        # The narrative may list related requirements after a semicolon.
+        # Only the text before that separator defines formal acceptance links.
+        formal_reqs = reqs.split(";", 1)[0]
+        req_ids = [f"R2-REQ-{number}" for number in re.findall(r"\bREQ(\d{2})\b", formal_reqs)]
         stories.append({"id": story_id, "stage": stage, "title": title, "requirements": req_ids, "status": "PLANNED"})
         found = re.findall(r"(?:^|;\s*)TC(\d{3})\s+([^;]+)", cases)
         if len(found) != 3:

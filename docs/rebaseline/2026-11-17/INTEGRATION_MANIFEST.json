@@ -1,0 +1,3937 @@
+{
+  "base_main": "7c1f69cf51b16d3849772fdb1e32015b17cb1aa7",
+  "source_head": "431885750dec5615b3c880baea23906acf9ec82e",
+  "paths": [
+    {
+      "path": ".env.production.example",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "106151ae0b64a9c92e2d8ce2b3a0046db1b9fda2",
+      "working_sha256": "f8f532bf69e4e31ba16b39e6e35dace71b01cbc5550b2985023389529a36b9a3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "1f57956873c103c9d76e4dfe2b659b9a448dcc37",
+      "working_sha256": "1fdd5b8e2bf9a292e4a7abd10523c85257664653ad4d01fbaddab86b58c071d7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/_agentio.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "daeffb69488f3317b71ddf824b49d950ba0b7811677615168c946adc0a06023e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/_lessons.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9f9a6ea4b5d9a28430adef3c0889767a2537fdebe579c24f5467325c675e63b4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/githooks/post-commit",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "066db2010f36a777fcab12cd8f48f1378d6690ae2de66b322b18a657bb3de1ed",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/githooks/post-merge",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d93247af10770ba682f3c675fb2bc20b4ef575c13d4527f782bd348af0f9b46a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/githooks/pre-commit",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "be1cc5e78a9e7e2ab9845d324eed7611a58173d378f3fd5d0d8a2227999c06e9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/githooks/pre-push",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "deebe55ca5759d5dbe6898cdb4be98d9508b25f1671d55d2e004da9c522de462",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/harness/manifest.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "450bd3d3a754a3d8a28693e38d1d8a9a22983657fcef3a93adfd3c48fe1ac2d1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/harness/routing.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "4574ab1a31271fd74e61035a16b38a8682cff8868ab2c29b61aa249faf19f574",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/ledger.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f21e345cd03a534dbb50b553068df64e62099e09381761b2f8518cc3d4f90b91",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/ledger_sync.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "4a684fa423c6e79ec0a29444354f95e3fdedab0cc02306415e781e162aaeeef8",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/lessons.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d518ef0ae51b32b57e7d151d7babe4e66a778177b97d2bc7ca11a699507c98eb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/plan_import_ledger_md.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "3d3ec3d09aee1e41bdcd4055886e86414ef2f14a5a51205eaacd8797c4bbe8e3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/plan_import_master_md.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d3117c41490fdccb95f68966dd73f6705654c6c27471d4354117075c13bf732d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/plan_ledger.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9e1ba23ffca5db4c9fd7824cd0cc33162c7e5e0908ce4a66d3c2d40e44c2a444",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/report.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "c5173aad9cc658ad8085a1d3797d629ca328fecf4a64e3d1fce99b5aa9484689",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/report/copy.js",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e5b6c714622a3b0599f5a2e1eaa340b4017a8bb52869f44b908058104bbd19a9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/report/filter.js",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "40579e1f17e9e7f782cdc09b1f740fea7d922dd3881525fa2e08440e28156c0a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/report/report.css",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "05aa5fa74c6b020e08a896b6ca4a3bfe2a6ca123f2567229c997aeecec7ecb3a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/route.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "3a768b33e8372b9954dc8223dc92e7ffc76562894e80eee3c231be078fce4508",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/secret_policy.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": null,
+      "disposition": "SENSITIVE_REVIEW_NO_AUTOCOPY",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/workflow_guard.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2b5ea891b4ffde1c342cbb2ca1303a3a2088a145a474ef348e8bf14943bd1257",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness-tools/worktree_gc.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "343e0c24d1656f8b81120ca1aa7b7fff47fed28c00a8c8fc89187fed985a0921",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/decision_s16.patch",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2b88de95bce52c8ad00f501f9a105b0e779f6ee149318686f1a89098b67f4d0e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/decision_s16_followup.patch",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "87ec35fb3eabb66a9e0a4036732f437db9abd7e3df433f36b1d85c16d3e45805",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S16-7bbbe15.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "748421501b24127a6c3d2e1be579c3af9c8f9d2022833cfcc1cc2e442999f10d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S16-final-committed-review.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "c8c700391f0ef880b003116220c94f6edd2aab86c83f88f293ca3482140fac87",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S16-followup.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "13c23245e2b12771968bb72b269d9db30dce7fb51f0051f0e0091e22b54e3b8e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S16-full-final-review.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "14c06601b63851709658abadd9b3cb2268c167818d4a6367a54af606c7e7f8c2",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S16-source-review.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0d90e873258f5d284f297a742371993a747f7654e5076c42f59060deb1ea57cf",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S16-sprint-review.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "6454814bf9338bd81305f870e976a27a24b672721af6389a89d077c6814f760d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S2.1.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "73c22d309dd9890f37ebb81806bb9e330f0c3c7dbd60aaa8698cf7628b4a3fcb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S2.4.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "682140a877528ee88e946f874513db82184e32fe70d3aecf647dccba25254a26",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S3.1.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "40cc797f90b2c2adedf92fb34dec66242cdd93eeb5c31fa482bcc4d757bf8991",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S3.2-review-current.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "32c405d6b2315a98e4eb65b452fb6b26a23c7f8fc129b12a200a4ff3a1c1484b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S3.2.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "621ba65dee25bd4852b283024b300e00860a9589e81dc04cfb2c85efc1810b5a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S3.3-current.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "6d8f8030b9f6e3b1108d7778a1683123ad17d385bbeb96f5dc00cbd7685f1106",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-S3.3.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2dd3655604fb8bc7a6ee7b12ad4bf3e406442c2e8d0ca48deabb5fe8fa62f4c4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-sprint-current.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "22d59987232963e859e2d310fe245ecff0d7b8b214ad18a22f8711b4070e1812",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/FIN-watchdog-trigger-removal.diff",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "4d5de48e9f7683079a90f42a7dcb2b4c4ccc863a81a06938bed8f3f2e0e1f47f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/diff/start-lane-comment.patch",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "3764e06527045f769e26fdf53884894adbe1a0399fe31fb17097329ebfb3c321",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/hook-error.log",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "39ef5f52b53c259e037d25972b597b125a051133eac2c70162e9b90921e5b316",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/ledger.json",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "4100de62772b6d7f4bc82d98a12e8cb72d207911f84d36fcc826c65baf910ce5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/lesson_s16.patch",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "107f953c4f10a0ae37667a204eb76fc97978f5afc0b5707ce12caf80275a6dad",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": ".harness/lesson_s16_followup.patch",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f39ad06049ff0800786d010a95d7b7b8d34e26e3e53ad91b2222d96490e84af6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "AGENTS.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "4f4dac8794e61bcecb4bd13d403f34df12c8839c",
+      "working_sha256": "01142ce061c8ed8bf5cc4d74e442149a17c268a5d9a2809a890c6e3672d5a585",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "PROJECT_PLAN.pre-current-S12-reconcile-20261109-210106.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8ad403349398260683fc73e35d293943c85af22cb6b6ee98518d4f8ea49862a8",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "PROJECT_PLAN.pre-no-operator-iam-20261109-223503.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1004666e2678fe7919d1fbd00451f4f3e95d545b31f992856c876dbeedcc3e14",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "core/DECISION_LOG.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "6dad995e37051bcf5cac8969d88e394e2f3cc899",
+      "working_sha256": "4b161b001b1fdf7b0e205b9327f30f4cbb208b2284ff045f4b0f0874cc5976c4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "core/LESSONS_LOG.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "b451ca9b42c0cd28998016232314989e0b9c3914",
+      "working_sha256": "ca634ad7e3a39f0fb975da337ba38b255e284a21b9aecefa3de1ea6c88ea1160",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "db/migrations/016_capability_observation_writer_acceptor.sql",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "cf06f1edf172f71fd148069b95ef2d08f0e49298c16f164131fd20f39277c6d7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "db/migrations/017_semantic_profile_machine_evidence_only.sql",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "c17a5267d424bcf22a2542b258d6fd642884d33db20eb1c06a1d3470c9784af2",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "db/phase2/027_private_writer_admission_schema.sql",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "809d9c75c577b4a94d7ee3cf4e88cdca79f19384",
+      "working_sha256": "37fe2ad5b53eac3075a3735a70cfa2c5fe7e4f264fca9bd966b62fe373a510d7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "db/phase2/028_refusal_codes_parity.local.sql",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-03",
+      "main_blob": null,
+      "working_sha256": "08bcda939eeb384f499f976a5416d820a2d8fcccc6433f015f411ad63c46c73e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/CHANGE_RECORD_403.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f9f7cc941e19ce79c53d65a57cf333c5c818ff822f2d450d94c2ec7e5e7987e2",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/CHANGE_RECORD_407.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "96029cec4233b6f3d5276469bd0b5db3fd2b1f0d5725008ac54c1e904f3eaf8c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "734d3c12b2533992c75073b0b0cb05c3a255b86c1e56c18e829a88bc6bc9e47f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/D10_OFFLINE_ONLY_REBASELINE_PROPOSAL_2026-11-09.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "aa275541f2523c47f86d82fef964fbee3cbd985acca07cb3fd7d7a3ef67f8437",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/DECISION_LOG.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "b62618fb90dd9b55c49a6a335983ae444764c161",
+      "working_sha256": "a8b1bd8bf1f3657d40b62bad70a74f4c34c805d5c4270a4f95e65532a69e732b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/EVIDENCE_MATRIX.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "d5e504b38fe4859591e46f4609a40c4e3190b2e5",
+      "working_sha256": "af984ae6177794e78a5854ac8a433f60db6dd41835027341144dfdbca6906bff",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/OPERATOR_BACKLOG.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "5231e310363085f1148a83dd1741dd4d9ef70eaa",
+      "working_sha256": "4a01f0f2d8da801eee0cd7916938c54ca1d7314d49e3479e6d29cf6f4e5cb8ef",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/S10_RELEASE_HANDOFF.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "3b9bc4498786f037b7e281ef33d54b590bc28771",
+      "working_sha256": "09e2ce8c9978f9ee39f4312d79dff0a5b35df9e1d8ba75b9dc791efb50728bd6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_EVIDENCE_CROSSWALK_2026-11-09.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2387ad6b47cdfaa83c8265a98e19da875d425aed760f3fee524adcce1dff2eae",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_PREREQUISITE_CORRELATION_2026-11-09.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0e2d8c6216367999fc7b714fe726dd995281c45b3bdc41f5e33e52859298d2fe",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_PREREQUISITE_CORRELATION_2026-11-09.pre-current-S12-reconcile-20261109-210106.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f9afbc6b0be2f4029267e8e41605fcebb5f41de27a5fcb41eac9e485bbdc7971",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/S12_ENTRY_PREREQUISITE_CORRELATION_2026-11-09.pre-test-lane-rebaseline-20261109-223050.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e388303932e26d625d2be56ede70dd150e52e3ee08460017808732e62202b493",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/S1_S4_TRACEABILITY.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "444bcc330188ece56a011271f0de98994cb6083e",
+      "working_sha256": "efc244fe0201c99ab8b5900991b69d5cb579a0a66b43e1f6a64fe663cc49b857",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/SPRINT_S8_PLAN.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "1ba832ea3b10f2556f6e06067b88963bac601faf",
+      "working_sha256": "6c6f4d48c41a20581acd35f65814304a2b1057af6130d8c3a912f68e7435f832",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/SPRINT_S9_PLAN.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "4eddeea26f2e2d44e29500d4316ac48fa31ddd0c",
+      "working_sha256": "ed3a23a8cda99b44d2aa702bcf007875d02d6c530a82debaa88972e0464cedea",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/TASK_LEDGER.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "d719db9fc3067fda6387faff3633ecf018afdb3f",
+      "working_sha256": "4b909289a28b1339265a7748f14c4a275ae65f2444ca0eba43aea7d71a925a8b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/acceptance/phase2.feature",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": "949382d38dc9c2e4b060709cf6b6f3b3e24b21ac",
+      "working_sha256": "3467b6280bd5c87d13c8461e7fdf313acdef2fa4372584ea39bd3c47396fe003",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/rebaseline/2026-11-17/BRANCH_INTEGRATION_AUDIT.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f9f53ebf0ca80ebe09d5896d38d3edf087cda9a0868dddaf08f7a3d7b9e15d21",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/rebaseline/2026-11-17/REBASELINE_CONTROL.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f5309f0011148d591d040c86ae9e3f6a4444d7f2972067b62732e9a85e3445d6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/sdlc/AF_STATE.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e4a95928006816a4fcf0f750f42ec294b285f6c3fa42949f908436589fbc7b84",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/sdlc/functional-evidence.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "779533f0c40b26aea20ddc63e93ff9e508e8e781cbf11de68576f30f3d28f8c2",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/sdlc/next-sprint-preparation.md",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "03438d7a73ffbf9cadcd2ea743bf6894855a887b189b37cd35140e3982658e71",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/sdlc/state.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5ac1bb371f52f6b7679e57e0832f22e8fce2b84f17f62802e75e3157ae277c98",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/sdlc/verify-evidence.json",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "359998d504c8cc23c5778bd3b58385865db3dece729fc0647143d4fc19980f77",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "docs/sdlc/verify-evidence.md",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0112dac90c25517f6d04ee13567ffafb0bc601a7c37a8e2b36c10ccc6b77c11c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-10-31.html",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "337dc92ac953e32dc5bc3dfe67e97358666cc9313958227c108badfde7ce8b53",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d8f96b5d57e6dc584f89d723a7fa80895323f368abf7eb0d229268945fc4734a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-01.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "632c01ca5da01b918657e90a03c645d0897d36b13929935aa1644ebc9c963f23",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-01.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b7b20f5d09981b94350af699d13e56fefd4b13e67bf3e7355560b7ec8873572d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-05.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "3cc3fcccf9e06a08e1b7f549b6ef33f22e641fe1119812dfdfa9b41cefb0676e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-05.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0d2e14331d28e412f9bacf0294a29025cde5070e233b85f19ec124776c56ef62",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "086b7ea239285103de2181b9df82474ff8766f772845529d9c084042bcf057e3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "920b06f2aa73e5ba3bc19fea36e27d15838478be70af8edff0837a7415540e2c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S8-US039-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5b9bc0d512a637bb108a6416a86118284b0fa3f40fb336ec7e81828cc2575835",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S8-US039-count-recon-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "21cdf400187b372a2d73e1d9e537a5e650e40cf8d9171f4ec84d6c9a150cca29",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S8-US040-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "17279949e3dab2f4898ee94956ec9d7e4a001b492e5a75d7b1bfa8b7e1cfc853",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S8-US041-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a1327bbd051047d4d18634ff7f79f7e1653cd144afe4325dbd3d0e4037522826",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S9-US043-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "921dcf2db78a16e34371a3502c39dd2c830d94539b4faf9151652984fbd33bcc",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S9-US044-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "43e8809763ad14288e7ddd0c4914a43d49241e805a36dd70c2c0ceebc561cc99",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S9-US045-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a2a0f4ac8e5e7ac52bebbf50ecf64cf6ff133eff7c2b11c9c9a7cd73e14160a4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-S9-US046-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "75fecf43a02bb382ac6dffd004f670ceff969a56ff3a4e7091f0bf345cd3c53a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US031-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "01e62fd444feff868b129787c356321edb9aea66b99b6a5ae814cec5bef55f73",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US032-major01-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7d3514175478f9c5975ea7418eb9e0737170b9bbc9bfaf95e5a827d6aad161f4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US032-push-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "57d261bb77c7374dea66d61ba62c6985b2578929e9684d04c5b4d275e579888a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US035-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "95bc522c999f41555440301c97cdd6355a2a694e309bef1bffaa6bfecfd77a18",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US036-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8c3f62a430fba1ecf5203687e8a58c9b798ccfd9cb43a13789cb8f7350fad22e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US037-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d2c0a15ef3dcc4b463c3802d9b23d87d71504eb6282c5077025459c9c96dec9b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US038-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1a72b672cb4f6474f74d7a250a151751d5961ed4383773f4f488007faa971783",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-US039-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9104192fcd4e29b9cfea67e059fd7f8b7a72bde2006e00cca532779000acfa9a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-footer-refresh-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "96454cbe50fcd8bcb163e059e9cdb4f2933a29d939c2761982f389e27b1637cb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-provenance-refresh-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a1e430b01ddd2c52848cccc3b02db8525d82b852ee2e791ffd5f46eaec3c84e0",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06.ru_pre-status-no-hosted-checks-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "fe76828c8a660f6378246e103feda5734153a08576c71c4a4b931909677ad0f6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-PR46-merge-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9035220547c4d5e6f459375562acde0f12e5c4e1d456732633afaccaf3a26a34",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-PR46-merge-20261106.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "492437fb76985ca498196560ab7c8d9895a78fe54be64d66959b4a49231ff167",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S6-2039.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1f017542e7d4fb998c1f38e43e27df6daaf65a361dc1c67f8214f5e5b5e91044",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S6-2039.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "c7c89e794f4c7e9c3f1459aa2788e5afff722400e68a38f635ef1d4df70d2f4c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US035-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9d8c34290e90ecee6feae2a3b5149be04945955ba166956a6b3db42ea2f531ac",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US035-20261106.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "4b7e1e0ca63c4ec0542653161359e6548c0fe7cbf10e6ca8c61c0e6842695f7c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US036-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5a8770703489c44ca08eb406a3773a9ecc88f20bd291f83fb73d20e74fc6ffb9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US036-20261106.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "6900e4ceecc6cb965d3e223ec446a7cf5d105d3f82d1ed8d75c41d39c3424a3a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US037-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b91d5332290d7f7cd9d3b199411034f2266a84a4034c8909fa7cc9343e3be4a0",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US037-20261106.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "dd07c997d08df7883db2c9b8f6658eaff217b476b6286b61b85aa14a06a7ad91",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US038-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "68ce1d066af817e60132bee8bd6208c33ed9fed9a37ba925fce43f6e07925cc1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S7-US038-20261106.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "bc059a5928f66a895f013a8390c5ce5d6cf210b25944c2f2a906525e1fb01984",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S8-US039-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "facc50c5a5b8cd0c0087ae686c2665589da58ef0d36527a291a5446065d543c9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S8-US039-count-recon-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "bbf4e6015c29c302f6941391a7bef89ffcacbfbc4da58696c633477bdea983a9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S8-US040-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2c61b5db85df7a84899070a022005ac5027a78474b2c2c81ff73af78e6667077",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S8-US041-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f08ecdecf2bda88d75c3ee5def72db6d14c5d31c71969c13256479c57450ebe9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S9-US043-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "41f4382332424f63920815a5cb7c920da5542441906db1c34123a204b886a6e7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S9-US044-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e3c63089217d8723c1d3993230147a4a282c02427aeff51e116ee395ae50462a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S9-US045-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "54bf3fbc7d6f41eaa207f09397e6419fc9a177bd747d486fecefd5fb3f9b14b8",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-S9-US046-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5be2b828036c428c679459fb85afd80d196eb32b0f07bee59ed99e855600d6bd",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US028-2049.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "22a75c9822b8af8b6e8c428265f1bc7929ae311b01b44d30dfe6f9922bb3c32d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US028-2049.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "41f9e210979341cab49c4037f09c7c25a6e2b1ad958e0b6398852a9a1c2f75a1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US031-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5827a5a4c66824da3e67068ff39126ce7e771e9f1335280aeb89bf0966580015",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US032-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "655b2742ca0f763c7dafdc1b9c7e1e274ad68a447dc7187e8e74820396a6171e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US032-20261106.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "84acc111689cfc6ced44aae5c701afde9030c59097ee56fcad976736050d535d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US032-major01-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e36ed07e7bca6144103bb15aaab5ca7fb669159d6bb3d251b65db16708b3c5c3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US032-push-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5990057246291ba425896e03dd0d815f637e81bcd88f6a5482314faedd1aa915",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US033-2051.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "466b8dd09719f3f02d61e663421d0341f8f6e08569d4aae00f8f8c419b4d13d3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US033-2051.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "36b214dd66253b127456af5784c23acfcff9f9774b6c43370d1e7c6445387078",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US034-2055.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a57fed937064c397d3a13242a10d0c52e36a3b18d5533596188198b9905ab9d9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US034-2055.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5d5a20a9c7aa4824d7971f7fb691bb7a0b6eb168123b00612ad0fac5ebd04f5a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US035-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "829e09253e8c160e444e08207ed09af9b46e3ad9718364c50e7e74c74b87c8c5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US036-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "66e4323a96b5360ddafa34b1eabafd954355acb4063635be8ebe7c6a78f369b7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US037-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5a268b60aa758791be78ce9ad20e8f8ad79e9006d2a81887a99b1c501cb11121",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US038-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d7ee2570a2e52aef9ad7477cf2aa2b24e0228862925b8d884505732bf4c10f05",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-US039-closeout-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "59b2ae02bd037f83b20c000f4b4e5caca4a61b08ff344d35974932bde1a1e9fc",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-footer-refresh-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8caaf849d961db06508d5ecb2dfc69ec7de7d0c5f0d262890f96740c4d33017c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-provenance-refresh-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f628e8a09b8118f7c907d4b85ddffe75b9da4c5e22d5ba15eccd2d4fcb17f8d5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-06_pre-status-no-hosted-checks-20261106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5522e2d6937a451e1d93da016decd8a4e9982734a05f53b7e7e5ff81c027560c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b8e33fc37f024f2ce37877bf3eda1d1d81a22e9b83812fcfe935deea3b6b4981",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-S12-formal-entry-20261109-204557.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "3cc421f15c7eb2f7f424faf1be3ae48700e6939215932f7d2de4c37c1530aaf5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-S13-02-refresh-20261110-0423.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "21632600de373edca4c8080408837635cb734fac0dbcda3a2f1a6a08464dffee",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-S9-US044.bak",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "840a02f3389ed3965d9c2ab36e1b30ef0bbb55815ddfe6a867893a22025d15d9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-current-S12-reconcile-20261109-210106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2b04e3c33a96cf7630e8a32b32674c38a87ec4bed593b405125f081f57a05b5d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-final-pm-2026-11-09-0442.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f1621cc3176ad06854c81d6d4435523f97aadd18f2aa92f84323f9df81ce13d2",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-no-operator-iam-20261109-223503.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "43afe8fc83824c176d6c3965fcd440c7c55c95f5fc932b3402eeba0e97f4cd9e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-pr53-merge-2026-11-09-0439.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "6829063a01ac4406a3624e142235cb2a2b52e877bdbbedbf5902c83e98a0de93",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-pr57-merge-refresh-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "ef5d39e07a7b881280f4c182666b3e032f23c796bfcd81f2c5abb214de5885eb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-pr57-refresh-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "cf0bbbaf426ce27831154be2c48ad6aea0b865d5f96d264980316673782dd8d7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-refresh-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "c0a2ec4ee11da59cd4abd0865339bab05546d84e62869c09e70a6a59a9fc89dc",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-refresh-20261109-094232.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2841a020718c4ab7d42ceecddde2878bdf0b3054e27cdff2c73739aaaa0d1122",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-report-crosslink-20261109-204916.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "3ebef60bcf0d3ebb2e503d8fbfb73a6080cabbf59315ea3d2b462e472fb5266a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-s10-adjudication-20261108.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "c6ddf9c012e71fa41df43653d3cf580907462ea0df231c384ca0a95698da7466",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-s12-06-20261109-231522.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f5dccda668f11925dd467d8110bccf2589e5761982def61c590e77340cd0c444",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.pre-s12-06-delivery-20261109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "340afadc7d3c90ba122b4258fd3cc7699a2d2587f92b62a7617565609edb436e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1c6ef38bc18bb40d43fa5ad1e58c4f51e48ee34dd15e4f35a8e55d567513f616",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-S12-formal-entry-20261109-204557.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "25466fc595954496225fb53791f7ccb9d90816c82594812736d6859a2f69ec12",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-S13-02-refresh-20261110-0423.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9089337f19130c31caa12ec56b715e4a0d77b87be2d9ba93f3c79262c4e5a981",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-S9-US044.bak",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "ad4782888b9dcd7f88b933ea9a30352e18e5def636a1c0b5a3f86593fca5f5f0",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-current-S12-reconcile-20261109-210106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "dca8381ef88e705cf7af57b3cf1db3b64e335be6ce43482ed25400a2508c88ff",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-final-pm-2026-11-09-0442.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9a55a27520b220d8eaca545f2b023ce54d0d84dc2258f728a031923045ad2bca",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-no-operator-iam-20261109-223503.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "ee56756dd011d6ce3cdc8f112f7f7cf290c02fd05566395338a03408f878444b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-pr53-merge-2026-11-09-0439.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "78330d3ce077a8cd660ca7e158e397248e7f94ecccdccaa29830271ed823fd29",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-pr57-merge-refresh-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0fc6ae39b61d8edf7307f27b511fca7cc185ac26ec8eda91af39f56e58b9840b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-pr57-refresh-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "85109f0c8d1637470a348efebdba8bc7633b8b8ed03be987e8036b3b2ded2911",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-refresh-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "c7e14d3157a557b8a49909187be150335c6c74a5442a0c9cfe5de09aebb700a9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-refresh-20261109-094232.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1dddb7ad086783433320695054a305c5c3c56014c7acdebf735572c46fe0d98c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-report-crosslink-20261109-204916.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e8bcece04e349489a21df7e9916e2ae6a56ebf8d10c9d7e0d396f1f3d4e79240",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-s10-adjudication-20261108.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "55189f7a433c718ba70671940e5ec788574aa9fea4f845df3cd02eb98c1fd809",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-s12-06-20261109-231522.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "895cef287251b15fb65f54a8d606f427d85ed8967d774e08ae590e9335986110",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru.pre-s12-06-delivery-20261109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e00d6bf0ed2e0cc45eec68aca9b2a2a3d6c44d72e5ecb29b2756a4ab5619e424",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru_pre-S13-01-acceptance-2026-11-10-0332.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0a217af57172b5e2887cbef436727af5fd2f733bbfd0428dd64764b9ddcb841d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru_pre-S6b-merge-20261107.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8cab844542694c215ed818c2270c5a3737bf91b1b8544af44f923b4e47af4952",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru_pre-S8-PR50-merge-refresh-20261107-0811.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e80db967328626c7ad4c7be624fef452ce5fc19e462668a246b0345d7eb30f0a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07.ru_pre-connector-recheck-20261107-0930Z.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "2530eaf7fd8c7c87488fd13573006b98b507595da19cfc3b5322e8dfb5aa9ee9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-FIN-S1.1-closeout.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "ffaa6c90f240e279220299e79969dfcfb1445dfed6e670a1951a3805dadabd4c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-FIN-S1.1-closeout.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a0d46df2f4e6edc365fb3b7acca408e20cd66a4cef794683f0095a1f091c0d8c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-FIN-S1.3-closeout.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0dd701f41b87b6b31dd9e351256665825a14eaae058e765c48ccfac8b9848ddf",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-FIN-S1.3-closeout.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "faf358759621bfa9c1979636ad488bb8176ecb9f6cc5f462524c527fe1d8a1d6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S0-closeout-20261107.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "aee99141d0b15de3d997568acdec8e69f6178880119412eb4d28551be3c3d5b1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S0-closeout-20261107.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5074f33716e425801b902a909b481bb2498595af9f7f07681a3a8da8795b6e1c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S1.2-run-evidence.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0410fe16d98b79ca78af066acd12298057b6e504f6537df57e793bcc625680f4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S1.2-run-evidence.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b5bf292a6c61db55db43bb87cdaf3dadf222fbc8ec935b63994911f4d8054b11",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S13-01-acceptance-2026-11-10-0332.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a136964abcac1fc05bb3035390203f96bdacb4c8e01b143cd9068cdf4bbc9497",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S6-S8-merge-refresh-20261107.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9ee2b05ffaa56f6aad93d1c6b911ce6b917b7a64cf326c7a9de61066f77d60fd",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S6-S8-merge-refresh-20261107.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "058167c1472ed453018ba3718aa24e2a2fb3289fa97a00cea18a040229cbbcfd",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S6b-merge-20261107.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8ab119bc164946e6ff4b89be417039a8781a76949e09fd9def32ccfef2d265c4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-PR50-merge-refresh-20261107-0811.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "46eaa9bc5feaff07de2678eb016dc3f73d6c0dee10b0edb40f05ce69b54778e8",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-closeout-20261107.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "cd8e75af00414ecf993038315d42d7694f7f991b8dfca0a1ef9b04eb21621d6d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-closeout-20261107.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "cba3c10884d97486f2f9c357a4b26bed01e32b73ad1601e0addf570666806160",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-closeout-operator-reconciliation-20261107.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "176b41ed3bf5c0303c6a047ce2ac811af411bc435fc02a3ac08c13851e44afb5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-closeout-operator-reconciliation-20261107.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "daa3c8d0291d3ecb7b5748831d08aaa76a9d329035736d599c52d99ed2bdf589",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-closeout-reconciliation-20261107.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d55f48aa297717c9cad653c15dcdee0519a8688b211a479b95f2cf7e9be9544d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-closeout-reconciliation-20261107.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d85210d0d7c42613c059ece6ffdc63cbd6f6548f6555e75822b7ad2554667ef1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-layout-fix.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "ba9bc373fcb848e63c161e83545d4107a2f1c8561e97073639c4b9ea0ec1c848",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-S8-layout-fix.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "6dba8988a2cf179de42144b62203b6f9fc0eee51e7172f0dbcc3baa83e7cdd3e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-07_pre-connector-recheck-20261107-0930Z.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "efe009fed77bdeeb1d0945a0ea11bab2288d61e7f083b3f34cd745555420fbf9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-08.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "43c8b2181b3ce2d0b6c1b3fcc8c7aadf79d3d53a201de67016837316130d806c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-08.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "6dc647b34bf04ed9676728bf2232a392e569264c0bd1345e5c857db078bfd737",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09-1751.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b57833b256dbcad7324cb89a6beef4203ff58ee6dc5995b03bf2708a257d9ffb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09-1751.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e88f117575b7955104032a055b94ad705730399cbac79e20a41be08b678fb496",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09-1827.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8910f20ac1467a21ca8d33f52996ec56310d42cc4fe9e74e2050cc4f2b4d28cb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09-1827.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "fe318384042a0c7e7255f0e959b54b24ff8dbcc4324555fec283d930c55d4d2f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09-1830.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "aef7c2154521ed0b84bd9f278400f41d7aaab1ba955d2f8693e94969c3747665",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09-1830.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "03eda9b92be5ecaf0a851a7f910b88ce031b4e92958faa8b0e6a60db8b52ad56",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "fd57ad5376ee9ae33b651f96f1c2ff52c8b040177d603e821d85140f712c9311",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-S10-042-37157e4.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9cd36c09939d5d4cef80e518990c01819db8255007acaa815e6b94c0b346eebf",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-S11-LF-approval-refresh-20261109-1115.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "584a873eef728eb67d221b863f9c00de46ed1f9b1b03d8c39466b7adeb6237dc",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-S11-merge-20261109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0c74f00ca63d8fb13e51ecd3bc8900541632b0bb9add3b48d09d4a99e7226a3e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-S11-pointer-refresh-20261109-1109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a0da3bb93b3375d38b8a3ed5564183ccb987ed2d1d0cbc62e5faee03be05f5db",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-current-S12-reconcile-20261109-210106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7b859bc815171e839aa1f57cb3b6145d1b9ba8e1f1b33963daf60a600cc72ce4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-final-pm-2026-11-09-0442.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f1621cc3176ad06854c81d6d4435523f97aadd18f2aa92f84323f9df81ce13d2",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-next-step-correction-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7d031ffb89a06d4705d385c3e266fdfb535aaee5f0d3fb1032d8396e402f939b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-no-operator-iam-20261109-223503.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b062b9f659f0d9c72d78864295adeed25f5f981b2f8ae6ebf7fd5dd5feaee0e8",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-pr53-merge-2026-11-09-0439.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "6829063a01ac4406a3624e142235cb2a2b52e877bdbbedbf5902c83e98a0de93",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-pr56-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7956ad2a87fb162ecd382755de2804ffeb8a9ede5586774249568a49c95fc6be",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-pr57-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "82b43eaab88131a6f549313c74d7ca235bb693b3fdd36f8484176443b5fbd6e3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-pr57-current-head-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "f3abf818621aaa38be9ca27c097ff75e05236f1652d49548664cc14bce0db42d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-pr57-doc-commit-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e4c522a32cb39ff02256436ce1886a2acfd4942dcab8f3833ab892337c1e36bd",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-queue-reconcile-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7d031ffb89a06d4705d385c3e266fdfb535aaee5f0d3fb1032d8396e402f939b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-refresh-2026-11-09-0422.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "52225a70fa08c1c31f88506cbd0609400535279fbd8018329c4adfdba3db31e1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-s12-06-20261109-231522.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "af02699479f10e44f17bc0f396eee91ea472a7a27baae26ed0d81447d541aba6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.pre-s12-06-delivery-20261109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "fd57ad5376ee9ae33b651f96f1c2ff52c8b040177d603e821d85140f712c9311",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b85efbfd20b125173b2b1f7903bf9f7b9871c66aacc067775362b431c6490134",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-S10-042-37157e4.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "d51cf15304c701335a2cc4cf10913708a1b800dc06d979dd8e327e7d675507e9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-S11-LF-approval-refresh-20261109-1115.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1445699770687d12a4cb28f47ea4e012f82515243f98dd14a67342743ca5d794",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-S11-merge-20261109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "ea993d38f0550ff7bb0eccce8c9a489036606e3e4de3c916958086768cb3c2f0",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-S11-pointer-refresh-20261109-1109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0da6e4668049330f24050fda006b714ff1b7df0b7659df785cc541e8492f2503",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-current-S12-reconcile-20261109-210106.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "45b95a90bc0f5b82c6e675f35ffb1cc13ac138037f6d35cb765cd014d8ca62c1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-final-pm-2026-11-09-0442.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9a55a27520b220d8eaca545f2b023ce54d0d84dc2258f728a031923045ad2bca",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-next-step-correction-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a9d959910c9cea788e3b422692515c8f4b9d8772bf6ca571fe12968b1704d19f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-no-operator-iam-20261109-223503.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "50880342da57e1006f63ef7444780993456f5891e6e2b8abdf71d032c2b026f3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-pr53-merge-2026-11-09-0439.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "78330d3ce077a8cd660ca7e158e397248e7f94ecccdccaa29830271ed823fd29",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-pr56-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b50013df0adbe0237fb2d1cdf8b4d965d9ffc54605a380d0ceb2383591bd8627",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-pr57-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7a963aff10198614cbe18bb857687f85895b4aa6942db8c3c63a0dad93a12007",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-pr57-current-head-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "dfe69de27f827ccbc4ae8f3c1f1f17d7182a96c7c1d8d7b2e4d24e44ed8a0437",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-pr57-doc-commit-2026-11-09.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8176670072e4b498eceda614cb840eb66f54680295d843b01cfe0a2129e57c6f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-refresh-2026-11-09-0422.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "78ac4a58904282d6e1873f15fdc1041ca2b1ec094f72ce4545f519a0e5a6e195",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-s12-06-20261109-231522.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "abe155d8b7acf0f8024ce1b9552d7ca04c641d9d88708f3cf9cb89f2289a6a63",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-09.ru.pre-s12-06-delivery-20261109.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b85efbfd20b125173b2b1f7903bf9f7b9871c66aacc067775362b431c6490134",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0236.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "07573fdc1fd1e1b23d424cb5b6d903e18730ace39bb915c272abe989d0013680",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0236.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8932da00dba8465b632319d8e265ba2496763343a7967f61a3bb361d7485f157",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0248.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "82ab01730102a6b25f930e277066aab9f62acb64fbf75c2a3afcd01d86c13120",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0248.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "a2bdf5b69bc4d80b1651de91eb089c4d8c2286df751d0567229592b493ecf044",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0332.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "21632600de373edca4c8080408837635cb734fac0dbcda3a2f1a6a08464dffee",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0332.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9089337f19130c31caa12ec56b715e4a0d77b87be2d9ba93f3c79262c4e5a981",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0435.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e88f9c832d08d7d3b20c3b98c879fa3be9ce931914a4e36e89d4250a010f6d50",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0435.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "0b338c3e2636cb39093418685aaeafcd3023c13bffab189bc20da2a6918d5d4f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0438.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "cc00acb1fa59d8c955b36e046f3c51a5d912af40c6c53bc38924ab4c209bee7b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-0438.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "8cd7e0f676771af9cd72b973ce47414489b229f069f53b65891eac3da06b068a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1145.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "08cba428a79c8315bb8cc58d11947bb7432843c81d3bbf610f3cedc753847f85",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1145.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "5744786fd79d32f6ef417f1a03c8d6044c03d074b814e0765ba261176d77a279",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1150.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "fcb8cd8e112e262f8cc45e7e008e3c217584eab0c472d24a29d0f8bfb6ac760b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1150.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e774f80fb7117396e43c8602148f1a0c099cefa8c1506b4e8ea7a49bb8a86c2b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1245.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1358a052cd3bbc6ee3add79b984cb95645d1fd67f98a708bfd39baaf519377bd",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1245.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "78e3574acbb384fec017a8a24537a664db11d7988ae10e266322afaa26147163",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1322.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b8e33fc37f024f2ce37877bf3eda1d1d81a22e9b83812fcfe935deea3b6b4981",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1322.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1c6ef38bc18bb40d43fa5ad1e58c4f51e48ee34dd15e4f35a8e55d567513f616",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1432.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "ebe431e2b125eaae5091375363ee87ad384aa4a9d6ec7ef00be98606cce1d5eb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1432.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "b0ead1680afe40a6c185132bf9acd67ad40e73c032f9a30c44c7605a3f11b780",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1549.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "bc7fa122faf18cfebcf08cb4d982c520ca486d25f88f703bccf0e9267321eef0",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1549.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "4f5f6bb179492b19718f883f592f60ffaf9990910c1f722e6c1fe6eb5432ee2d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1608.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7c4a2941bc638f3caa2fea3e7c95a871fe3ef228d32083fe8f1a3deb91a94197",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1608.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "03498c6954066867c260fd2cd2295cc3ac0f141763baffa09a0a725f0e6e7dc6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1618.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "292cf6c9292d389e77086f38031d8584b0166fb912f8c066d396d98405677d09",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1618.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "4dd269904d216c3e1df2ef50b51100989d594fd99578a0fb4375bd254bbadf17",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1625.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "652b93af8a7f025c28479a6dd94e1e478b451956c1b0fb79bb09544b23f1f4e9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1625.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "843085625e6a30d8ab3097f77298f69fcaeac89128fd678edfe81fa7d329c92a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1630.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "3c905c5ca9d29467cb086302ebe89fb36cacd71daa95912b8d753f0ccc3ff0eb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1630.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "c35725543c5656cc70c9cabd283adcd6888d4b68af825454ceb382a55945168f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "e81e447820ce513a2b4e355286444fb11adf00cd2ff459b51e149623e947c31a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10.pre-S12-07-refresh-20261110-012513.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "847371e5a47c6c50bab17f1fa9b9d67240c82f7548172f10d2cdd704fcd6802b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "60750a37a5cf84aa54712ee548131eae4b5a8e02c0078daf1e0812815ffb5342",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-10.ru.pre-S12-07-refresh-20261110-012513.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "7451eba4e36fb37e374cd4873a96ada4c30023f598242b7a57be13a634274625",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-16.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "1f2a8475eaf8ed08a5a1522d69c48f9f7e8cc2a6e2a4a5c16446d6e5e9478d31",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-16.ru.html",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-05",
+      "main_blob": null,
+      "working_sha256": "9ade8fcc363955cf069c88affb57d0c76cd61f13393acce5659fcc93a6bb10ad",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/check_db_privileges.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "7c59df5bdb0b578ff08f5f54e565aaf6751201d5",
+      "working_sha256": "a725714235b477fd431b278f961383f9849f6097d52e98d466a93fbbaa2465fe",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/e2e/_common.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "5b97e52ea49c37e8ce69a8a52b91bf08e264e626",
+      "working_sha256": "f0ba5106b3d1a037eefb6e74dee0568f0d9331dcf2030b0a19e5b3c97195c5f5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/e2e/down.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "56bc8fe205f6bbd7c44b432dbd5e077e55fd6734",
+      "working_sha256": "d921f8419937726be9c1a23074cbf33eda592378bb18ea013d5e1ad69931b8e7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/e2e/envctl.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "337bb1eb768e242dae6ecdae05674dc92b06bf63",
+      "working_sha256": "842354be0ec9f7b75f51587b9ef51db8e97f0ffc2b96be450e93533a2f5dfa84",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/e2e/fault.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "66816593840d7599f4e3ab6b6417522ab256d5f7",
+      "working_sha256": "6ed5d04454b3a9065e5d32f53619478e721482c1eea11e78d9e9a03462e235f5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/e2e/reset.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "f9ad03ec85e731edd1e35a2b73e7c5f76af7f38f",
+      "working_sha256": "46c3ce6f184fae1125053779aca5ddc59d6eecdcd747615e172617926c5e0650",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/e2e/status.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "3f0960cdff16e35b424cc16384806849a5711cde",
+      "working_sha256": "57a94f298744b6968aa70b90bdc721d134d46f1ebb5a66bfb2783983d9c4ff16",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/ft/setup.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "5411bedfbfe2a80c34d580181943f71533c9d4a0",
+      "working_sha256": "1fca523433b7f16b0a875b2c4a977a9d1553c303a9d84abbb085604eadbc40bf",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/postgres_restore_drill.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "a4595705ad4a933e6e39be1364ca0f8891f57beb",
+      "working_sha256": "28d59cf8e5bf735d03d652fd57fcceb4b17ebc7c3cce9a909bf1a9c136d9ac23",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/real1c/autostart/start_lane.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "7ece95bd2b2e1333b747f54bea595aadeaeeae8c",
+      "working_sha256": "4cf08a46cfc76559c5be1cc1e09151013f67b4e93f0b2b98580ecaeecbc4e9b7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/real1c/gateway_client.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "35b891ecc6dbafd107a878cec885c69972c7298c",
+      "working_sha256": "0842654f99006b65bde3716712055d9a9a4ec9d164ae82cb08cfc204fa79eebd",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/real1c/lane_setup.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "be31b792adf2cbaee8613384d2567c136fc2c97c",
+      "working_sha256": "333c659aac21bff7f23eb3692e440aa4f68a88b7ce296708f83226ddd1a09a99",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/real1c/period_lock_evidence_readonly.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "a4d1fd99f7673a936658fe0c057c891d50d565a60d734370571ad9d6b97cd050",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/real1c/period_status_native_readonly.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "8c9df5857777de9c4baff7b730fe174490727181db89915eca2f345726255be8",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/real1c/probes.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "6465164490cec114c2011f34f4465f84a940f4ed",
+      "working_sha256": "fcd78bd5c333b2f2e0abbbe011a7ea4b44725c0c3244880be0bfaf6cecede2e3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/real1c/validate_e2e_credentials.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": null,
+      "disposition": "SENSITIVE_REVIEW_NO_AUTOCOPY",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/remote/register-stack-task.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "5573e720d7fab3165224f6cb63636241c424ef5c",
+      "working_sha256": "0667b6918bf9d5523ec53fdee56b25c00facb4d0025d38656759335f6daba04c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/remote/run-mcp-stack.ps1",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "5d296e173f4c541a28ad353c1458dbeb43053483",
+      "working_sha256": "cb09d4a701af4ee1df2824a3030a8b28e05986c851a4d0116a2c6645a7c88d1c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "scripts/verify_schema.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "1050d4f11e5bf420b54e94528174827458de1e69",
+      "working_sha256": "43fd74aa451659df1fe168eff489228acbcc92612a7562b1815d49fb0ba7386f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/admin_api.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "a16a0e4652ac59657f771ac9804d3d8484535534",
+      "working_sha256": "11a7abed725a45f77694d9f2f667391a7ab9761374ae602a7a702d66af513b4c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/admin_mutations.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "9f8cf373c778a0d8aec64e693debb3f0a825a355",
+      "working_sha256": "a45718d9b760d59531dd61473654bec08657a968ef5ff3c2a31b9b1c0ba6b01c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/capability_acceptor_service.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "4c9f497ab31b03494d41d335c4b0b30ec90890b2ff155e59afb72dd3204be59b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/capability_client.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "998131ad931cf8134876f75aa18cf948415fbc7676d57fe261c54c59895054eb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/capability_observer_service.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "8ef4e28fd162f446bdb8f60404300bda84c57f1df78c731e41616a493ccfd035",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/company_scope.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "eb1552da38316350092d6fde96baddfe69c879e8",
+      "working_sha256": "57138327bc4420fdc33fbdecb30d84b84ea5b14953e31098069788a54f705b68",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/db.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "b1a49adcbc218874b52951d907e5e989ed4e9a40",
+      "working_sha256": "393d52f07762bae9ad01c2df6bc105f3ddbfc8550627801a3a24adcd53607e7b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/models.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "8a86da6da006db131e1d2a92f7c21f5475eeca11",
+      "working_sha256": "c74258850f40f337c9a4d17baece3af37ccc40fe2ad6dd296daff509948e5fd7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/backend_budget.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "a7d56bfef8e39fc1fc52af88fc788d55ef41cb8a",
+      "working_sha256": "2363dcb1dae66cfaf21fa002b7a393cdbeea66d0bd6c1e5f7c2ae76723cb5f2b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/capacity_interference.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "a9a94a0a2f5617335a90f77d00e7c7fbd2091f83",
+      "working_sha256": "8e632a1546606cdb5c495a4f38978af3d36cd908f1720aafbefd15d083ffb559",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/capture_loop.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "04d14a2be850fbe800277320dc5b806cf4efc277",
+      "working_sha256": "08ab76e3fa45d528ff0a00d80edc81ff27a992592dc569f7a8073ac1173f3929",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/change_ledger/checkpoint.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "05b897d1f4905a9c0681c625279d268325d15211",
+      "working_sha256": "195abf3ee727f8a97355ffa178498257cbce18fb64f799d9579020931b2e7018",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/change_ledger/lifecycle.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "c4aafd2db56223dc1b25b0252eb5d5855408fa1e",
+      "working_sha256": "11f014e1d79a6fb6f445fcf5bf045641148fa839a1e12f2d0a72b5f6a8cafe60",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "460c14c66617e2c4743fdc1371dc44c81afa8f4a",
+      "working_sha256": "795fbb79616eaff18b07cad3429007d164e7a497a00c47375846967ec16ddbe7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/drift.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "ec921c1c8f2b317f08b231075a20f3460570d668",
+      "working_sha256": "d3a4f3d1d8735e1485ca03f8665a8848dfc666e5f4b026344c987cac1d902401",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/onec_composition.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-03",
+      "main_blob": null,
+      "working_sha256": "4d24103f2f18d8e8d401658ddf15f8e6449f4497446fd5efec49a2c4f1847305",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/onec_discovery.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "6066680538aed767e2d9ef2da5f44578c8dc1106",
+      "working_sha256": "3418aa9340393286621f8593ffd863337fda1b50daed41de6f1c92a23b95570a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/resnapshot.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "e20e94e084da6a6b925ca5c13bd4baf06ee3e0b1",
+      "working_sha256": "0b210f6ca421b4b907369f12106c0bb5fa61d010a9c3d872b5f93f0109828cb0",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/phase2/scheduler.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-03",
+      "main_blob": "ac594999a7c9aba0763793227507a136b2ef573d",
+      "working_sha256": "34b31246e9e880e3ec38d478ca11cf03518bf746df32d1dcd560ce03170c106a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/principal.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "77902e8cb8396588e8475bd91ca8edec0034641a",
+      "working_sha256": "bd29afa8dcf1b9f8e696c7029e8bb850db79423c2ffd89c59da688e46db930c9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/registry.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "5544855f7abebd073997887585cd42912db6f631",
+      "working_sha256": "5f5b2ca50781394aba376d2991ee7c921449bef4da1dc49f50a96320c48b74d0",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/runtime.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "1f941d05326756d97be570c3a00036b7ee8fe628",
+      "working_sha256": "a949a47b03a6506971c00605c7db6bc60c730ad98aeaf10ae4007e9d50b1b62b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/semantic.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "bdb489b0c32c4f3dbba6c5f8a87c6b06eb9631f2",
+      "working_sha256": "0b27fa71adb7ebe6fb9645b1117fd6325142d7f764c32853b5acd8c807077004",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/server.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "cbea1ae62f8a94855660f31ebf2b8af5866fe069",
+      "working_sha256": "66fff3d11a920de2c57401e12ec37e2de25358ba9544190eb81d78a1a18f9b0e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/business_ai_gateway/settings.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "f47fc2b481197b3f208d31151b3a9d01e13cafb9",
+      "working_sha256": "a2be93a52b23872b0776e4ce5b5f5ceaf011a4338d3bec639aec224596550991",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "src/erp_mcp_s16/services.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-04",
+      "main_blob": null,
+      "working_sha256": "819018d9ea7900d65a476fbf973fb8796a35eb6ba69570f50f00c1e6547891ef",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "testlane/onec_extension/scripts/ct14_period_lock_evidence_readonly.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "1a7130353f776805bd5019a2815984e46d6ebc736ff474921300db2606d8e4a8",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/e2e/admin/test_m2_capability_observation_boundary.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "7a10e6bc7572846d87b248b40bcae7b58318648ac3dff1ddcdc827c30da3b55b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-review1.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "7454a5775882e5183d821cabb47464991502a6c0be4ddd5576f8f63e98b77934",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-review1.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "f47400856f4ea5d09d57bbf39d8a2c3dae8c88ffe78cc8f56741158fa8386092",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-final.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "412e45152a1e23fd59dd3d0ae3dff09f742c999e4d3fede9d1bad66cc2b6c238",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review11.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "344282f357fb084b24ca541fdc9babd5c1f1f6449d8e7aa7fb086908be435ad1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review11.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "8232fbc3bec88dc5b40c1dc91b648745e444613eb238f7f7af7ce9d3f209b6e3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review12.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "936b276398713cffeec11e24ea90f02c4e979dbef81193865b3acf623be3a13c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review12.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "f447ba986dfefb6ad0090e11202fe41ecb92ff52416e356b3363a99d99507f7e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review13.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "f9a5ad2814955b4f369bf5cdab38f2f8edcb58326abc5e24ab6bd61920b46563",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review13.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "ff5ab9258da8b5585924dd84d99794e99af219e5c645e88263cbb1db3e1a9e5e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review2.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "882b4161de192eab522e8892d539378109538dd591da07e2789492b65e29f8ee",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review2.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "f903a00fd2158ecd3ec381037641208283bc6eea88baa69edda9a8006c81d1e7",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review3.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "f69ff7b4921846208957f6f23de62aebe1677f9d52b96e496607d540038f491f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review3.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "6725e3f9e1e4177a378163706fda1a41a47ac87ba9182959f9cd4fc50f1298e4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review5.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "90c1f30fb8d3b2da41dce57502a4810c9ad97f67abd28a73ea0f884d11c76426",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review5.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "e7c25970e6be6a90906d4192c410878930ebdb657315ca1179cd7e8b07efe49d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review6.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "361ab6901ecb022cb1a5c065c5faf86d6667e15eceedc5b6dec2a66c02f4eaba",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review6.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "93d76dc052890074a08a157c85d76ab9e201e5b82b00d5bf5e099e2b71f9abba",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review7.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "d0d4c01ceb20c93535b8bd043792637bd1142d51c6c6af3586971b51582be6bd",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review7.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "6ac8079fd4e999a05c0150769f4c8b5cb088eb601b10de7ba0ff367700bb656a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review8.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "6b1c85c70b78c53f220d9a838ae5e6daeac49251486f9f658c311452f7ebad6c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review8.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "e026990cc065bb8282ef36bd630fe8dbb7df28c941b6397d026b9974f7c5abb6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review9.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "36976d476c59b0373486d1cae7cbcd58940366b5757e605abc1b003aa1af8834",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-review9.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "a44491f5311b6204ebf2460a5ce70c2bd8606d3aa66faa271d0ed7121cdf727b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4-verified.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "a5896a717b74f65950ccf251aebd242156bddec76538c6d37c969742bec3c5bc",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-9f891e4.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "50da527a429b45fd2188cda7f1ce43e0f61f72c72f468b999113e8330adaa7ef",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-b23fab6-review14.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "49cbb57bc719a68b8a667c14c9a12fdd787a74072178e221ea6a580a14e4ffdb",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/evidence/tc001-r1-preservation-b23fab6-review14.json.sha256",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "228f5ad88f01c39503902626ff4c1850579a075c0dbfccbb820a5e4556889866",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/fixtures/s12_period_observations.synthetic.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "68cbfc5502d7bef8fa23bdcab48a9b113ae7d2669226c0de7f52ef9b46301397",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/r2_tc001_fixture.json",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "afe76ff46b84e41f76bdf801dd91e4da5476a1cde96f5fde8fa9ab9b442517e9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/r2_tc001_oracle.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "7bcba3c765e90a6e5e05dd9987306deb168fdd91c813aba8ed01ac0e24f79ed9",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/r2_tc001_stdio_server.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "8fbc2fc4267d5f3cfa7857a8c708aebae57157bcd365e37c55ac6391123b06e6",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/register_lane_task.Tests.ps1",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "58c3508f2f0c9bcc49ccbb8d51182cd6ebd0961963c2f12258c819319399903c",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/remote_stack_readiness.Tests.ps1",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "ba0c6715e4cc53e517062d43c790c92cba88ff0291dcfe60812c3ef79755a999",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/run_r2_tc001.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "19ccf8f4374e99d6c476950c2b25a278f5cee71ce5a68781fd1eb1734910c5e1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_backend_budget.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "cd5e215be37eede274fb3f0281fc39b122f42f47",
+      "working_sha256": "c5a2ba1726aa7f1e1de9e7ff85eda67b7b0d57f1e9afe8cbbc2d7608acb37297",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_capability_client.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "f92ba1b2d45d370c2cf020a98307c12b58d1242999febb87776ce6adf7ecf0d3",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_capture_loop.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "68a2c06751beb5708cefe1863ae03a5ed6d4c9ad",
+      "working_sha256": "a471b17fba02e97a6c26088b06ed096febd58952aaac28df0f1fdee99286ee7f",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_drift.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "bf34ff86551ec54584ed8924968dc23812940ed4",
+      "working_sha256": "7b5513d1df9f2e8ad457f906cf053c11ebc6a921e1b79ff9dd962518d2d450d2",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_onec_composition.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "b9898ace17c8a88e73b7e8245bcc3aea4d48911ffd2e816939124e9f92e30b88",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_period_lock_evidence_readonly.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "697a255a8f31931e8845d8107990a4e0aa30d7b74314bcc6a203a3492752713d",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_r2_tc001_product_acceptance.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "64c2a308c57b581a260ed4de23e7c92c839dcbd27573913477c07be41e8c9d91",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s12_budget_producer.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "f0a1b7f33dd7238f3101014bf80cd5882f7f003439ae0d55eadbeafaad4623e5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s12_period_producer.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "252681a28981a696868637c4b37af5a0e4c3fef5956cd563e2f7d6ba50631945",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s13_barrier_ack_sql.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "b103a4b74d47e1c6fb9008c7be67060d7ce178b3",
+      "working_sha256": "e633795dcef7e0417e22871963546ab668321f1b8261f9757205db61d1b9743b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s13_current_turn_sql.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "17556c5835b1481913034466bbb16e5d6bcc6205",
+      "working_sha256": "78310350449589ec20e89b2a7bc8f7a5f2ded5165c474579e105eef9f41869bc",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s13_dev_anchor_service.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "97aea540cdc9324386b6d3582438e0354f5b75e7317038a216e455a94072025e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s13_dev_anchor_service_e2e.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "8fa4723b0c096220d5d1877a98a23c37193062ffbaed4e5fc3e4865f57562775",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s13_lifecycle_preflight.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "0d87a437d62ea698f40454b8df6c8c791afe8d3b",
+      "working_sha256": "0016da9b2908325b0392bd479ea5f96769c6ad2abd2dc7b307bec012fc23d113",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s13_lifecycle_preflight_e2e.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "18678441a68ee3c7d13b34a4f228666a3a68361c",
+      "working_sha256": "623d2252742d122004b522859567090e2bca90e0b88a44036fb20469047bef22",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_s16_replay.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "548edeb3128a8b0e49848deac385b2378da811f2619ebd8875454820e8fbcaf4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_scheduler.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "3e69cd853a23e4ac4c87241b52dc771977275c81",
+      "working_sha256": "47e9ade598f8180ce0aa5b3524facee25c129f0651daa5560c29f95053059e88",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_scheduler_fairness.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "4eb5812017bd0af8a73aed997ecc37a05b46c270",
+      "working_sha256": "f7888b5fe85fefccf72064b696e4da45cde5b263e46c2f2758a71883d8a2014a",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_scheduler_resume.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "c6e17ada45f7dd6b2a45413a60220030a4ee9b5a",
+      "working_sha256": "7b969eec7b18e972398d99e7ffa1a6dec49f5fc6a3542096e694271bcdec6ae4",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_semantic_profile_migration017.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "4c87ba02aff9ef9d3a69278e264c163f84533a82c6b634615216188bc380be27",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_spec_catalog.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "96b3d0361f2543a92f9d05eb3f3c0a9179386dca",
+      "working_sha256": "43d66855901154079ffc6fa7ed7a58ff4864ef07b7b05f297450cbd4e4cf167e",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_structural_diff.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "8167f692b8b87b0f2f6b12016f20a516148f6d16",
+      "working_sha256": "d89854d819366418abfbbdfde6ae79aff3d1a69e0c77ba1f79814581c06296d1",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/phase2/test_structural_hash.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "672dc49ebf277d5e119023e9a82d005d3f544e3c",
+      "working_sha256": "1e43c60ddeeec74189d27b0d38a3aa927b2ce256e21e83fbbdb0bed5a0a8d85b",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/real1c/test_real_profile_envctl.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "c76255ba2b6b32b0ee75418521354b13f905979e",
+      "working_sha256": "0ffb98a86b491542a959c91d8b1497d990b43df61147171c9bab37a39fbb1369",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/test_admin_mutations_postgres.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "d0a347d7fa6020ea5e4163d68f68b4b7683bb718",
+      "working_sha256": "2f285fc8f2d4a6a4d9e45822a5a0c12d1ca12e9841d776060dd793fc47de1588",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/test_b3_company_scope_fail_closed.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "1d46fcc70e9acff2d95a25bcb346c1326420bf5d685348d12aefc662a6e06e12",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/test_capability_observation_role_boundary.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "47c20c095d8bb852ea9f10ecac6cef3ee88dd87778dfe890f8f207922e3f9a46",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/test_native_evidence_fail_closed.py",
+      "tracked_dirty": false,
+      "untracked": true,
+      "batch": "I-02",
+      "main_blob": null,
+      "working_sha256": "4faee2a38f139478cc542bb21a8d09fb78f5fb7b03f12c8b993e97ef96ad16e5",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    },
+    {
+      "path": "tests/test_semantic_profiles.py",
+      "tracked_dirty": true,
+      "untracked": false,
+      "batch": "I-02",
+      "main_blob": "5186d59d2b5638c1fe7f780674227e7c4138f940",
+      "working_sha256": "c2734e094100045049518204e865be2c2df7c763ef3edd1e2bf0ac457a7e4c58",
+      "disposition": "REVIEW_REQUIRED_BEFORE_INTEGRATION",
+      "reason": "Preserve existing work; compare base/current/working contents and acceptance before inclusion."
+    }
+  ],
+  "exclusions": "Dependency outputs, linked worktrees, known QA renders and disposable runtime output; separately preserved or inventoried. No contents copied or merged."
+}

@@ -1,5 +1,20 @@
 # ERP_MCP — Normative Documentation Index
 
+## Current program rebaseline — 2026-11-17
+
+The operator authorized a full program evidence rebaseline on 2026-11-17.
+Current execution order is in `../PROJECT_PLAN.md`; source/document/ref audit
+coverage, findings and main-integration preparation are in
+`rebaseline/2026-11-17/REBASELINE_CONTROL.md`. The active ledger preserves prior
+test/review receipts and separate project-acceptance dispositions; its snapshot
+is `rebaseline/2026-11-17/ledger.rebaseline.json`. The global live report is
+`../reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html`.
+
+This evidence reconciliation supersedes stale implementation-progress summaries,
+not the security, production read-only or disposable-writer qualification
+invariants below. Historical plans, reports and approvals retain their original
+scope, revision, environment and integration-line provenance.
+
 **Baseline:** v1.1 — operator scope freeze
 **Date:** 2026-10-06
 **Status:** FROZEN — NO NEW SCOPE UNTIL CURRENT COMMITTED SCOPE CLOSES

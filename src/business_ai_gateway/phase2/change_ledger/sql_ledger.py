@@ -118,6 +118,9 @@ SPEC: Mapping[str, Fn] = MappingProxyType({
     "witness_cosign_signed": _f("witness_cosign_signed", "operator", "uuid,uuid", "uuid"),
     "observe_target": _f("observe_target", "writer", "uuid,text,text", "boolean"),
     "read_status": _f("read_status", "requester approver auditor", "uuid", "jsonb"),
+    "operator_status": _f("operator_status", "operator auditor", "uuid", "jsonb"),
+    "list_inflight": _f("list_inflight", "operator auditor", "integer,integer", "jsonb"),
+    "budget_snapshot": _f("budget_snapshot", "operator auditor", "uuid,numeric,text", "jsonb"),
     "read_evidence": _f("read_evidence", "requester auditor", "uuid", "jsonb"),
     # 009 S12-APPROVAL-2: the canonical approval text is stored by the ledger and hashed as given
     "store_approval_text": _f("store_approval_text", "requester", "uuid,text,text", "text"),
@@ -882,6 +885,30 @@ class SqlChangeLedger:
     # ---- reads
     async def read_status(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> dict:
         return await self.invoke("read_status", scope, change_id, as_class=as_class)
+
+    async def operator_status(self, scope: Scope, change_id: UUID,
+                              as_class: str | None = None) -> dict:
+        """Return the scoped operator/auditor status projection for one change."""
+        return await self.invoke("operator_status", scope, change_id, as_class=as_class)
+
+    async def list_inflight(self, scope: Scope, limit: int = 50, offset: int = 0,
+                            as_class: str | None = None) -> list[dict]:
+        """List a bounded page of in-flight changes in the exact authenticated scope."""
+        value = await self.invoke("list_inflight", scope, limit, offset, as_class=as_class)
+        if type(value) is not list or any(type(row) is not dict for row in value):
+            raise LedgerError("SQL_RESULT_INVALID")
+        return value
+
+    async def budget_snapshot(self, scope: Scope, grant_id: UUID, amount: Decimal,
+                              currency: str, as_class: str | None = None):
+        """Read a live scoped grant snapshot; claim/reservation SQL remains authoritative."""
+        from ..change.types import BudgetCheck
+
+        value = await self.invoke("budget_snapshot", scope, grant_id, amount, currency,
+                                  as_class=as_class)
+        if type(value) is not dict or value.get("check") not in {item.value for item in BudgetCheck}:
+            raise LedgerError("SQL_RESULT_INVALID")
+        return BudgetCheck(value["check"])
 
     async def read_evidence(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> list:
         return await self.invoke("read_evidence", scope, change_id, as_class=as_class)

@@ -1,0 +1,51 @@
+[
+  {
+    "path": "src/business_ai_gateway/phase2/scheduler.py",
+    "bounded_ref": "b8cb958",
+    "approved_blob": "ac594999a7c9aba0763793227507a136b2ef573d",
+    "working_git_blob": "7c14d82ec9b075371009be10d1518e638c02a0ce",
+    "same_git_blob": false
+  },
+  {
+    "path": "src/business_ai_gateway/phase2/backend_budget.py",
+    "bounded_ref": "b8cb958",
+    "approved_blob": "a7d56bfef8e39fc1fc52af88fc788d55ef41cb8a",
+    "working_git_blob": "ce2a79789bcfa80a9f2bb2c643c5d1e47228db3a",
+    "same_git_blob": false
+  },
+  {
+    "path": "src/business_ai_gateway/phase2/capacity_interference.py",
+    "bounded_ref": "b8cb958",
+    "approved_blob": "a9a94a0a2f5617335a90f77d00e7c7fbd2091f83",
+    "working_git_blob": "4edb5d132b7a6329167262effbc86e83ec937b48",
+    "same_git_blob": false
+  },
+  {
+    "path": "src/business_ai_gateway/phase2/capture_loop.py",
+    "bounded_ref": "b8cb958",
+    "approved_blob": "04d14a2be850fbe800277320dc5b806cf4efc277",
+    "working_git_blob": "6dd3e094264700d48a9918daa51a0df1abadbe31",
+    "same_git_blob": false
+  },
+  {
+    "path": "src/business_ai_gateway/phase2/drift.py",
+    "bounded_ref": "b8cb958",
+    "approved_blob": "ec921c1c8f2b317f08b231075a20f3460570d668",
+    "working_git_blob": "ca4c1c78eecd8008a9b75d6583d91ee1472c08ab",
+    "same_git_blob": false
+  },
+  {
+    "path": "src/business_ai_gateway/phase2/resnapshot.py",
+    "bounded_ref": "b8cb958",
+    "approved_blob": "e20e94e084da6a6b925ca5c13bd4baf06ee3e0b1",
+    "working_git_blob": "d53c6c8b934c22f18763f9687be124bd57f80ed3",
+    "same_git_blob": false
+  },
+  {
+    "path": "src/business_ai_gateway/phase2/structural_hash.py",
+    "bounded_ref": "b8cb958",
+    "approved_blob": "2a600b6614f583a557b69abd5fd59eaf362dd768",
+    "working_git_blob": "2a600b6614f583a557b69abd5fd59eaf362dd768",
+    "same_git_blob": true
+  }
+]

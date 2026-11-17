@@ -1,84 +1,90 @@
 - id: R2-REQ-01
-  statement: Сохранить R1/R2 boundary, staged rollout и exact-build evidence
+  statement: Preserve R1/R2 isolation, staged deployment and exact-build evidence
   status: PLANNED
 - id: R2-REQ-02
-  statement: Один source registry; tenant/company/source/field ACL и server-side IDs
+  statement: One authoritative source registry, tenant/company/source/field ACLs and
+    server-controlled IDs
   status: PLANNED
 - id: R2-REQ-03
-  statement: Read-only connector SDK; отдельная авторизация самого источника
+  statement: Read-only connector SDK with separate source-specific authorization
   status: PLANNED
 - id: R2-REQ-04
-  statement: Audit/pin/license/portability PDCC, ERP и Ferma
+  statement: Audit, pin, license-review and portability qualification of PDCC, ERP
+    and Ferma donors
   status: PLANNED
 - id: R2-REQ-05
-  statement: Baseline/incremental discovery с доказанной coverage
+  statement: Baseline and incremental discovery with verifiable coverage
   status: PLANNED
 - id: R2-REQ-06
-  statement: Canonical object/field/operation hashes отдельно от raw provenance hash
+  statement: Canonical object/field/operation hashes separately from raw provenance
+    hash
   status: PLANNED
 - id: R2-REQ-07
-  statement: Независимые observed/accepted версии и решения
+  statement: Distinct observed/accepted versions and independent approval decisions
   status: PLANNED
 - id: R2-REQ-08
-  statement: Версионируемая taxonomy/LDM, typed edges, aliases и confidence
+  statement: Versioned taxonomy/LDM, typed edges, aliases and confidence
   status: PLANNED
 - id: R2-REQ-09
-  statement: Bitemporal history, unknown effective time, gaps и replay
+  statement: Bitemporal history, unknown effective time, gaps and replay
   status: PLANNED
 - id: R2-REQ-10
-  statement: Dependency impact; unknown impact — fail-closed
+  statement: Dependency impact analysis; unknown impact fails closed
   status: PLANNED
 - id: R2-REQ-11
-  statement: Durable jobs, fencing, cursor/outbox, бюджеты и backpressure
+  statement: Durable jobs, fencing, cursors/outbox, capacity budgets and backpressure
   status: PLANNED
 - id: R2-REQ-12
-  statement: Drive scope PoC, baseline/change feed, revisions/membership/revoke
+  statement: Drive scope proof, baseline/change feed, revisions, memberships and revocation
   status: PLANNED
 - id: R2-REQ-13
-  statement: Manual native UI capture и qualified UI automation
+  statement: Manual native UI capture and qualified UI automation
   status: PLANNED
 - id: R2-REQ-14
-  statement: Qualified standard-engine/batch capture только где поддержано
+  statement: Qualified standard-engine/batch capture only where supported
   status: PLANNED
 - id: R2-REQ-15
-  statement: Раздельные dev/prod permissions, default OFF prod, no business writes
+  statement: Separate development/production permissions, production default OFF,
+    no business writes
   status: PLANNED
 - id: R2-REQ-16
-  statement: Provenance, независимость oracle, private evidence и attestation
+  statement: Provenance, independent oracle, private evidence and attestation
   status: PLANNED
 - id: R2-REQ-17
-  statement: Parser sandbox, no active content, privacy/retention
+  statement: Isolated parser, no active content, privacy and retention
   status: PLANNED
 - id: R2-REQ-18
-  statement: Decimal/currency/timezone/cutoff/rows deterministic reconciliation
+  statement: Deterministic reconciliation using Decimal, currency, time zone, cutoff
+    and rows
   status: PLANNED
 - id: R2-REQ-19
-  statement: 'Native 521.1: шесть колонок, expanded balance и аналитики'
+  statement: 'Native account 521.1: six columns, expanded balances and analytics'
   status: PLANNED
 - id: R2-REQ-20
-  statement: 'Posted MOLDRETAIL purchases: identity/filters/fields/completeness'
+  statement: 'Posted MOLDRETAIL purchases: identity, filters, fields and completeness'
   status: PLANNED
 - id: R2-REQ-21
-  statement: Validation policy по operation, evidence FKs, independent approval
+  statement: Per-operation validation policies, evidence foreign keys and independent
+    approval
   status: PLANNED
 - id: R2-REQ-22
-  statement: Discrepancy workbench, coverage, lineage и safe explanation
+  statement: Discrepancy workbench, coverage, lineage and safe explanations
   status: PLANNED
 - id: R2-REQ-23
-  statement: Capacity по маршрутам, backend-wide budgets и измерения
+  statement: Route-specific capacity, physical-backend budgets and measured performance
   status: PLANNED
 - id: R2-REQ-24
-  statement: Fault/lag/audit alerts, recovery и restore evidence
+  statement: Fault, lag and audit alarms; recovery and restore evidence
   status: PLANNED
 - id: R2-REQ-25
-  statement: Expand/switch/contract, R1 compatibility и safe rollback
+  statement: Expand/switch/contract strategy, R1 compatibility and safe rollback
   status: PLANNED
 - id: R2-REQ-26
-  statement: Safe read/job APIs, idempotency/CSRF/annotations
+  statement: Safe read/job APIs, idempotency, CSRF and annotations
   status: PLANNED
 - id: R2-REQ-27
-  statement: Multi-account и отзыв доступа без утечек через cache/index
+  statement: Multiple accounts and revocation without cache/index disclosure
   status: PLANNED
 - id: R2-REQ-28
-  statement: Reproducible acceptance bundle и честные NOT_RUN/BLOCKED
+  statement: Reproducible acceptance bundle and truthful `NOT_RUN`/`BLOCKED`
   status: PLANNED

@@ -3,7 +3,7 @@
 .SYNOPSIS
   Idempotently brings up the whole local real-1C ERP_MCP lane (ChatGPT connector ERP_MCP_REAL1) on this machine.
   Safe to run repeatedly: every component is started only when it is not already listening, so the same
-  script is the logon starter and the 5-minute watchdog of the scheduled task "ERP_MCP_Lane_Autostart".
+  script is the logon starter for the scheduled task "ERP_MCP_Lane_Autostart". It has no periodic watchdog trigger.
 
   Order: Docker Desktop + lane PostgreSQL/Redis -> Apache (1C OData publication) -> lane proxies 8191-8193
          -> real sidecar 21768 -> Tailscale Funnel host for the test IdP -> IdP 21080 -> gateway 21000
@@ -22,6 +22,9 @@ $ErrorActionPreference = 'Continue'
 
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $Lane      = 'D:\ERP_MCP_Testbed\real1c_e2e'
+$laneTopology = Get-Content -LiteralPath (Join-Path $Lane 'env.json') -Raw | ConvertFrom-Json
+$PostgresPort = [int]$laneTopology.ports.postgres
+$RedisPort = [int]$laneTopology.ports.redis
 $Runtime   = $ProjectRoot
 $Py        = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
 $Docker    = 'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
@@ -84,7 +87,7 @@ try {
         & $Docker update --restart unless-stopped $name *> $null
         if (-not (& $Docker ps -q -f ("name=" + $name))) { & $Docker start $name *> $null; Log ('docker start ' + $name) }
     }
-    if (-not (Wait-Port 18432 60)) { Log 'WARN: lane PostgreSQL port 18432 is not listening' }
+    if (-not (Wait-Port $PostgresPort 60)) { Log ('WARN: lane PostgreSQL port ' + $PostgresPort + ' is not listening') }
     if (-not (Wait-Port 19379 60)) { Log 'WARN: lane Redis port 19379 is not listening' }
 
     # 2. Apache with the 1C OData publication (file base 818HA_test_ready)
@@ -173,7 +176,7 @@ try {
         Log ('tunnel-client started: ' + [bool](Get-CimInstance Win32_Process -Filter "Name='tunnel-client.exe'" | Where-Object { $_.CommandLine -match 'erp-mcp-local' }))
     }
 
-    $state = foreach ($pair in @(@('postgres', 18432), @('redis', 19379), @('apache/1C', $ApachePort), @('proxy8191', 8191), @('proxy8192', 8192),
+    $state = foreach ($pair in @(@('postgres', $PostgresPort), @('redis', $RedisPort), @('apache/1C', $ApachePort), @('proxy8191', 8191), @('proxy8192', 8192),
             @('proxy8193', 8193), @('sidecar', 21768), @('idp', 21080), @('gateway', 21000))) { $pair[0] + '=' + (Test-Port $pair[1]) }
     Log ('summary: ' + ($state -join ' '))
 }

@@ -1,218 +1,274 @@
-# ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation
+# ERP_MCP Phase 2 — Living Model Registry, Connectors and Native Reconciliation
 
-Версия 0.1 · 08.10.2026 · DRAFT FOR REVIEW.
-Статус: проектное ТДД, не разрешение на реализацию/развёртывание или доступ в production.
-Связанные документы: PLAN_PHASE2_RU.md, STORIES_PHASE2_RU.md, TEST_PLAN_PHASE2_RU.md, NATIVE_REPORT_PROTOCOL_RU.md, DECISIONS_AND_SOURCES_RU.md.
-Расширенный переносимый пакет сопровождает эти документы: 28 требований, 48 историй, 144 acceptance cases, Gherkin, YAML-каталоги, JSON Schemas и SPEC/L0 tests.
+**Version 0.1 · October 8, 2026 · DRAFT FOR REVIEW.** This is a technical design document, **not** authorization to implement, deploy, or access production.
 
-## 1. Граница R1/R2
+Related documents: `PLAN_PHASE2_RU.md`, `STORIES_PHASE2_RU.md`, `TEST_PLAN_PHASE2_RU.md`, `NATIVE_REPORT_PROTOCOL_RU.md`, and `DECISIONS_AND_SOURCES_RU.md`.
 
-Release 1 остаётся в действующем frozen scope. Эти документы не объявляют R1 выпущенным, не отменяют существующие native-report gates, не меняют миграции и полномочия. Дефекты безопасности/достоверности текущего R1 пути исправляются в R1; они не превращаются в допустимые ограничения просто переносом в R2.
+The portable specification package includes 28 requirements, 48 stories, 144 acceptance cases, Gherkin, YAML catalogs, JSON Schemas, and specification/L0 tests.
 
-Phase 2 добавляет reusable connector framework, continuous discovery, taxonomy/LDM/PDM, bitemporal history, точечное влияние drift, provenance/attestation, native report capture, автоматическую сверку и discrepancy workbench.
+## 1. Release 1 / Release 2 Boundary
 
-Оператор согласовал проектирование возможности получать штатные отчёты из приложения 1С для dev и сохранить эту возможность для prod. Это не текущий permit на вход в production, запуск EPF, копирование базы или выдачу новых прав. Включение prod capture привязано к конкретной базе/компании, recipe, времени и бюджету.
+Release 1 remains subject to its existing frozen scope. This design does **not** claim R1 has been released, waive native-report acceptance gates, or change existing migrations and permissions. Security and accuracy defects in the current R1 path must be corrected in R1; they cannot be made acceptable merely by moving them into an R2 backlog.
 
-Главное изменение в R2: настоящий штатный отчёт 1С не становится синтетическим только потому, что его запуск автоматизирован. Но квалификация способа, происхождение оригинала, совпадение чисел и бухгалтерское утверждение — независимые проверки. Старые engine reports не переименовываются в native UI evidence и не валидируются задним числом.
+Phase 2 proposes a reusable connector framework, continuous discovery, taxonomy/LDM/PDM, bitemporal history, targeted impact analysis for schema drift, provenance/attestation, native-report capture, automated reconciliation and a discrepancy workbench.
 
-## 2. Цели, термины, нецели
+The operator authorized **designing** the ability to obtain native standard 1C reports in development and retain that capability for production. This is **not** an active permit to access production, execute EPF, copy a source database or grant new rights. Production capture requires an authorization bound to the exact source/company, procedure, time window and budget.
 
-PDM — физико-прикладная модель разрешённого интерфейса: опубликованные объекты 1С, поля, типы, ключи, связи и операции. Это не прямое чтение внутренних SQL-таблиц 1С.
-LDM — версионируемая логическая модель бизнес-понятий, отношений, контрактов и соответствий источникам.
-Drive catalog — модель файлов/ревизий/доказательств, а не физическая бухгалтерская БД.
-Observed — что источник позволил наблюдать; accepted — какая версия принята по policy; validated — какие конкретные семантические операции подтверждены доказательствами.
+The central design change: A genuine standard 1C report does **not** become synthetic solely because its generation is automated. But procedure qualification, original-byte provenance, numeric equality and accountant approval remain **independent verifications**. Historical reporting-engine exports may not be retroactively relabeled as native UI evidence.
 
-Цели: актуальная наблюдаемая/принятая карта источников; история изменений и решений; проверяемое происхождение каждого mapping; штатные отчёты 1С; воспроизводимая сверка по строкам/итогам; точное объяснение BLOCKED; сохранение ограничений доступа.
+## 2. Goals, Terminology and Non-Goals
 
-Вне scope: произвольный shell/BSL/COM/SQL из MCP; записи/проведение/удаление в 1С; unrestricted replication всех данных в Postgres; автоматическое утверждение LLM; blanket импорт всех коннекторов PDCC без аудита; обещание 1000 активных бухгалтерских запросов по max_sessions.
+**PDM (Physical Data Model):** Published objects, fields, types, keys, relationships and operations of an authorized 1C interface. This is **not** direct access to 1C's internal SQL tables.
 
-## 3. Базовое состояние
+**LDM (Logical Data Model):** Versioned model of business concepts, relationships, contracts and source mappings.
 
-Перечитаны существующий Phase 2 backlog, AGENTS, DOCUMENT_INDEX, NATIVE_REPORT_CAPTURE_RUNBOOK и LOAD_TEST_REPORT. Рабочее дерево имеет сторонние staged/unstaged изменения. Последний прочитанный короткий SHA — 4a21a01; ранее в переписке был 1294b42. Это moving working tree, не аттестация deployed build.
+**Drive catalog:** Files, revisions and evidence; it is not a physical accounting database.
 
-R1 уже имеет source/company registry, OAuth/ACL, PostgreSQL/Redis, capabilities, metadata fingerprint, semantic profiles/mappings/events, read-only OData и отдельные разрешённые COM routes.
+**Observed:** What a source allowed the system to observe. **Accepted:** Which model version was approved under a policy. **Validated:** Which exact semantic operations have independent supporting evidence.
 
-Нативный runbook сообщает: некоторые ОСВ/карточки счёта требуют interactive form и через внешнее соединение дают EMPTY/UNAVAILABLE. Поэтому наличие COMConnector не доказывает доступность конкретного отчёта через COM. В этом случае нужен штатный UI recipe, а пустой результат не трактуется как нулевой баланс.
+**Goals:** Current observed and accepted source maps; history of changes and decisions; verifiable mapping provenance; genuine native 1C reports; repeatable row-level and total-level reconciliation; precise explanations for `BLOCKED`; persistent access boundaries.
 
-## 4. Функциональные требования
+**Non-goals:** Arbitrary shell, BSL, COM or SQL from MCP; creating/posting/deleting records in 1C; unrestricted replication of all 1C data to PostgreSQL; automatic LLM approval; copying every PDCC connector without review; promising support for 1,000 active accounting queries merely because a maximum-session setting exists.
 
-| ID | Требование |
-|---|---|
-| R2-REQ-01 | Сохранить R1/R2 boundary, staged rollout и exact-build evidence |
-| R2-REQ-02 | Один source registry; tenant/company/source/field ACL и server-side IDs |
-| R2-REQ-03 | Read-only connector SDK; отдельная авторизация самого источника |
-| R2-REQ-04 | Audit/pin/license/portability PDCC, ERP и Ferma |
-| R2-REQ-05 | Baseline/incremental discovery с доказанной coverage |
-| R2-REQ-06 | Canonical object/field/operation hashes отдельно от raw provenance hash |
-| R2-REQ-07 | Независимые observed/accepted версии и решения |
-| R2-REQ-08 | Версионируемая taxonomy/LDM, typed edges, aliases и confidence |
-| R2-REQ-09 | Bitemporal history, unknown effective time, gaps и replay |
-| R2-REQ-10 | Dependency impact; unknown impact — fail-closed |
-| R2-REQ-11 | Durable jobs, fencing, cursor/outbox, бюджеты и backpressure |
-| R2-REQ-12 | Drive scope PoC, baseline/change feed, revisions/membership/revoke |
-| R2-REQ-13 | Manual native UI capture и qualified UI automation |
-| R2-REQ-14 | Qualified standard-engine/batch capture только где поддержано |
-| R2-REQ-15 | Раздельные dev/prod permissions, default OFF prod, no business writes |
-| R2-REQ-16 | Provenance, независимость oracle, private evidence и attestation |
-| R2-REQ-17 | Parser sandbox, no active content, privacy/retention |
-| R2-REQ-18 | Decimal/currency/timezone/cutoff/rows deterministic reconciliation |
-| R2-REQ-19 | Native 521.1: шесть колонок, expanded balance и аналитики |
-| R2-REQ-20 | Posted MOLDRETAIL purchases: identity/filters/fields/completeness |
-| R2-REQ-21 | Validation policy по operation, evidence FKs, independent approval |
-| R2-REQ-22 | Discrepancy workbench, coverage, lineage и safe explanation |
-| R2-REQ-23 | Capacity по маршрутам, backend-wide budgets и измерения |
-| R2-REQ-24 | Fault/lag/audit alerts, recovery и restore evidence |
-| R2-REQ-25 | Expand/switch/contract, R1 compatibility и safe rollback |
-| R2-REQ-26 | Safe read/job APIs, idempotency/CSRF/annotations |
-| R2-REQ-27 | Multi-account и отзыв доступа без утечек через cache/index |
-| R2-REQ-28 | Reproducible acceptance bundle и честные NOT_RUN/BLOCKED |
+## 3. Historical Baseline at Draft Preparation
 
-## 5. Архитектура
+The existing Phase 2 backlog, `AGENTS.md`, `DOCUMENT_INDEX.md`, `NATIVE_REPORT_CAPTURE_RUNBOOK.md`, and `LOAD_TEST_REPORT.md` were reviewed. The working tree contained unrelated staged/unstaged changes. The last short SHA read was `4a21a01`, previously `1294b42` in conversation. This was a moving worktree, **not attestation of a deployed build**.
 
-ChatGPT/Claude/Admin UI -> OAuth+ACL+audit -> ERP_MCP query API -> accepted projections -> live source adapters.
-Control API -> durable jobs -> Discovery/Connector workers -> OBSERVED registry.
-Control API -> Capture Broker -> isolated approved 1C UI/engine runner -> private evidence store -> sandbox parser -> independent verification -> deterministic reconciliation -> accounting approval -> scoped accepted model.
+R1 already contained source/company registry, OAuth/ACL, PostgreSQL/Redis, capabilities, metadata fingerprints, semantic profiles/mappings/events, read-only OData and selected authorized COM routes.
 
-Четыре независимых контура: пользовательское чтение; управление/наблюдение; запуск приложения 1С; evidence/attestation. MCP никогда не получает универсальный Windows executor. Query path не выполняет полный scan или promotion: при обязательной просроченной проверке возвращает safe refusal и может поставить bounded refresh-job только при отдельном разрешении.
+The native report runbook records that some trial balances and account cards require an interactive form and produce `EMPTY`/`UNAVAILABLE` through external COM connections. Therefore, `COMConnector` availability does **not** prove that a specific report can be generated through COM. Use the standard UI procedure or report `UNSUPPORTED`; empty output is not a zero balance.
 
-## 6. Роли
+## 4. Functional Requirements
 
-COMPANY_READER: результаты/модели своей компании, без source-wide metadata автоматически.
-CONNECTION_ADMIN: источники, scope, secret refs, revoke; не бухгалтерское утверждение.
-DISCOVERY_WORKER: append OBSERVED/events/cursors; не ACCEPTED/VALIDATED.
-CAPTURE_OPERATOR/WORKER: утверждённый recipe в разрешённой среде; не admin 1С и не произвольная программа.
-EVIDENCE_VERIFIER: проверка происхождения/целостности/параметров.
-RECONCILER: детерминированные comparison results, не источник expected values.
-ACCOUNTING_APPROVER: независимая подпись конкретного evidence scope.
-MODEL_APPROVER: принятие версии по policy+FK evidence+CAS.
-AUDITOR: только разрешённый исторический доступ.
+| ID | Requirement |
+| --- | --- |
+| R2-REQ-01 | Preserve R1/R2 isolation, staged deployment and exact-build evidence |
+| R2-REQ-02 | One authoritative source registry, tenant/company/source/field ACLs and server-controlled IDs |
+| R2-REQ-03 | Read-only connector SDK with separate source-specific authorization |
+| R2-REQ-04 | Audit, pin, license-review and portability qualification of PDCC, ERP and Ferma donors |
+| R2-REQ-05 | Baseline and incremental discovery with verifiable coverage |
+| R2-REQ-06 | Canonical object/field/operation hashes separately from raw provenance hash |
+| R2-REQ-07 | Distinct observed/accepted versions and independent approval decisions |
+| R2-REQ-08 | Versioned taxonomy/LDM, typed edges, aliases and confidence |
+| R2-REQ-09 | Bitemporal history, unknown effective time, gaps and replay |
+| R2-REQ-10 | Dependency impact analysis; unknown impact fails closed |
+| R2-REQ-11 | Durable jobs, fencing, cursors/outbox, capacity budgets and backpressure |
+| R2-REQ-12 | Drive scope proof, baseline/change feed, revisions, memberships and revocation |
+| R2-REQ-13 | Manual native UI capture and qualified UI automation |
+| R2-REQ-14 | Qualified standard-engine/batch capture only where supported |
+| R2-REQ-15 | Separate development/production permissions, production default OFF, no business writes |
+| R2-REQ-16 | Provenance, independent oracle, private evidence and attestation |
+| R2-REQ-17 | Isolated parser, no active content, privacy and retention |
+| R2-REQ-18 | Deterministic reconciliation using Decimal, currency, time zone, cutoff and rows |
+| R2-REQ-19 | Native account 521.1: six columns, expanded balances and analytics |
+| R2-REQ-20 | Posted MOLDRETAIL purchases: identity, filters, fields and completeness |
+| R2-REQ-21 | Per-operation validation policies, evidence foreign keys and independent approval |
+| R2-REQ-22 | Discrepancy workbench, coverage, lineage and safe explanations |
+| R2-REQ-23 | Route-specific capacity, physical-backend budgets and measured performance |
+| R2-REQ-24 | Fault, lag and audit alarms; recovery and restore evidence |
+| R2-REQ-25 | Expand/switch/contract strategy, R1 compatibility and safe rollback |
+| R2-REQ-26 | Safe read/job APIs, idempotency, CSRF and annotations |
+| R2-REQ-27 | Multiple accounts and revocation without cache/index disclosure |
+| R2-REQ-28 | Reproducible acceptance bundle and truthful `NOT_RUN`/`BLOCKED` |
 
-Auth identity берётся из проверенного контекста, не из signed_by в JSON. В prod uploader/capture identity не может сама утвердить свой отчёт. DB роли физически отражают разделение обязанностей. Runtime не обслуживает пользователя от owner/superuser/BYPASSRLS.
+## 5. Architecture
 
-## 7. Connector contract и lifecycle
+```text
+ChatGPT / Claude / Admin UI
+    → OAuth + ACL + audit
+    → ERP_MCP query API
+    → accepted projections
+    → live authorized source adapters
 
-Lifecycle: DRAFT -> AUTH_PENDING -> SCOPED -> PROBING -> ACTIVE; отдельные DEGRADED/AUTH_REQUIRED/PAUSED/REVOKED/RETIRED.
-SDK: validateConnection, discoverScopes, capabilities, baseline, changes, fetchMetadata, fetchRevision, health, pause, revoke. Optional capabilities объявляются честно. Нет changes capability — SNAPSHOT_ONLY, не выдуманная лента событий.
+Control API → durable jobs → discovery/connector workers → OBSERVED registry
 
-Обязательный envelope: schema/adapter version, tenant/connection/source/company scope, observation_id, observed_at, coverage, complete, source_revision_basis, cursor_before/after, objects/events, warnings, provenance digest. IDs определяются registry; arbitrary target URL запрещён. Provider credentials не наследуются от ChatGPT OAuth.
+Control API → Capture Broker → isolated approved native 1C UI/engine runner
+    → private evidence store → isolated parser → independent verification
+    → deterministic reconciliation → accountant approval
+    → scoped accepted model
+```
 
-At-least-once delivery + idempotent ingest: dedup по scoped provider object/revision/event. Повтор ID с иными bytes — conflict/quarantine. Cursor фиксируется после durable page/events/outbox в одной транзакции. Отзыв scope увеличивает epoch; before fetch и before disclosure обязательная reauthorization. Pause останавливает новые jobs, history не маскируется под live.
+There are **four distinct control paths**: user reads, administration/observation, 1C application execution, and evidence/attestation. MCP never receives a universal Windows command executor.
 
-## 8. Постоянные LDM/PDM updates
+A query request must not perform a complete scan or promote a model. If a mandatory freshness check is overdue, return a safe refusal. A bounded refresh job may be queued **only under separate authorization**.
 
-1. При подключении снять разрешённый baseline с coverage. Для event API: стартовый token до baseline, затем догнать changes и разрешить гонки.
-2. Проверять дешёвый change signal только если он поддержан и квалифицирован. HEAD/etag/304 не считаются дешёвыми или достоверными без измерения. Иначе полный metadata scan по source budget/окну.
-3. Ошибка, partial page, revoked visibility не равны удалению объектов или новой схеме.
-4. Сохранить raw SHA-256 для происхождения; отдельный canonical structural hash с versioned canonicalizer.
-5. Canonical identity включает namespace, types/precision/scale/nullability, keys, nav/cardinality, enum members и supported operation signatures. Сортировать только семантически незначимый порядок. Short-name collisions не объединяются.
-6. OBSERVED snapshot + object-level diff -> полный impact closure accepted dependencies.
-7. LDM changes создаются как CANDIDATE. Неизвестное влияние блокирует зависимые operations консервативно. Accepted head публикует отдельная роль по policy и expected_previous_head.
-8. Source data changes отслеживаются отдельно: backdated posting может изменить прошлый баланс при неизменной схеме. Нужен новый comparison/run/current applicability, не fake schema drift.
+## 6. Roles and Separation of Duties
 
-Polling не гарантирует все промежуточные изменения: A->B->A между polls без provider history не восстановить. Показывать SNAPSHOT_ONLY/HISTORY_GAP, interval наблюдений и unknown effective time. Не получать запрещённый direct SQL CDC ради обещания полноты.
+- **COMPANY_READER:** Reads authorized company results/models; no automatic source-wide metadata rights.
+- **CONNECTION_ADMIN:** Manages sources, scope, secret references and revoke; not accounting approval.
+- **DISCOVERY_WORKER:** Appends OBSERVED events and cursors, not ACCEPTED/VALIDATED state.
+- **CAPTURE_OPERATOR/WORKER:** Runs a qualified procedure in an approved environment; neither 1C administrator nor arbitrary-code executor.
+- **EVIDENCE_VERIFIER:** Checks source, byte integrity and report parameters.
+- **RECONCILER:** Computes deterministic comparisons but does not supply authoritative expected values.
+- **ACCOUNTING_APPROVER:** Independently signs evidence for an exact accounting scope.
+- **MODEL_APPROVER:** Accepts a model revision through policy, evidence FKs and CAS.
+- **AUDITOR:** Reads only authorized historical evidence.
 
-## 9. Observed/accepted и состояния
+Identity must come from a **verified authentication context**, not `signed_by` in JSON. A production uploader/capture identity cannot approve its own report. Database roles must physically enforce separation of duties. The runtime must never serve ordinary users as a database owner, superuser or BYPASSRLS role.
 
-Независимые оси: connectivity, observation_freshness, schema_acceptance, mapping_validation, evidence_validity, data_consistency.
+## 7. Connector Contract and Lifecycle
 
-Fresh accepted + validated operation + authorized source -> live read.
-Source unavailable -> error live read; историческая карта остаётся с датой и ACL.
-Non-impacting change -> продолжение только при доказанной полноте dependencies и заранее разрешённой compatible policy; default approval.
-Affected/unknown change -> blocked affected operations, при неполном graph допустима более широкая безопасная блокировка.
-Новый artifact -> UNATTESTED; numeric comparison возможен как диагностика, не business PASS.
-Same numbers + unproven cutoff/currency -> INCONCLUSIVE.
-Новая revision -> historical PASS по прежним immutable bytes сохраняется; применимость к latest снимается.
+Lifecycle: `DRAFT → AUTH_PENDING → SCOPED → PROBING → ACTIVE`, plus distinct `DEGRADED`, `AUTH_REQUIRED`, `PAUSED`, `REVOKED` and `RETIRED` states.
 
-Автоматическое структурное принятие не подтверждает новую финансовую формулу. LLM не может CONFIRM/VALIDATE ни tool call, ни текстом документа.
+Connector SDK functions: `validateConnection`, `discoverScopes`, `capabilities`, `baseline`, `changes`, `fetchMetadata`, `fetchRevision`, `health`, `pause`, `revoke`.
 
-## 10. PostgreSQL / Time DB
+Optional capabilities must be declared honestly. If a source does not support change feeds, classify it `SNAPSHOT_ONLY`; do not fabricate an event stream.
 
-Стартовая модель совместима с PostgreSQL 16. TimescaleDB optional после benchmark, не обязательная зависимость. Time DB означает bitemporal capabilities.
+Required event envelope: schema/adapter version, tenant/connection/source/company scope, `observation_id`, `observed_at`, coverage/completeness, source revision basis, cursor before/after, objects/events, warnings and provenance digest. Registry-controlled IDs are mandatory; arbitrary target URLs are forbidden. Source-provider credentials must not be inherited from ChatGPT OAuth.
 
-Новые сущности: connector_instances; memberships; jobs/leases/cursors/outbox; schema_snapshots/object_versions; accepted_heads; logical_concepts/aliases/edges; model_events; capture_recipes/jobs; evidence_artifacts/revisions/attestations; comparison_runs/items/issues; validation_policies/bindings. Existing sources/companies/capabilities/semantic profiles переиспользуются.
+Delivery is at least once with idempotent ingestion, deduplicated by scoped provider object/revision/event. Reusing the same ID with different bytes produces conflict and quarantine. Cursor advancement occurs **only after** durable page, event and outbox writes in one transaction.
 
-Event fields: immutable event_id, schema_version, tenant/source/company, aggregate sequence, event_type, observed_at, recorded_at, source_event_at, effective_from/to nullable, effective_time_basis, source revision, actor, policy, correlation/causation, payload digest, supersedes.
+Revocation increments the scope epoch. Reauthorize before fetch and again before disclosure. Pause prevents new jobs; historical records must not be presented as current/live.
 
-recorded_at — когда узнала система; valid time — когда действовало в источнике, если известно. Unknown effective time не заполняется polling timestamp. Исправления append-only с supersedes; current projections пересобираемы. Запросы AS KNOWN AT и AS EFFECTIVE AT различаются.
+## 8. Ongoing LDM/PDM Updates
 
-Composite keys/FKs/RLS изолируют tenant/company. Большие оригиналы находятся в private versioned store, в Postgres refs/hashes/minimal approved aggregates. Runtime reader не может писать accepted/model evidence. SECURITY DEFINER commands проверяют scope/аргументы/search_path/EXECUTE. Append-only не защищает от DB superuser сам по себе; критичный audit anchor экспортируется в отдельно защищённое хранилище.
+1. On connection, obtain an authorized baseline and record coverage. For event APIs, acquire a start token **before** baseline and catch up with change events, resolving race windows.
+2. Use a cheap change signal only when supported and qualified. `HEAD`, ETag and HTTP 304 are neither automatically cheap nor authoritative without measurement. Otherwise perform a full metadata scan within source budget/window.
+3. Errors, partial pages and revoked visibility do **not** imply deleted objects or a new schema.
+4. Retain raw SHA-256 for provenance and a separately versioned canonical structural hash.
+5. Canonical identity includes namespace, types, precision, scale, nullability, keys, navigation/cardinality, enum members and supported operation signatures. Normalize order only where it is semantically irrelevant. Do not merge objects with colliding short names.
+6. Record an OBSERVED snapshot and object-level diff, then calculate full impact closure across accepted dependencies.
+7. Create LDM changes as **CANDIDATE**. Unknown impact blocks dependent operations conservatively. Only the independent model-approver role can publish accepted heads according to policy and `expected_previous_head`.
+8. Track **data changes** separately from schema changes: a backdated accounting posting may alter a previous balance without changing schema. That requires a new comparison/run and applicability check, not fake schema drift.
 
-## 11. Scheduler и capacity
+Polling cannot reconstruct every intermediate change. A–B–A between polls without provider history cannot prove that B existed. Report `SNAPSHOT_ONLY`/`HISTORY_GAP`, observation intervals and unknown effective time; never access forbidden direct SQL CDC merely to promise completeness.
 
-Durable per-source lease + monotonic fencing token. Старый worker после expiry не может commit. Долгие source calls не удерживают DB transaction/connection. Queue bounded; per-tenant/backend/source/class budgets, fair scheduling, jitter/backoff/circuit breaker/quarantine. Несколько source IDs одной базы и replicas делят физический backend budget.
+## 9. Observed, Accepted and Validation States
 
-Interactive reads приоритетнее discovery/capture, но background имеет гарантированный минимальный budget. Conservative проектный старт: capture=1 на backend, writer=1 на source; прочие лимиты не выше target-qualified значений. Значения R1 (1000 sessions, DB pool 10, sidecar 4, fan-out 20/2) — разные слои, не гарантированная capacity.
+Independent axes: `connectivity`, `observation_freshness`, `schema_acceptance`, `mapping_validation`, `evidence_validity`, and `data_consistency`.
 
-План тестов: 30/50/100/150 sources; 1/5/10/20/50/100 active clients; отдельно 50/100/500/1000 sessions; один/many physical backends; cold/warm; discovery off/on; metadata/documents/balance/capture; 2h/8h soak. Метрики p50/p95/p99/RPS/error classes/pool wait/queue/CPU/RSS/1C user latency/audit-cursor lag. Быстрые profile refusals не считаются business throughput.
+- **Fresh accepted + validated operation + currently authorized source:** Live read may proceed.
+- **Source unavailable:** Live reads fail safely; dated historical model remains accessible only under current ACL.
+- **Non-impacting change:** Continued operation is permitted only when dependency coverage is proven and a compatible policy was already approved; do not invent new approval.
+- **Affected or unknown change:** Block affected operations, possibly more broadly when the dependency graph is incomplete.
+- **New artifact:** `UNATTESTED`. Numerical comparison may be a diagnostic, never an automatic business PASS.
+- **Same numbers, unproven cutoff/currency:** `INCONCLUSIVE`.
+- **New revision:** Preserve the historical PASS of old immutable bytes; revoke its applicability to the latest version.
 
-Предлагаемые targets, не измеренный результат: warm metadata p95<=500ms, enqueue p95<=500ms, background interference<=20% p95 при одинаковой нагрузке. Конкретные SLO/stop criteria/hardware утверждаются до нагрузки.
+Automatic structural acceptance does **not** validate a new financial formula. An LLM cannot confirm or validate through either a tool call or a document phrase.
 
-## 12. Native report capture
+## 10. PostgreSQL and Temporal Database
 
-Поддержать manual UI import, qualified UI automation и qualified standard-engine/batch. Recipe pin: source/config/platform/report object/variant/executor/selector/parameter schema/output format/hash/secret refs/budget/permission/qualification. Вход — recipe_id+typed scope+permit, не command/BSL/sql/arbitrary EPF.
+Initial model: PostgreSQL 16 compatible. TimescaleDB is optional after benchmarking and is **not** mandatory. “Time DB” means bitemporal capabilities.
 
-UI: проверить process/base/company, установить и прочитать параметры, открыть штатный отчёт, дождаться завершения, проверить header/fullness, экспортировать original, ingest/hash. Unknown dialog/selector/wrong source -> fail. Отсутствующий UI tool означает ручной baseline или зарегистрированный executor, не возможность через DC filesystem/test runner.
+Proposed entities: `connector_instances`, memberships, jobs/leases/cursors/outbox, `schema_snapshots`, object versions, accepted heads, logical concepts/aliases/edges, model events, capture recipes/jobs, evidence artifacts/revisions/attestations, comparison runs/items/issues and validation policies/bindings. Reuse existing R1 sources/companies/capabilities/semantic profiles where authority permits.
 
-COM standard report допускается только если конкретный отчёт работает и квалифицирован против UI. EMPTY не является нулём. /Execute — optional route для заранее проверенного pinned processing artifact, не произвольный код. Никакого admin fallback, отключения safe mode или подстановки собственного запроса как native oracle.
+Event fields: immutable event ID, schema version, tenant/source/company, aggregate sequence, event type, observed time, registry-recorded time, source event time, nullable effective range, evidence basis for effective time, source revision, actor, policy, correlation/causation, payload digest and `supersedes`.
 
-Job API изменяет собственную control plane: idempotency/CSRF/audit и корректные mutating annotations обязательны, хотя источники читаются read-only.
+`recorded_at` describes when the registry learned a fact. Effective/valid time describes when it applied at the source, **if known**. Never fill unknown effective time using the poll timestamp. Corrections append events with `supersedes`; current projections can be rebuilt. `AS KNOWN AT` and `AS EFFECTIVE AT` answer distinct questions.
 
-## 13. Dev/prod безопасность
+Composite keys, foreign keys and RLS isolate tenants/companies. Store large original bytes in private versioned storage; PostgreSQL stores references, hashes and minimal permitted aggregates. The runtime reader cannot write accepted-model or evidence records. `SECURITY DEFINER` commands must verify scope, arguments, `search_path`, and EXECUTE privileges.
 
-Dev — разрешённая disposable copy, отдельные credentials и evidence authority; production секреты не копируются. Probes записей и Ferma seeding только отдельный явно разрешённый test harness, не report recipe.
+Append-only storage does not automatically constrain a database superuser. Export critical audit anchors to separately protected storage.
 
-Prod capability default OFF. Enablement: owner+security/ops, source/company, recipe/version/hash, window/expiry, invocation/backend budgets, private output destination, verified permission set и qualification на копии. Разрешение на исполнение не равно бухгалтерскому утверждению.
+## 11. Scheduler and Capacity
 
-Штатный report выполняет код конфигурации; читатель может иметь технические записи (логи/settings). Требуются no-business-write rights/contract/qualification и explicit coverage, не обещание byte-identical всей prod базы. Непроверенные side effects -> prod recipe denied; возможен ручной экспорт уполномоченным пользователем. No write probes/reset.ps1 real/prod; не убивать чужие процессы; не перезапускать gateway ради отчёта.
+Use durable per-source leases and monotonically increasing fencing tokens. A worker whose lease expires must not commit. Long external source calls must **not** hold open a database transaction/connection.
 
-## 14. Evidence / attestation
+Bound queues and enforce per-tenant, physical-backend, source and workload-class budgets, fairness, jitter/backoff, circuit breakers and quarantine. Multiple source aliases for the same real database and different service replicas must share a **physical-backend** budget.
 
-Hash доказывает bytes, не происхождение. Каждый оригинал UNATTESTED до origin verification. Manifest: source/base/config, report/variant, company, period/timezone/currency/units, grouping/expanded balance/filters, snapshot/cutoff, actor/runner/recipe, capture times, digest/bytes/media/parser, completeness/classification/retention.
+Interactive reads take priority over discovery/capture, while background work retains a guaranteed minimal budget. Conservative initial design: one capture per backend and one writer per source; other limits must be no greater than those actually qualified for the target.
 
-Native eligibility R2: настоящий UI manual; qualified automatic UI; qualified standard-engine equivalent UI. Synthetic generator, custom COM query и результат из самого MCP не получают native authority автоматически. Роль connector пишет UNATTESTED refs, а не PASS/VALIDATED.
+R1 settings such as 1,000 sessions, DB pool 10, sidecar 4 and fanout 20/2 apply to different layers and **do not establish throughput capacity**.
 
-Numeric verifier выдаёт MATCH/MISMATCH/INCONCLUSIVE; независимый accounting approver ATTESTED; model approver привязывает usable mapping к exact source/company/operation/model/policy/evidence FKs. JSON actor field и 10 arbitrary case IDs не заменяют подпись/coverage/реальные bytes.
+Test grid: 30/50/100/150 sources; 1/5/10/20/50/100 active clients; separately 50/100/500/1,000 sessions; single/multiple physical backends; cold/warm; discovery off/on; metadata/documents/balances/capture; two-hour and eight-hour soak.
 
-Bootstrap: закрытый validation runner с candidate mapping на разрешённой копии выдаёт EVALUATION_ONLY. Он не public bypass профиля, не arbitrary SQL и не основание включить prod. После native comparison/approval -> accepted mapping -> повтор canonical MCP call.
+Measure p50/p95/p99, RPS, error classes, connection/queue wait, CPU/RSS, actual 1C user latency and audit/cursor lag. Profile refusals must not count as business throughput.
 
-## 15. Сверка 521.1 / purchases
+**Proposed unmeasured targets:** Warm metadata p95 ≤500 ms; enqueue p95 ≤500 ms; background impact on equivalent foreground p95 ≤20%. Approve actual SLOs, hardware and stop criteria **before** load testing.
 
-Для 818HA ОСВ 521.1 август2026: отдельно opening Дт/Кт, turnover Дт/Кт, closing Дт/Кт, все строки по counterparty/contract и полнота. Net invariant credit-debit и перенос net полезны, но не заменяют шесть колонок. Совпадение closing не исключает разных opening/turnover: это отдельный тестируемый риск. Набор денежных значений из переписки не является golden truth; наличие второго реального набора здесь независимо не подтверждалось. Денежные детали остаются private, не новые Git fixtures.
+## 12. Native Report Capture
 
-Canonical period — локальный полуинтервал [01.08 00:00,01.09 00:00), подтверждённый timezone; wire end semantics квалифицируются per adapter. Не подставлять универсально 23:59:59Z. Currency unknown не считать MDL. Decimal/tolerance policy version обязателен. Snapshot/cutoff must match; concurrent/backdated changes -> INCONCLUSIVE или новый run.
+Support manual standard UI intake, qualified UI automation and qualified standard reporting-engine/batch paths.
 
-По existing native runbook current payable mapping требует settlement register, которого в 818HA не нашли. Десять отчётов не создают регистр. Нужна явная account-based AP strategy через accounting analytics с отдельным validated mapping. Account balance не доказывает due dates/aging.
+A recipe pins source/config/platform/report object/variant, executor/selectors, typed parameter schema, output format, hashes, secret references, budget, permissions and qualification. Input is `recipe_id` plus typed scope and permit, **never** arbitrary command, BSL, SQL or EPF.
 
-Purchases contract: exact company+supplier identity; Posted/DeletionMark/date/number/amount/currency; header/rows; pagination; no auto name-only join. R2 может иметь отдельную policy структурной документной валидации после governance approval, не тихое снятие R1 blanket gate. Поддержка purchases не разблокирует AP/aging.
+UI procedure: verify application process/database/company, set and read back parameters, open standard report, wait until complete, verify headers and full coverage, export original, hash and ingest. Unknown dialog/selector/wrong source must fail. A filesystem-only DC or test runner does not prove UI automation capability.
 
-## 16. Drive
+COM standard reporting is allowed only when the specific standard report actually works and has been qualified against UI output. `EMPTY` is not zero. `/Execute` may launch a previously reviewed and pinned processing artifact, not arbitrary code. No administrator fallback, disabling safe mode, or replacing native evidence with custom queries.
 
-Polling changes.list first. Получить start token до baseline; пройти approved corpus; consume pages; atomic commit+cursor; account/shared-drive cursor namespaces. Feed/current state не гарантируют всех промежуточных версий.
+The job API changes **its own control-plane state**, so idempotency, CSRF, audit and accurate mutating-operation annotations remain mandatory even when the external 1C source is read-only.
 
-drive.file per-file: выбор папки не доказывает доступ к будущим children. Обязателен PoC new file/move/shortcut/shared-drive/revoke. Более широкий OAuth grant нельзя называть folder-only из-за application filter. Service account требует реальные resource permissions; keyless WIF — separate infrastructure decision.
+## 13. Development and Production Security
 
-Viewer/readonly не гарантирует revision history. Не повышать права до writer и не вызывать keepForever update ради архивного download. При недоступной истории сохранить разрешённые current exports в immutable store и явно SNAPSHOT_ONLY/GAP. Dynamic export pin: version before/after и bytes digest; race -> no exact-revision claim.
+Development uses an approved disposable copy, independent credentials and development-level evidence. Do not copy production credentials. Write probes and Ferma seeding belong only to a separately approved test harness, never a report recipe.
 
-External OAuth Testing token lifetime с scopes beyond profile требует reconsent/invalid_grant handling; production не строится на «токен вечный». Optional watch: valid HTTPS, channel/token verification, expiry/renewal, duplicate/out-of-order; notification только hint на fetch. Polling сохраняется при отсутствии push.
+Production capture is **OFF by default**. Enabling it requires owner/security/operations approval tied to the exact source/company, procedure/version/hash, time window, expiry, per-invocation/backend budget, private output destination, verified permissions and qualification on an approved copy.
 
-Новая revision не стирает historical PASS старого immutable artifact, но снимает applicability к latest. Compromise/revoked attestation — отдельное событие с зависимостями.
+Permission to run a report is **not** accounting approval of its values.
 
-## 17. Parser/privacy
+Standard reports execute 1C configuration code. A read-only account may still cause service-level settings/log writes. Qualify explicit **no-business-write** permissions and technical side-effect coverage; do not promise byte-identical production databases.
 
-Sandbox без сети; DTD/entities denied; ZIP bytes/entries/depth/ratio budgets; timeout/RSS; macro/embedded object/external links denied. Формулы не исполняются/пересчитываются; trusted cached values только approved profile, иначе values-only export. OCR — fallback с human check и completeness flag. Prompt injection не получает новых полномочий/URL/SQL.
+Unverified side effects deny automated production capture. Authorized manual export or an approved copy may be used instead. No production write probes or `reset.ps1`, no termination of other processes, and no restarting gateways merely to generate reports.
 
-Начальные parser budgets как targets: input25MiB, inflated200MiB,10000entries,ratio100:1,60s,512MiB RSS. Они квалифицируются под реальные формы; превышение quarantine, не truncated PASS. Новые scopes/raw content sharing/retention/legal hold требуют policy. Удаление отдельно авторизовано, не выполняется этим пакетом.
+## 14. Evidence and Attestation
 
-## 18. UI/API
+A hash proves byte equality, **not provenance**. Every original starts as `UNATTESTED` until source/origin verification.
 
-Connections, Live Model diff, Taxonomy, Timeline, Capture, Evidence Inbox, Workbench, Capacity/Health. Явно: environment/source/company/valid-time/known-time/model version/freshness/trust. BLOCKED имеет safe reason_code, next action, correlation ID; никакого чужого source name/stacktrace/secret ref.
+Required manifest: source/database/configuration; report/variant; company; period/time zone/currency/units; grouping/expanded balances/filters; snapshot/cutoff; actor/runner/recipe; capture timestamps; byte hash/size/media/parser; completeness; classification and retention.
 
-Предлагаемые APIs: create connection; enqueue rescan/report/reconciliation; read model/timeline/job/result; attest evidence; approve model через CAS; pause/revoke. Только типизированные IDs+parameter schema+policy references. Cookie admin mutations с CSRF, все controls idempotent и auditable. Нет API «set status VALIDATED» с произвольным JSON.
+R2 native-eligible candidates include genuine manual UI, qualified automated UI, or a qualified standard engine proven equivalent to UI. A synthetic generator, custom COM query or value derived from MCP does not gain native evidence authority automatically. Connectors may create `UNATTESTED` references but never PASS or `VALIDATED`.
 
-## 19. Migration / rollback / приёмка
+A numerical verifier computes `MATCH`, `MISMATCH`, or `INCONCLUSIVE`. An independent accountant approves `ATTESTED`; a model approver binds usable mappings to exact source/company/operation/model/policy/evidence foreign keys. JSON actor fields and ten arbitrary test IDs do not replace real sign-off, completeness or bytes.
 
-Expand new tables/roles без изменения R1. Shadow observed-only. Legacy import -> UNATTESTED provenance, не восстановленная выдуманная история. Canary dev+Drive corpus+recipe. Switch per source/company с signed policy. Contract cleanup только отдельно после rollback window; no deletion сейчас.
+**Bootstrap:** A private evaluation runner may execute pinned candidate mappings on an authorized disposable copy with `EVALUATION_ONLY` output. It is neither a public profile bypass nor arbitrary SQL nor grounds to enable production. Only independent native comparison and approval can lead to accepted mappings and a canonical MCP replay.
 
-Rollback возвращает только совместимую version/feature flag, не expired credentials/revoked grants/invalid evidence. При live schema incompatible old head — blocked. Restore проверяет artifact hashes/FKs/event sequences/attestations/current rights.
+## 15. Account 521.1 and Purchases Reconciliation
 
-Выпуск только после G0–G7, mandatory actual tests, native evidence и independent UAT. SPEC/L0 tests пакета проверяют спецификацию, не работу будущего продукта. Все 144 product cases до реализации имеют NOT_RUN.
+For company 818HA and August 2026, the account 521.1 trial balance requires **six separate totals**: opening debit/credit, turnover debit/credit, closing debit/credit. Also verify all counterparty/contract rows and coverage.
+
+Net-liability `credit - debit` and net continuity are useful supplementary checks, **not substitutes for six-column comparison**. Equal closing values do not rule out incorrect opening/turnover amounts. Conversation-supplied figures are not verified golden truth; a second genuine set of figures was not independently established in this initial design. Actual financial details remain private rather than new Git fixtures.
+
+The canonical local period is `[2026-08-01 00:00, 2026-09-01 00:00)` in a **verified source time zone**. Wire-end semantics are qualified per adapter; never hardcode a universal `23:59:59Z`.
+
+Unknown currency must not be assumed to be MDL. Use Decimal and a pinned tolerance policy. Snapshot/cutoff must match; concurrent or backdated changes yield `INCONCLUSIVE` or a new run.
+
+The existing native runbook reports that the current payable mapping expected a settlement register not found in 818HA. Ten reports cannot create that missing register. Instead, qualify an **explicit accounting-based AP strategy** through accounting analytics. An account balance alone cannot establish aging or due dates.
+
+**Purchases contract:** Exact company and supplier identity, `Posted`, `DeletionMark`, dates, document number, amount/currency, header/rows and complete pagination. Do not automatically join by a supplier's name alone.
+
+R2 may introduce a separate structural document-validation policy after governance approval, but cannot silently waive the R1 blanket gate. Purchases validation does not enable AP or aging.
+
+## 16. Google Drive
+
+Start with `changes.list` polling. Obtain the start token **before** baseline; traverse the approved corpus; consume pages and commit changes atomically with a cursor. Maintain separate account/shared-drive cursor namespaces. Feed and current-state APIs cannot guarantee every intermediate revision.
+
+With per-file `drive.file` access, selecting a folder does not prove access to future children. A real proof of concept must include new files, moves, shortcuts, shared drives and revocation. An application-level filter cannot make a broad OAuth token into a folder-only grant. Service accounts require genuine resource permissions; keyless Workload Identity Federation is a separate infrastructure decision.
+
+Viewer/read-only permissions do not guarantee revision-history access. Do not elevate to writer or mutate `keepForever` just to download history. Where unavailable, save only permitted current exports into immutable storage and report `SNAPSHOT_ONLY`/`GAP`. For dynamic exports, compare before/after revision and bytes hash; an unresolved race denies an exact-revision claim.
+
+External OAuth Testing tokens with additional scopes may need re-consent and `invalid_grant` handling; never build production around the assumption that tokens never expire.
+
+Optional watch notifications require HTTPS, channel/token verification, expiry/renewal and duplicate/out-of-order handling. Notifications are **only hints to fetch**; polling must work without push.
+
+A new revision preserves historical PASS on immutable previous bytes but ends applicability to the latest. Compromised or revoked attestation generates a separate event with tracked dependencies.
+
+## 17. Parser Isolation and Privacy
+
+Isolate parsing from the network; deny DTDs/entities, macros, embedded objects and external links. Enforce ZIP input bytes, entry count, nesting/decompression ratio, time and RSS budgets. Never execute or recalculate formulas. Use trusted cached values only under an approved profile; otherwise require values-only export. OCR is a fallback needing human review and an explicit completeness flag.
+
+Prompt-injection content never obtains new permissions, URLs or SQL execution.
+
+**Initial proposed budgets (not qualified limits):** 25 MiB input, 200 MiB inflated, 10,000 entries, compression ratio 100:1, 60 seconds and 512 MiB RSS. Qualify limits for actual report formats. Exceeded limits cause quarantine/denial, **not truncated PASS**.
+
+New scopes, raw-content sharing, retention and legal holds need policy approval. Deletion requires separate authorization and is **not** part of this design package.
+
+## 18. User Interface and APIs
+
+Proposed screens: Connections, Live Model Diff, Taxonomy, Timeline, Capture, Evidence Inbox, Workbench and Capacity/Health. Display environment, source, company, valid time, known time, model version, freshness and trust explicitly.
+
+A `BLOCKED` response includes a safe `reason_code`, next action and correlation ID, **not** another company's source name, stack trace or secret reference.
+
+Proposed APIs: create connection; enqueue rescan/report/reconciliation; read model/timeline/job/result; attest evidence; CAS-approve model; pause/revoke. Accept only typed IDs, parameter schemas and policy references. Cookie-authenticated administrator mutations require CSRF protection. All controls must be idempotent and audited. No arbitrary JSON `set status VALIDATED` endpoint.
+
+## 19. Migration, Rollback and Acceptance
+
+**Expand:** Add new tables and roles without modifying R1. Start with observed-only shadow capture. Historical imports become `UNATTESTED` provenance; they cannot fabricate a reconstructed history.
+
+Qualify a canary on approved development and Drive corpora and procedures. **Switch per source/company** under a signed policy. Contract/cleanup follows a separate rollback window; no deletion is authorized by this plan.
+
+Rollback restores only a compatible version or feature flag, **never** expired credentials, revoked grants or invalid evidence. When the current live schema is incompatible with an old accepted head, affected operations remain blocked. Restore must verify artifact hashes, foreign keys, event sequences, attestations and current access rights.
+
+Release is permitted only after G0–G7, actually executed mandatory tests, independent native accounting evidence and UAT. Companion SPEC/L0 tests verify the specification, **not** a future running product. At the original design checkpoint, all 144 product acceptance cases were `NOT_RUN`.
+
+**This document remains a design baseline. All current implementation and release claims must be verified on an exact source/configuration HEAD and accepted by the relevant gate owners.**
