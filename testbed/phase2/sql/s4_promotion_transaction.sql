@@ -405,9 +405,10 @@ BEGIN
  END IF;
  digest_value:=living.s4_request_digest(req,approver,el);
  IF req.operation='rollback' THEN
-  IF NOT EXISTS(SELECT 1 FROM living.acceptance_events WHERE tenant_id=t AND source_id=s
-    AND model_key=req.model_key AND to_version=req.requested_rollback_version
-    AND accepted_revision=req.target_revision) THEN RAISE EXCEPTION 'ROLLBACK_TARGET_NOT_ACCEPTED'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM living.acceptance_events AS history
+    WHERE history.tenant_id=t AND history.source_id=s AND history.model_key=req.model_key
+    AND history.to_version=req.requested_rollback_version
+    AND history.accepted_revision=req.target_revision) THEN RAISE EXCEPTION 'ROLLBACK_TARGET_NOT_ACCEPTED'; END IF;
  END IF;
  SELECT * INTO head FROM living.accepted_heads WHERE tenant_id=t AND source_id=s
   AND model_key=req.model_key FOR UPDATE;

@@ -872,3 +872,7 @@ At HEAD 54a5c83b98c92ac7dd2aaf83b6ed05560e4515a4, the assigned e2e-runner report
 ## 2026-11-18 - S4 disposable rerun stopped at the ingest fixture
 
 The e2e-runner ran the named PostgreSQL module with --maxfail=1 on 5a24093. One scenario began and raised UndefinedFunctionError in seed_eligible before promotion, because the test passed twelve arguments to living.ingest_observation rather than using the shared ten-argument statement. Result: 1 failed in 9.86s. The owned disposable cluster exited without a cleanup exception. No promotion result was observed.
+
+## 2026-11-18 - S4 disposable scenarios reached the transaction
+
+The assigned e2e-runner reported six passed and one failed in 52.17s on fb8539d with --maxfail=1. The rollback scenario raised AmbiguousColumnError because its historical lookup named to_version without a table alias, colliding with the PL/pgSQL output variable. The owned container context exited without a cleanup exception. This is product-fixture SQL evidence for the six successful scenarios; rollback remains open pending the rerun.

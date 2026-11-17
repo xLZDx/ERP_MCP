@@ -2161,3 +2161,7 @@ The corrected offline fingerprint run passed all 36 cases at 54a5c83. The Postgr
 ## 2026-11-18 - Reuse the established S4 observation seed statement
 
 The target run at 5a24093 cleared the duplicate scope setup and exposed a signature mismatch in the test-only observation call. Use the established shared ingest statement inside the existing company-scoped role transaction. PostgreSQL is the transactional authority for the ERP_MCP accepted model head and related records, not just a diagnostic log. No 1C copy participates in this transaction.
+
+## 2026-11-18 - Disambiguate the S4 rollback history lookup
+
+The disposable PostgreSQL run reached all seven scenario bodies. Six passed; rollback exposed an ambiguous reference to to_version in its historical target lookup. Qualify the accepted-event columns with their table alias. Retain failure evidence and rerun the named module on a committed correction.
