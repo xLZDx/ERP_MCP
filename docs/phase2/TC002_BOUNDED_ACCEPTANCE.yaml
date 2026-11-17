@@ -1,0 +1,44 @@
+schema_version: 1
+case_id: R2-TC-002
+product_status: NOT_RUN
+bounded_acceptance:
+  status: SATISFIED
+  criterion: >-
+    All six pinned and all additional R1-marked items discoverable through the
+    named backlog's supported row syntax retain exactly one ledger record with
+    meaningful evidence, an unresolved or explicitly justified N/A disposition,
+    and an actionable next step.
+  scope: source-register integrity for R1-marked items in the named backlog only
+  exact_head: 22647667e25fdd39ce26f48641c490eba1074f2b
+  source_backlog_path: docs/PHASE_2_REQUIREMENTS_BACKLOG_DRAFT_2026-10-08.md
+  source_backlog_sha256: f8523d07104ecde561c511d9f5846e46c8efce7e8fc531ffc6194d735b8532de
+  source_ledger_path: docs/phase2/TASK_LEDGER.md
+  source_ledger_section: '## S0 TC002 — R1 defect visibility and disposition'
+  source_ledger_section_sha256: b6d5037d03ecb05e6e17e395ccd3ac90b3b57f215c3259bbd73eb06de7d2b591
+  source_test_path: tests/phase2/test_spec_bundle_mapping.py
+  source_test_git_blob_sha256: d7d5063bf1c2fa58bb4200500e358f17cf0339e0861368651b199dcbb9efeb1f
+  source_evidence_path: artifacts/phase2/r2-tc002-register-integrity-evidence.json
+  evidence_path: evidence/r2-tc002-register-integrity-evidence.json
+  evidence_sha256: 9902229ce6ad526ea7b1d6da3f044e9bf589359d87be331f0b040d65ad7361bd
+  prior_gpt_pm_review_request_id: e2a6e04a-17cb-497a-91e3-71110f5870f4
+  code_approval_request_id: 4e9bf80c-71f2-4808-bf56-0bdb4ca92522
+  integration_code_review_request_id: bce3e771-48b2-4a22-8b4d-d4fa89cbf09a
+  normalization_confirmation_request_id: ca62e7c4-a3d2-41f8-9e61-aafed5df2cab
+  gpt_pm_adjudication_state: APPROVED
+  gpt_pm_adjudication_request_id: 4d880fdb-82f1-4c68-9085-1cd353e51c31
+  gpt_pm_adjudication_payload_sha256: bfc4f51d4b0a32c81a50b1cea8a9fdadaaae1e7c7f909e3925ff28afb1697cdb
+  gpt_pm_adjudication_job_id: 2896f4d4-f6a8-4138-ba5d-14f01eeea746
+  gpt_pm_adjudication_reply_id: 701d9c3a-ad00-528e-94f1-16f8ed9b03cd
+  gpt_pm_adjudication_receipt_path: artifacts/phase2/r2-tc002-gpt-pm-adjudication.json
+  gpt_pm_adjudication_package_receipt_path: evidence/r2-tc002-gpt-pm-adjudication.json
+  gpt_pm_adjudication_receipt_sha256: 04147bb644b41be981703dcf8938e5a80547d96665b4ef42f7162e923c260fc3
+  gpt_pm_adjudication_reply_sha256: 310f1d903f367850d2090289be27c175a3240dd4f6e1c491d9c107a24ca47b06
+  transition_rule: >-
+    The bounded status may be SATISFIED only when a correlated GPT-PM decision
+    explicitly adjudicates this bounded criterion. A passing register-integrity
+    regression alone cannot promote it. Canonical product_status remains NOT_RUN
+    and the Gherkin case remains @not_implemented.
+  limitations:
+    - Does not cover undiscovered defects, unmarked source items, or items outside the named backlog.
+    - Does not prove every R1 defect has been fixed or that the backlog is exhaustive.
+    - Does not establish full R1 product acceptance, runtime acceptance, deployment, merge, or release authority.

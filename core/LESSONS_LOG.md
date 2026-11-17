@@ -599,3 +599,8 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 FAILURE: fresh-chain tests caught CREATE used for two already-published function signatures in030. Rule: classify new overloads separately from body replacements and execute a real disposable migration chain before accepting an append-only source port.
 
 - 2026-11-17 FAILURE: feature-level static disposition marked S10 ownership fixes present after inspecting only some changed modules. Named tests exposed missing runtime state/drain logic and optional composition wiring. Rule: review every source path of a multi-file historical change; preserve ownership after ambiguous enqueue and bound shutdown, then run its behavioral cases before acceptance.
+
+- 2026-11-17 FAILURE: ported supervisors called an absent cancellation port, and a valid lifecycle branch fell through because its diagnostic return was misplaced. Rule: exercise complete composition boundaries and successful-precondition paths, not only refusal cases; check protocol and concrete adapter dependencies together.
+
+- 2026-11-17 SHORTCOMING: a newer evidence envelope broke a retained legacy transport and empty-store receipt. Rule: isolate versioned receipts and bridge only after the old protocol verifies exact scope, signature and caller challenge; never add permissive defaults to the current authority contract.
+- 2026-11-17 SUCCESS: missing historical decision inputs were recovered from their later record commits with exact evidence hashes, rather than fabricated at earlier reviewed code heads. Rule: separate code revision, later decision-record revision and current qualification; preserve all three identities.

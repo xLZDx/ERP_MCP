@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "scenario": "R2-TC-003",
+  "bounded_criterion": "moving HEAD is not reported as deployment evidence",
+  "scope": "The release-evidence assembler does not infer deployment identity from tested revision, local HEAD, or PR head; absent provider attestation remains unknown and caller-supplied SHAs remain unverified claims.",
+  "candidate": {
+    "commit": "b885f03ffd752b9b30a365fb0294c7e53f24a785"
+  },
+  "sources": {
+    "assembler": {
+      "path": "scripts/assemble_release_evidence.py",
+      "worktree_sha256": "6ec5084613b3076499e823ff6611b3e8d6ee926da60aa8d43242c357610971de",
+      "candidate_git_blob_oid": "236edacb5cf16f66671f6fb6da10b0c8766a79e2",
+      "candidate_blob_sha256": "b5d4fc5123a8e5b510efc6770241a5a89fe3236991d9975d7db1e0ba14527710",
+      "crlf_normalized_worktree_matches_candidate": true
+    },
+    "tests": {
+      "path": "tests/test_release_evidence_assembly.py",
+      "worktree_sha256": "17b123fe38b7f3c3752394cdf51cdd1f6f4305bf40fcf9f753a105a76a783568",
+      "candidate_git_blob_oid": "e91133d306dc6ae0256715490f8ea56541d63e94",
+      "candidate_blob_sha256": "63c339bcf6687519dbfdfcb24e07d8460937b67cc7f652db77a248b952fdfa1f",
+      "crlf_normalized_worktree_matches_candidate": true
+    },
+    "catalog": {
+      "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/test_cases.yaml",
+      "sha256": "a63c5f2c7395ddb39ba249943f9744ccc9ad04fcfbcfc067c2df5444958697cd",
+      "case_actual_status": "NOT_RUN"
+    },
+    "gherkin": {
+      "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/acceptance/phase2.feature",
+      "sha256": "78f5c9363d112cd3248366f91f12030bed7ff303ecc019e2d8da9e6dd3daa4ec",
+      "case_tag": "@not_implemented"
+    },
+    "gate_manifest": {
+      "path": "governance/GATE_MANIFEST.json",
+      "sha256": "365ffaae355f94d07e5b9bc9a3ed666bc48bb385269ef58c988a8eaae3a327b3",
+      "release_2": "NO_GO",
+      "production_authorization": "NONE",
+      "external_evidence_gates_open": true,
+      "candidate_git_blob_oid": "a8c9765cfbb7d7cd35a44586c1315c4cde650013",
+      "candidate_blob_sha256": "d8cc17c00235cef0602b7a922d00b31edbc2632f50523a243b1d7edc265da2f5",
+      "crlf_normalized_worktree_matches_candidate": true
+    }
+  },
+  "regression": {
+    "owner": "functional-test-reviewer",
+    "command": ".venv/Scripts/python.exe -m pytest -q tests/test_release_evidence_assembly.py::test_deployment_revision_defaults_to_unknown_instead_of_following_moving_head tests/test_release_evidence_assembly.py::test_deployment_revision_mismatch_is_kept_as_an_unverified_claim tests/test_release_evidence_assembly.py::test_deployment_revision_equal_to_pr_head_is_still_unverified tests/test_release_evidence_assembly.py::test_malformed_deployment_revision_is_rejected",
+    "execution_head": "b885f03ffd752b9b30a365fb0294c7e53f24a785",
+    "result": "PASS",
+    "exit_code": 0,
+    "passed": 4,
+    "outcomes": {
+      "deployment_sha_omitted": "UNKNOWN",
+      "deployment_sha_differs_from_pr_head": "CLAIM_UNVERIFIED",
+      "deployment_sha_equals_pr_head": "CLAIM_UNVERIFIED",
+      "malformed_deployment_sha": "REJECTED"
+    }
+  },
+  "implementation_invariants": {
+    "tested_revision_separate_from_pr_head": true,
+    "deployment_identity_inferred_from_head": false,
+    "production_decision": "NO-GO",
+    "mandatory_native_and_operator_gates_closed": false
+  },
+  "provider_attestation": {
+    "status": "NOT_FOUND_IN_NAMED_REPOSITORY_EVIDENCE",
+    "checked_scope": "artifacts/phase2 evidence files and governance/GATE_MANIFEST.json at candidate HEAD",
+    "does_not_prove_external_deployment_absence": true
+  },
+  "gpt_pm_adjudication_request_id": "50c5099b-8d93-41f6-8e04-4a0b8f6e52dd",
+  "product_status": "NOT_RUN",
+  "gherkin_status": "@not_implemented",
+  "limitations": [
+    "Does not identify or verify an actual deployed revision.",
+    "Does not prove that no deployment exists outside the named repository evidence.",
+    "Does not establish product runtime acceptance, release readiness, merge, deployment, or production authorization."
+  ]
+}

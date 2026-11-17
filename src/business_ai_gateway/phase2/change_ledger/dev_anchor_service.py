@@ -862,6 +862,25 @@ app = Starlette(routes=[
 ])
 
 
+@dataclass(frozen=True)
+class LegacyLatestnessReceipt:
+    """Verified v1 transport receipt, including the empty-store response.
+
+    This preserves the legacy API shape. It is not the current lifecycle authority
+    envelope; attest_latest constructs that only for an exact retained checkpoint.
+    """
+
+    tenant_id: str
+    company_id: str
+    checkpoint_digest: str | None
+    authority_id: str
+    authority_revision: int
+    authority_event_id: str | None
+    authority_event_digest: str | None
+    challenge_nonce: str
+    proof_digest: str
+
+
 class DevHttpCheckpointSink(
         CheckpointSink, CheckpointKeyAuthorizationAuthority, CheckpointLatestnessAuthority):
     """TEST-only sink/key-authority client for the separate dev process; never use in production."""
@@ -975,9 +994,11 @@ class DevHttpCheckpointSink(
         return record
 
     async def latest_checkpoint(
-            self, scope: Scope
-    ) -> tuple[CheckpointRecord | None, CheckpointLatestnessEvidence]:
-        nonce = os.urandom(32).hex()
+            self, scope: Scope, challenge_nonce: str | None = None
+    ) -> tuple[CheckpointRecord | None, LegacyLatestnessReceipt]:
+        nonce = os.urandom(32).hex() if challenge_nonce is None else challenge_nonce
+        if type(nonce) is not str or not _HASH_RE.fullmatch(nonce):
+            raise DevAnchorError("LATEST_PROOF_INVALID")
         value = await asyncio.to_thread(
             self._request, "POST", "/v1/checkpoints/latest",
             {"tenant_id": scope.tenant_id, "company_id": scope.company_id, "nonce": nonce},
@@ -1055,7 +1076,7 @@ class DevHttpCheckpointSink(
         self._latest_seen[(scope.tenant_id, scope.company_id)] = (
             proof["revision"], seq, proof["event_digest"],
         )
-        return record, CheckpointLatestnessEvidence(
+        return record, LegacyLatestnessReceipt(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             checkpoint_digest=None if record is None else checkpoint_identity(record),
@@ -1063,14 +1084,34 @@ class DevHttpCheckpointSink(
             authority_revision=proof["revision"],
             authority_event_id=proof["event_id"],
             authority_event_digest=proof["event_digest"],
+            challenge_nonce=nonce,
+            proof_digest=hashlib.sha256(_PROOF_DOMAIN + _canonical(signed_fields)).hexdigest(),
         )
 
     async def latest(self, scope: Scope) -> CheckpointRecord | None:
         record, _ = await self.latest_checkpoint(scope)
         return record
 
+    async def attest_latest(
+            self, scope: Scope, record: CheckpointRecord, challenge_nonce: str
+    ) -> CheckpointLatestnessEvidence | None:
+        observed, receipt = await self.latest_checkpoint(scope, challenge_nonce)
+        if observed is None or receipt.checkpoint_digest != checkpoint_identity(record):
+            return None
+        if observed != record:
+            return None
+        return CheckpointLatestnessEvidence(
+            tenant_id=scope.tenant_id, company_id=scope.company_id,
+            checkpoint_digest=receipt.checkpoint_digest,
+            challenge_nonce=receipt.challenge_nonce, provider_id=self.sink_id,
+            provider_revision=receipt.authority_revision,
+            authority_id=receipt.authority_id, authority_revision=receipt.authority_revision,
+            authority_event_id=receipt.authority_event_id,
+            policy_version="dev-anchor-latest-v1", proof_digest=receipt.proof_digest,
+        )
+
     async def authorize_checkpoint(
-            self, scope: Scope, record: CheckpointRecord
+            self, scope: Scope, record: CheckpointRecord, challenge_nonce: str | None = None
     ) -> CheckpointKeyAuthorization | None:
         if (type(record) is not CheckpointRecord
                 or record.tenant_id != scope.tenant_id
@@ -1078,7 +1119,9 @@ class DevHttpCheckpointSink(
                 or record.sink_id != self.sink_id or record.sink_kind != self.kind
                 or not _verify_checkpoint(self._checkpoint_verifier, record)):
             raise DevAnchorError("CHECKPOINT_INVALID")
-        nonce = os.urandom(32).hex()
+        nonce = os.urandom(32).hex() if challenge_nonce is None else challenge_nonce
+        if type(nonce) is not str or not _HASH_RE.fullmatch(nonce):
+            raise DevAnchorError("KEY_AUTHORIZATION_PROOF_INVALID")
         try:
             value = await asyncio.to_thread(
                 self._request, "POST", "/v1/checkpoints/authorize",
@@ -1146,6 +1189,7 @@ class DevHttpCheckpointSink(
             key_id=record.key_id,
             public_key_digest=proof["public_key_digest"],
             checkpoint_digest=proof["checkpoint_digest"],
+            challenge_nonce=nonce,
             authority_id=proof["authority_id"],
             authority_revision=proof["authority_revision"],
             authority_event_id=proof["authority_event_id"],

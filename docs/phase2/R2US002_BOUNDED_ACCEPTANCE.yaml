@@ -1,0 +1,45 @@
+schema_version: 1
+story_id: R2-US-002
+product_status: NOT_RUN
+story_status: BOUNDED_SCOPE_COMPLETE
+exact_head: c624b701e8f42076441f9b8c6a3cf4dbe60414e7
+evidence_path: artifacts/phase2/r2-us-002-bounded-evidence.json
+evidence_sha256: 81dcbc02cc2c6cfcfab4f8bd8c99bbe188f2cc490d03a9b448f4138d469ba64c
+package_evidence_path: evidence/r2-us-002-bounded-evidence.json
+pm_receipt_path: artifacts/phase2/r2-us-002-gpt-pm-adjudication.json
+pm_receipt_sha256: 28695ca2247bb5c3b2d3d73548a93c85b33ce1673eef152531bfc7a2732ed09e
+package_pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication.json
+pm_request_id: 9550946b-a01e-4148-86c0-79db24d9e591
+pm_job_id: 30ecc691-6f42-4eba-8f3c-3756923bcf10
+pm_reply_id: cdc59815-9533-5d4b-b85c-6d3b3a1d0e9b
+pm_payload_sha256: 11806e704255a993f3f27fcb61b631692590501c9520b63616349d604b468fb6
+pm_reply_sha256: cd6af9cc33eaf1f23622eea96f3e07d47481c289b6c0e82b9a72f1a303d4b93e
+criteria:
+- case_id: R2-TC-004
+  status: SATISFIED
+  criterion: pin file path/SHA/license
+  scope: Exact Ferma repository, pinned commit, source paths, and independently reproduced
+    132-file digest are verified. No formal license was found. GPT-PM accepted the
+    recorded operator authorization only for private test-only reuse without source
+    redistribution or production source inclusion.
+  remaining: Canonical product R2-TC-004 remains NOT_RUN; any redistribution, production
+    inclusion, or broader reuse requires separate authorization.
+- case_id: R2-TC-005
+  status: SATISFIED
+  criterion: an empty placeholder is not ready
+  scope: Static ERP_MCP evidence shows ERP/Ferma adapters disabled and reserved, with
+    no runtime construction or MCP registration.
+  remaining: Canonical product acceptance remains NOT_RUN.
+- case_id: R2-TC-006
+  status: SATISFIED
+  criterion: donor write APIs are not exposed
+  scope: Static production MCP composition has read-only annotations, an exact tool
+    registration allowlist, and no ERP/Ferma adapter imports or donor-derived write
+    registration.
+  remaining: Static source review does not prove absence of unmarked code similarity
+    or exact shipped artifact contents; canonical product acceptance remains NOT_RUN.
+transition_rule: A bounded status is recorded only from this correlated GPT-PM adjudication;
+  canonical product_status remains NOT_RUN and Gherkin remains @not_implemented.
+prior_pm_receipt_path: artifacts/phase2/r2-us-002-gpt-pm-adjudication-initial.json
+prior_pm_receipt_sha256: ac37e238ee57ae62e0f899a761c7179a783d0fd36b736a2f74f3852be7aa8be1
+package_prior_pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication-initial.json

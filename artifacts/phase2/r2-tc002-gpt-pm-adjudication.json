@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "project_id": "erp_mcp",
+  "conversation_id": "6aeb9f0a-e3ec-83ed-8782-296b5106fbd5",
+  "job_id": "2896f4d4-f6a8-4138-ba5d-14f01eeea746",
+  "request_id": "4d880fdb-82f1-4c68-9085-1cd353e51c31",
+  "reply_id": "701d9c3a-ad00-528e-94f1-16f8ed9b03cd",
+  "payload_hash": "bfc4f51d4b0a32c81a50b1cea8a9fdadaaae1e7c7f909e3925ff28afb1697cdb",
+  "correlated": true,
+  "candidate_head": "22647667e25fdd39ce26f48641c490eba1074f2b",
+  "verdict": "APPROVE",
+  "bounded_status": "SATISFIED",
+  "product_status": "NOT_RUN",
+  "reply_text": "ChatGPT said:\n\nREQUEST_ID: 4d880fdb-82f1-4c68-9085-1cd353e51c31\nPROJECT: ERP_MCP\nSPRINT: S0 — Phase 2 Specification and Compatibility\nTASK: R2-US-001 / R2-TC-002 — R1 Defect Register Integrity\n\nFINAL VERDICT: APPROVE\n\nCOMMIT_UPDATE_PR42: AUTHORIZED\n\nBOUNDED_TC002: SATISFIED\n\nPRODUCT_TC002: NOT_RUN\n\nTC002_ADJUDICATION_JSON:",
+  "reply_sha256": "310f1d903f367850d2090289be27c175a3240dd4f6e1c491d9c107a24ca47b06"
+}

@@ -1,0 +1,55 @@
+{
+  "scenario": "R2-TC-002",
+  "bounded_criterion": "All six pinned and all additional R1-marked items discoverable through the named backlog's supported row syntax retain exactly one ledger record with meaningful evidence, an unresolved or explicitly justified N/A disposition, and an actionable next step.",
+  "scope": "source-register integrity for R1-marked items in the named backlog only",
+  "candidate": {
+    "commit": "22647667e25fdd39ce26f48641c490eba1074f2b"
+  },
+  "source_backlog": {
+    "path": "docs/PHASE_2_REQUIREMENTS_BACKLOG_DRAFT_2026-10-08.md",
+    "sha256": "f8523d07104ecde561c511d9f5846e46c8efce7e8fc531ffc6194d735b8532de"
+  },
+  "source_ledger": {
+    "path": "docs/phase2/TASK_LEDGER.md",
+    "section": "## S0 TC002 — R1 defect visibility and disposition",
+    "section_sha256": "b6d5037d03ecb05e6e17e395ccd3ac90b3b57f215c3259bbd73eb06de7d2b591"
+  },
+  "source_test": {
+    "path": "tests/phase2/test_spec_bundle_mapping.py",
+    "committed_git_blob_sha256": "d7d5063bf1c2fa58bb4200500e358f17cf0339e0861368651b199dcbb9efeb1f",
+    "tested_working_tree_sha256": "b28a3daae5b98e8770aa1ca4e73a64863e38b496124ca9c285abbaf5cf9a4bad",
+    "line_ending_normalization": "CRLF-to-LF byte equality independently confirmed by GPT-PM in request ca62e7c4-a3d2-41f8-9e61-aafed5df2cab"
+  },
+  "regression": {
+    "owner": "functional-test-reviewer",
+    "command": "python -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_spec_bundle_mapping.py",
+    "execution_head": "490cfb744f8322d87107e361455e84618d78b7d0",
+    "result": "PASS",
+    "exit_code": 0,
+    "passed": 34,
+    "skipped": 1,
+    "warnings": 1,
+    "skip_reason": "Windows filesystem did not permit creating the symlink-containment temporary fixture.",
+    "warning": "pytest-asyncio deprecation warning.",
+    "scope_note": "The regression exercised the changed working-tree test source with the exact source SHA recorded above; after standard CRLF-to-LF normalization its bytes equal the committed blob at candidate HEAD."
+  },
+  "required_item_ids": [
+    "B2",
+    "B3",
+    "M2",
+    "M5",
+    "M7",
+    "M8"
+  ],
+  "prior_gpt_pm_review_request_id": "e2a6e04a-17cb-497a-91e3-71110f5870f4",
+  "code_approval_request_id": "4e9bf80c-71f2-4808-bf56-0bdb4ca92522",
+  "normalization_confirmation_request_id": "ca62e7c4-a3d2-41f8-9e61-aafed5df2cab",
+  "product_status": "NOT_RUN",
+  "gherkin_status": "@not_implemented",
+  "exclusions": [
+    "Undiscovered defects, unmarked source items, and items outside the named backlog.",
+    "Proof that each R1 defect has been fixed or that the backlog is exhaustive.",
+    "Full R1 product acceptance or runtime behavior.",
+    "Merge, deployment, release, or production authority."
+  ]
+}

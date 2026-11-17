@@ -186,10 +186,14 @@ def _valid_key_authorization(scope: Scope, record: CheckpointRecord,
 
     if evidence.basis is CheckpointKeyAuthorizationBasis.ROUTINE_RETIREMENT_RECEIPT:
         accepted_at = evidence.accepted_at
-        return (type(evidence.receipt_id) is str and bool(evidence.receipt_id)
-                and len(evidence.receipt_id) <= 256
-                and type(accepted_at) is datetime
-                and accepted_at.tzinfo is not None and accepted_at.utcoffset() is not None)
+        try:
+            return (type(evidence.receipt_id) is str and bool(evidence.receipt_id)
+                    and len(evidence.receipt_id) <= 256
+                    and type(accepted_at) is datetime
+                    and accepted_at.tzinfo is not None and accepted_at.utcoffset() is not None)
+        except Exception:
+            # A provider-controlled tzinfo may raise even on a datetime instance.
+            return False
     if evidence.basis is CheckpointKeyAuthorizationBasis.ACTIVE:
         return evidence.receipt_id is None and evidence.accepted_at is None
     return False
@@ -504,6 +508,13 @@ class LifecycleCoordinator:
                                    chain_count=chain_count, suffix_event_count=suffix_count,
                                    suffix_head_seq=suffix_head)
 
+        # Valid diagnostic evidence cannot authorize recovery or a physical writer.
+        return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                               LifecycleReason.SHARED_FENCE_UNAVAILABLE,
+                               checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                               chain_count=chain_count, suffix_event_count=suffix_count,
+                               suffix_head_seq=suffix_head)
+
     async def preflight_base_recovery(
             self, base_fingerprint: str, begin_result: Any,
     ) -> BaseRecoveryPreflightResult:
@@ -565,11 +576,3 @@ class LifecycleCoordinator:
             await asyncio.gather(*tasks, return_exceptions=True)
             raise
         return BaseRecoveryPreflightResult(snapshot, tuple(results))
-
-        # This remains diagnostic only: no complete cross-process mutation/dispatch fence,
-        # recovery-to-READY contract, or operational provider is available in this slice.
-        return LifecycleResult(scope, LifecycleStatus.NOT_READY,
-                               LifecycleReason.SHARED_FENCE_UNAVAILABLE,
-                               checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
-                               chain_count=chain_count, suffix_event_count=suffix_count,
-                               suffix_head_seq=suffix_head)
