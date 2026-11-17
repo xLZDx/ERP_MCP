@@ -2137,3 +2137,7 @@ The offline implementation at 7e3b2b5 is retained. The durable design keeps the 
 ## 2026-11-17 - Approve bounded S4 fingerprint and disposable SQL implementation
 
 GPT-PM request c4b15625-134f-4dff-b026-5a128602162d, correlated reply 92606631-a8e0-5ce3-b5f0-40375fb03bd5, approved pure framing and the synthetic transaction implementation at cb29e43fca1038cffd819c0c6e337f0fe18445e4. The attached record retains the independent reference digests. The SQL fixture belongs outside db/phase2 because the migration command enumerates SQL files in the selected directory. No approval for production schema application, real provider qualification, release, or TC046-TC048 acceptance.
+
+## 2026-11-18 - Preserve the disposable S4 SQL foundation
+
+The manually selected testbed SQL adds model modes, scoped eligibility and append-only-event fingerprint companions. It fences the legacy promotion entry before replay under the source lock for enrolled or paused models. Source comparison preserved SECURITY DEFINER and its fixed search_path, bound eligibility revocation to the verifier company scope, and retained the existing direct-write restrictions rather than adding a trigger with inverted lock order. No verifier grants, new atomic promotion or recovery entry point, schema application, or runtime qualification are present. The fixture is outside the ordinary migration directory.
