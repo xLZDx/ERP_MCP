@@ -817,5 +817,288 @@
     }
   ],
   "remote_auto_delete_after_merge": true,
-  "periodic_cleanup_job_created": false
+  "periodic_cleanup_job_created": false,
+  "remote_tracking_refs": [
+    {
+      "ref": "refs/remotes/origin/HEAD",
+      "snapshot_sha": "7c1f69cf51b16d3849772fdb1e32015b17cb1aa7",
+      "merged_into_snapshot_main": true,
+      "disposition": "NEVER_DELETE_DEFAULT_OR_ALIAS",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-0-065f3e66",
+      "snapshot_sha": "065f3e66ab2a09d59b3f580dd27d2cd41f212050",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-1-5a63da88",
+      "snapshot_sha": "5a63da880f5a3897fbfdbaf6370399a32447509c",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-2-95a6a92c",
+      "snapshot_sha": "95a6a92c94935673d92f1e46e9da7738e156bf59",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-3-aed0948f",
+      "snapshot_sha": "aed0948fb1da1b72f76d5e46a9e3ab5c688ba97e",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-4-af2f36a1",
+      "snapshot_sha": "af2f36a17e16d8bafc3bfa36cbe569898e5b299d",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-5-bc25fb6d",
+      "snapshot_sha": "bc25fb6d723382683cfe22e723002011b0020730",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-6-c54be14e",
+      "snapshot_sha": "c54be14ee82b5dd2b5c8a52d988b8cf7229527a3",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-7-d4bad307",
+      "snapshot_sha": "d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/archive/wt-ERP_MCP-supplier-debt-runtime",
+      "snapshot_sha": "ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/erp-mcp-autonomous-2026-10-21",
+      "snapshot_sha": "900a3d060c648b9a809a6b7094adb430fb60f0bd",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/fin-s12-budget-snapshot-20261107",
+      "snapshot_sha": "7d9bbc00006be30b1e85610d379d5a23eca4693d",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s0-r2-tc001-compat-20261104",
+      "snapshot_sha": "3b2bd0acb5a061f798c288b7671c9639f89e1269",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s10-r2-canary-dev-20261108",
+      "snapshot_sha": "75718fbc38de2b882f0ba6caab42b6325332801e",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s11-exit-reconcile-20261109",
+      "snapshot_sha": "5803c2061bc48fc4226c729d4eb9e071e6d07a01",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s11-lf-identity-receipt-20261109",
+      "snapshot_sha": "0e344c97d717e0a3a7239e49619928f249a00b32",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s11-lf-pointer-fix-20261109",
+      "snapshot_sha": "7b36785e5d19c53be77c86f9de9baa01fa16fe77",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s12-contract-revision-20261109",
+      "snapshot_sha": "061e921a595a9df7fc648dc9db5e19842a65ff8d",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s3-bounded-closure-20261105",
+      "snapshot_sha": "3410869017a860caedab09904e80211e708af873",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s4-plan-closeout-20261107",
+      "snapshot_sha": "97a8916e264d9646094fb1fc9533bc06a622e5dc",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s4-us015-candidate-20261106",
+      "snapshot_sha": "57842bbc75699151d4d88b8c6730fe9cd54fae11",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s5-pr-closeout-20261106",
+      "snapshot_sha": "11c15be62a105af5853a557dfe9f60ac291ed357",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s6-closeout-20261106",
+      "snapshot_sha": "b4859c67e58e6f6515eb681e89b419c6bc1b3c9e",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s6b-us032-major01-20261106",
+      "snapshot_sha": "572a9cda2877c20831171f227fd4ba34e5992a3c",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s8-plan-closeout-20261107",
+      "snapshot_sha": "414aeac28c3e5af0767598d29233d1569e1b7060",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s8-us040-source-owner-20261106",
+      "snapshot_sha": "bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s9-plan-closeout-20261107",
+      "snapshot_sha": "dba68fbf5aaf64a4f1de2617a219cfaa83e216ab",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s9-us043-closeout-20261107",
+      "snapshot_sha": "4bf347e0be47e64e91bf4214aa8728d95742e21c",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/v2-s12-01-20261108",
+      "snapshot_sha": "2629aa2a20f6e40641a5ece7de42a1587a2748a1",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/codex/v2-s13-01-ledger-20261110",
+      "snapshot_sha": "9bd6d3840437a811db4f3f8ad7e12619e102c57b",
+      "merged_into_snapshot_main": false,
+      "disposition": "PRESERVE_REMOTE_UNMERGED_WORK",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/docs/english-only-translation-20261010",
+      "snapshot_sha": "8d17448cf2788f48a2b3f26eb70800cefed4d992",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/docs/public-readme-install-guide-20261009",
+      "snapshot_sha": "26324d43e9d42af8512f0f531f98770c0cf7daa0",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/integration/1c-mvp-production-candidate",
+      "snapshot_sha": "78493a3ab5a5d7309aeadd1af21c6b69b6d03448",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/main",
+      "snapshot_sha": "7c1f69cf51b16d3849772fdb1e32015b17cb1aa7",
+      "merged_into_snapshot_main": true,
+      "disposition": "NEVER_DELETE_DEFAULT_OR_ALIAS",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/phase2/living-model-connectors-reconciliation",
+      "snapshot_sha": "88753c207602927c0a72ce2805534b4929e4879f",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/origin/pr-57",
+      "snapshot_sha": "d5d5bd8e366be7d0c6d77a2de57dd7cfbb7ef694",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/r2/main",
+      "snapshot_sha": "7d9a01df9c649b2137bc19bf25590968d63eeaca",
+      "merged_into_snapshot_main": true,
+      "disposition": "NEVER_DELETE_DEFAULT_OR_ALIAS",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/r2/worktree-agent-abd0046aa55cead7b",
+      "snapshot_sha": "dd819a4a85ff16ecedb0efcaf8e52911076682b8",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/r2/worktree-agent-aebf3202355a7a3f7",
+      "snapshot_sha": "f03852476d66c61c552c66fcb994ad25611d5d57",
+      "merged_into_snapshot_main": true,
+      "disposition": "MERGED_REMOTE_CANDIDATE_PREPARATION_ONLY",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    },
+    {
+      "ref": "refs/remotes/r2local/main",
+      "snapshot_sha": "7d9a01df9c649b2137bc19bf25590968d63eeaca",
+      "merged_into_snapshot_main": true,
+      "disposition": "NEVER_DELETE_DEFAULT_OR_ALIAS",
+      "next_step": "Re-resolve remote tip; verify merged PR and current-main ancestry; retain archive/helper refs until their unique history is accounted for. No remote deletion executed by this audit."
+    }
+  ],
+  "scope": "63 local branch dispositions plus 40 remote-tracking-ref dispositions; preparation only"
 }

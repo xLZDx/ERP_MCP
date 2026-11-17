@@ -8,7 +8,7 @@ The static audit inventories historical versions; it does not claim semantic lin
 
 The original program denominator is 104 tasks. Its 48 bounded acceptances are separate from three new audit tasks and the S11 sprint-level milestone. Native harness receipts are retained rather than invented from historical prose. The frozen ledger snapshot is an evidence source, not a promise of byte equality with the evolving live ledger.
 
-No full ERP test suite, CI, build, lint, migration or runtime qualification was executed. The isolated eight-test contract suite covers audit tooling only. Dirty application work remains preserved and unmerged. FIN-S1.2 is deferred until final project verification and is not a dependency of this audit.
+No full ERP test suite, CI, build, lint, migration or runtime qualification was executed. The isolated eleven-test contract suite covers audit tooling only. Dirty application work remains preserved and unmerged. FIN-S1.2 is deferred until final project verification and is not a dependency of this audit.
 
 Evidence readers must coordinate through the same permanent OS-backed guard. Raw JSON inspection is a dated snapshot inspection, not proof that another run is absent. See AUDIT_RUN_RECOVERY.md.
 

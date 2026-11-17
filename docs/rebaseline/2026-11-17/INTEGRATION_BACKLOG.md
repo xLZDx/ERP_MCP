@@ -85,3 +85,5 @@ Details and inspected paths: ADAPTERS_TESTBED_AUDIT.md and S15_S16_AUDIT.md.
 ## Audit-tool nonblocking diagnostic follow-up
 
 MINOR: the OS-guard helper preserves the original OSError as a chained exception but maps its summary to a contention message for every lock-call OSError. Unsupported-filesystem and invalid-handle failures remain nonzero and cannot become success. Distinguish contention errno from other locking failures in a later diagnostic improvement; this does not delay preserved evidence or authorize product integration.
+
+The cleanup manifest now also lists every one of the 40 captured remote-tracking refs separately from 63 local branches. Default-branch/HEAD aliases stay protected. Historical remote deletion remains preparation only; GitHub automatic deletion applies only to eligible merged PR heads.

@@ -571,3 +571,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: a marker identifying a new attempt preceded manifest invalidation. Rule: publish IN_PROGRESS first under exclusion, and include all subsequent run-metadata writes in explicit FAILED handling.
 
 - 2026-11-17 SUCCESS: full evidence reconciliation retained historical bounded acceptance while exposing unmerged code and concrete integration defects. Rule: keep original task denominator, sprint milestones, audit tasks, branch reachability and runtime readiness separate. Never replace missing native receipts with invented passes.
+
+- 2026-11-17 SUCCESS: cleanup preparation now distinguishes local branches from remote-tracking refs and future GitHub merged-head deletion. Rule: listing every ref is not the same as authorizing its deletion.
