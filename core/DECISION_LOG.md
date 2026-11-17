@@ -2109,3 +2109,7 @@ GPT-PM request 3b7f1905-5e0e-463b-920f-ee003ab035c0, correlated reply 4a7170e2-d
 ## 2026-11-17 - Normalize the FIN closeout lesson
 
 The post-commit lesson importer flagged the heading-based FIN closeout entry as unparsed. Convert it to the existing dated bullet format. The recorded approval and FIN task states are unchanged.
+
+## 2026-11-17 - Restore the bounded S0 sprint outcome
+
+After FIN, the program order and live ledger selected R2-US-001. The earlier plan row predated the story disposition preserved in c624b70 and the S0 closeout at 3b2bd0a. Restore the existing R2-US-001 approval (request 36f90e3f-3df7-46fe-81a8-753d19208f49, reply 0d55d766-e857-5c2c-9bba-4222a215a850) and retain R2-US-002 approval (request 9550946b-a01e-4148-86c0-79db24d9e591). The TC001, TC002, TC003 and R2-US-002 evidence bytes match the recorded digests, as do the available correlated receipts. The historical heads are distinct from the current candidate; consolidation published their evidence, not the old PR merge. S0 closes with two bounded task acceptances; canonical TC001-TC006 remain NOT_RUN. No fresh execution, native test receipt, provider attestation, deployment acceptance or new code is credited.

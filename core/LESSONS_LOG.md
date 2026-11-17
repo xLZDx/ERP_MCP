@@ -626,3 +626,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: MCP review approval and the older CLI final-receipt guard were separate authorities, so a valid exact-head approval still hit an unfinished-loop refusal. Rule: inspect the supported finalization route, retain genuine input/reply correlation and never forge receipts or disable the guard.
 
 - 2026-11-17 SUCCESS: FIN closed within the reviewed evidence scope with FIN-S1.2 deferred. Layer: sprint closeout review. Rule: label historical and mocked tests and keep deferred requirements open in the ledger.
+
+- 2026-11-17 SHORTCOMING: the rebaseline restored S0 criterion evidence and the second story disposition but left the first story at its pre-adjudication status. Layer: project-plan reconciliation. Rule: search retained refs for whole-story dispositions and verify retained evidence hashes before scheduling already accepted work.
