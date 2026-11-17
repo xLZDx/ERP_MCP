@@ -236,6 +236,15 @@ class BaselineIntake:
         # Exact value equality over validated immutable built-ins only.
         return left == right
 
+    @staticmethod
+    def _publication_allowed(authorize: Callable[[], bool] | None) -> bool:
+        if authorize is None:
+            return True
+        try:
+            return authorize() is True
+        except Exception:
+            return False
+
     def _verified_read(self, published: _Published, context: TrustedCaptureContext,
                        principal: Principal) -> bytes | None:
         if (not self._authorized(context, principal)
@@ -258,9 +267,11 @@ class BaselineIntake:
         return data
 
     def intake(self, *, context: TrustedCaptureContext, principal: Principal, request_id: str,
-               claims: BaselineManifestClaims, content: bytes, media_type: str) -> tuple[BaselineResult | None, str]:
+               claims: BaselineManifestClaims, content: bytes, media_type: str,
+               publication_authorized: Callable[[], bool] | None = None) -> tuple[BaselineResult | None, str]:
         """Validate, write, verify read-back, then atomically publish/replay."""
-        if not self._request_authorized(context, principal, request_id):
+        if (not self._request_authorized(context, principal, request_id)
+                or not self._publication_allowed(publication_authorized)):
             return None, "INTAKE_REFUSED"
         if (type(content) is not bytes or not content
                 or len(content) > self._max_bytes or type(media_type) is not str
@@ -278,7 +289,9 @@ class BaselineIntake:
                         or not self._same_binding(existing.binding, binding)):
                     return None, "INTAKE_REFUSED"
                 verified = self._verified_read(existing, context, principal)
-                return (existing.result, "OK") if verified is not None else (None, "INTAKE_REFUSED")
+                if verified is None or not self._publication_allowed(publication_authorized):
+                    return None, "INTAKE_REFUSED"
+                return existing.result, "OK"
 
         try:
             put = self._vault.put(ArtifactScope(context.tenant_id, context.source_id),
@@ -298,14 +311,17 @@ class BaselineIntake:
         with self._lock:
             # Authorization is checked again at the publication boundary; a
             # revocation during vault I/O must not publish a successful result.
-            if not self._request_authorized(context, principal, request_id):
+            if (not self._request_authorized(context, principal, request_id)
+                    or not self._publication_allowed(publication_authorized)):
                 return None, "INTAKE_REFUSED"
             existing = self._by_request.get(key)
             if existing is not None:
                 if not self._same_binding(existing.binding, binding):
                     return None, "INTAKE_REFUSED"
                 verified = self._verified_read(existing, context, principal)
-                return (existing.result, "OK") if verified is not None else (None, "INTAKE_REFUSED")
+                if verified is None or not self._publication_allowed(publication_authorized):
+                    return None, "INTAKE_REFUSED"
+                return existing.result, "OK"
             if len(self._by_request) >= self._max_requests:
                 return None, "INTAKE_REFUSED"
             try:
@@ -321,6 +337,9 @@ class BaselineIntake:
                 claims.totals, media_type, len(content), digest,
             )
             published = _Published(binding, result, ref)
+            if (not self._request_authorized(context, principal, request_id)
+                    or not self._publication_allowed(publication_authorized)):
+                return None, "INTAKE_REFUSED"
             try:
                 self._by_baseline[baseline_id] = published
                 self._by_request[key] = published

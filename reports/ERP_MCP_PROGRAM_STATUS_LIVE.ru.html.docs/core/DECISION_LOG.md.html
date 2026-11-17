@@ -2199,4 +2199,8 @@ R2-US-021 now has a process-local CSV/PDF intake against ArtifactVault. It valid
 ## 2026-11-18 - Verify issued S5 intake request identities
 
 The bounded S5 design requires a workflow-issued request ID. Current intake authorized the trusted context and checked ID shape, but did not ask any authority whether the ID belonged to that intake. Introduce a mandatory request-authorization port checked before lookup, write, publication and recovery. Baseline-ID read remains separately scoped and reauthorized. No real identity provider is wired and named tests wait for the remaining S5 source.
+
+## 2026-11-18 - Implement the synthetic S5 capture executor
+
+The source implements R2-US-022 for a synthetic port only. Authority-issued permit, attempt, intake request and caller identities are bound to normalized trusted recipe context. Capture takes shared in-process session and output leases before observing the initial state, checks each known selector and state, rejects stale or misbound export, and audits the permit again during intake publication. Unknown outcomes retain the lease until an exact idle reconciliation. Completed replay reads its scoped receipt without UI redispatch. The pure comparator and executor are independently defined. No live provider, 1C, native storage, resumed-process lease, or product acceptance is claimed.
 </pre></main></body></html>

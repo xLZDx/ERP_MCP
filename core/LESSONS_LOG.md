@@ -670,3 +670,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: S5 intake binds the selected report and scope before storing bytes and reauthorizes read-back before returning the receipt. Layer: source integration. Rule: a vault scope alone does not prove company or report context, and a partial publication must be rolled back before it can be read.
 
 - 2026-11-18 SHORTCOMING: the first intake adapter validated ID shape and caller context but omitted the trusted issuer binding. Layer: source integration. Rule: an opaque identifier is a lookup key; require independent proof of its authority before work or recovery.
+
+- 2026-11-18 SHORTCOMING: an early executor draft used Python object identity for its lease and observed before acquisition. Layer: source integration. Rule: lock declared shared session/output identities before the first state observation and bind the final artifact to both.
