@@ -2105,3 +2105,7 @@ The closeout at9c786f3 received exact-head APPROVE under request9f2c68d5-891d-4c
 ## 2026-11-17 — Close FIN within the approved evidence scope
 
 GPT-PM request 3b7f1905-5e0e-463b-920f-ee003ab035c0, correlated reply 4a7170e2-db3b-5a9c-b1f6-9bd1dfeb59a6, approved FIN-S3.3 and bounded FIN closure at 3f7fe83a94793bd97f0e3f5476d1e361668096a9. Zero blocker or major findings; two minor evidence limits remain: the 1,048-test run used a dirty tree, and the seven installer tests used mocked ScheduledTasks. Earlier consolidation review was engineering integration evidence only. FIN-S1.2 remains deferred to final project verification and retains its external block. Release 2 remains NO_GO, G8 not passed, writer UNQUALIFIED, production authorization NONE, and S16 synthetic/private only. No new tests, live scheduler execution or 1C write evidence was produced.
+
+## 2026-11-17 - Normalize the FIN closeout lesson
+
+The post-commit lesson importer flagged the heading-based FIN closeout entry as unparsed. Convert it to the existing dated bullet format. The recorded approval and FIN task states are unchanged.

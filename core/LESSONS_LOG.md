@@ -625,7 +625,4 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-17 SHORTCOMING: MCP review approval and the older CLI final-receipt guard were separate authorities, so a valid exact-head approval still hit an unfinished-loop refusal. Rule: inspect the supported finalization route, retain genuine input/reply correlation and never forge receipts or disable the guard.
 
-
-## 2026-11-17 — SUCCESS: bounded FIN close preserved deferred evidence
-
-The FIN acceptance request paired existing test and review receipts with the committed Git candidate and identified their exact provenance. GPT-PM confirmed two evidence limitations and approved administrative close with the live period-source requirement deferred. Layer: sprint closeout review. Rule: record which tests were historical or mocked and keep deferred requirements open in the ledger.
+- 2026-11-17 SUCCESS: FIN closed within the reviewed evidence scope with FIN-S1.2 deferred. Layer: sprint closeout review. Rule: label historical and mocked tests and keep deferred requirements open in the ledger.
