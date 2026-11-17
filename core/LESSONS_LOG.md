@@ -607,3 +607,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-17 FAILURE: cancelling a shielded coroutine left queued executor work able to start after stop. Rule: cancel the underlying concurrent future when still queued and retain running work as unresolved until it actually drains.
 - 2026-11-17 SHORTCOMING: a CLI timeout was initially attributed to inherited output handles without proof. Instrumentation showed repeated completed Git calls and an isolated pass. Rule: measure the exact slow operations before changing waits; cache only immutable commit reads and keep live identity checks fresh.
+
+- 2026-11-17 SUCCESS: immutable historical TC002 source proof and current qualification observations now occupy distinct sections; the original regression/receipt hashes remain intact. Rule: preserve the as-of source contract and add a new current view instead of rewriting old evidence to fit later code.
+- 2026-11-17 SHORTCOMING: tracking live approval/task events made a clean main and exact-head receipt awkwardly self-referential. Rule: retain the live ledger locally, keep a reviewable recovery seed without active authority, and restore it only if live state is absent.
