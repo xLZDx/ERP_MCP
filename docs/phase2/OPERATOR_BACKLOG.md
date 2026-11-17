@@ -1866,3 +1866,7 @@ The bounded offline verifier has no qualified immutable artifact provider or pro
 ### S4 post-acceptance qualification
 
 PR #60 closed the bounded engineering work. Open separately: qualify an immutable-artifact provider and revocation authority; integrate the authorized production runtime with the transactional adapter; exercise lost-response recovery under a real network interruption; execute the canonical TC046-TC048 product cases under the required product gates. The synthetic fixture is not a deployable migration. Post-commit read-back after eligibility revocation is source-inspected, without a dedicated execution receipt. No human provider owner is assigned.
+
+## S5 native capture qualification after the offline slice
+
+The reference vault does not accept native XLSX/MXL originals. Establish an immutable original-byte adapter with authenticated full-scope access, then verify it against the exact selected disposable 1C database/company, without converting the export. Separately qualify real permit issuance and revocation, a supported UI executor and exclusive session/output ownership. The release path requires independent manual evidence and comparison with the controlled native capture, followed by canonical TC061-TC066 execution. The offline CSV/PDF and synthetic executor work can proceed independently. No native storage or provider owner is assigned.

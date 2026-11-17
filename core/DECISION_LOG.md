@@ -2189,3 +2189,7 @@ Phase 5 review e02f18ab-fa4c-41fd-96d2-9b212654a6b2, correlated reply ee7e04eb-9
 ## 2026-11-18 - Approve the bounded S5 design and implement the comparison component
 
 GPT-PM request 06f08ca8-0e04-4c9d-ade0-df0647716207, correlated reply 2658cb55-f9c3-5803-8a08-362703349660, approved bounded offline implementation at 19bbb6ed7dd3ce425d42a2498d7033d7670cdd2b and resolved the publication and permit findings. Add the independently permitted pure comparison component for TC064. It compares typed bounded normalized observations only under exact tenant/source/database/configuration/company/report/variant/parameter identity. It carries no native or completeness authority. The manual intake remains the first open story. No execution, product evidence or native qualification is recorded.
+
+## 2026-11-18 - Implement offline manual baseline intake
+
+R2-US-021 now has a process-local CSV/PDF intake against ArtifactVault. It validates full trusted tenant/source/database/company/report context, stores only verified original bytes, keeps the vault reference private, returns UNATTESTED/UNVERIFIED, and publishes an exact-retry receipt under an in-process lock. Store errors and publication failure cannot report success; the provider, original XLSX/MXL storage and native execution remain in backlog. No named S5 verification was run before the two open stories are coded.
