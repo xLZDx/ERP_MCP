@@ -624,3 +624,8 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SUCCESS: the exact-head push/merge guard, private input preservation and live-ledger restoration kept main clean without rewriting history or resetting task state. Rule: publish only reviewed refs, then clean verified merged copies and preserve all unique alternatives.
 
 - 2026-11-17 SHORTCOMING: MCP review approval and the older CLI final-receipt guard were separate authorities, so a valid exact-head approval still hit an unfinished-loop refusal. Rule: inspect the supported finalization route, retain genuine input/reply correlation and never forge receipts or disable the guard.
+
+
+## 2026-11-17 — SUCCESS: bounded FIN close preserved deferred evidence
+
+The FIN acceptance request paired existing test and review receipts with the committed Git candidate and identified their exact provenance. GPT-PM confirmed two evidence limitations and approved administrative close with the live period-source requirement deferred. Layer: sprint closeout review. Rule: record which tests were historical or mocked and keep deferred requirements open in the ledger.
