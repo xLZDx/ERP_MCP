@@ -2195,4 +2195,8 @@ GPT-PM request 06f08ca8-0e04-4c9d-ade0-df0647716207, correlated reply 2658cb55-f
 ## 2026-11-18 - Implement offline manual baseline intake
 
 R2-US-021 now has a process-local CSV/PDF intake against ArtifactVault. It validates full trusted tenant/source/database/company/report context, stores only verified original bytes, keeps the vault reference private, returns UNATTESTED/UNVERIFIED, and publishes an exact-retry receipt under an in-process lock. Store errors and publication failure cannot report success; the provider, original XLSX/MXL storage and native execution remain in backlog. No named S5 verification was run before the two open stories are coded.
+
+## 2026-11-18 - Verify issued S5 intake request identities
+
+The bounded S5 design requires a workflow-issued request ID. Current intake authorized the trusted context and checked ID shape, but did not ask any authority whether the ID belonged to that intake. Introduce a mandatory request-authorization port checked before lookup, write, publication and recovery. Baseline-ID read remains separately scoped and reauthorized. No real identity provider is wired and named tests wait for the remaining S5 source.
 </pre></main></body></html>

@@ -186,12 +186,13 @@ class BaselineIntake:
 
     def __init__(self, vault: ArtifactVault, vault_principal: Principal,
                  authorize: Callable[[TrustedCaptureContext, Principal], bool], *,
+                 authorize_request: Callable[[TrustedCaptureContext, Principal, str], bool],
                  id_source: Callable[[], str] = lambda: secrets.token_urlsafe(24),
                  max_bytes: int = 5_000_000, max_requests: int = _MAX_REQUESTS) -> None:
         if type(vault) is not ArtifactVault or type(vault_principal) is not Principal:
             raise TypeError("invalid intake dependency")
-        if not callable(authorize) or not callable(id_source):
-            raise TypeError("authorize and id_source must be callable")
+        if not all(callable(dependency) for dependency in (authorize, authorize_request, id_source)):
+            raise TypeError("authorization and ID dependencies must be callable")
         if type(max_bytes) is not int or max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
         if type(max_requests) is not int or max_requests <= 0:
@@ -199,6 +200,7 @@ class BaselineIntake:
         self._vault = vault
         self._vault_principal = vault_principal
         self._authorize = authorize
+        self._authorize_request = authorize_request
         self._id_source = id_source
         self._max_bytes = min(max_bytes, 5_000_000)
         self._max_requests = min(max_requests, _MAX_REQUESTS)
@@ -213,6 +215,16 @@ class BaselineIntake:
         try:
             return self._authorize(context, principal) is True
         except Exception:  # authorization failure always denies without leaking details
+            return False
+
+    def _request_authorized(self, context: TrustedCaptureContext, principal: Principal,
+                            request_id: str) -> bool:
+        """Require the trusted intake workflow to bind this ID to the caller and scope."""
+        if not _bounded_text(request_id, _MAX_ID) or not self._authorized(context, principal):
+            return False
+        try:
+            return self._authorize_request(context, principal, request_id) is True
+        except Exception:
             return False
 
     @staticmethod
@@ -248,9 +260,9 @@ class BaselineIntake:
     def intake(self, *, context: TrustedCaptureContext, principal: Principal, request_id: str,
                claims: BaselineManifestClaims, content: bytes, media_type: str) -> tuple[BaselineResult | None, str]:
         """Validate, write, verify read-back, then atomically publish/replay."""
-        if not self._authorized(context, principal):
+        if not self._request_authorized(context, principal, request_id):
             return None, "INTAKE_REFUSED"
-        if (not _bounded_text(request_id, _MAX_ID) or type(content) is not bytes or not content
+        if (type(content) is not bytes or not content
                 or len(content) > self._max_bytes or type(media_type) is not str
                 or media_type not in _MEDIA_TYPES or not _valid_claims(claims, context)):
             return None, "INTAKE_REFUSED"
@@ -262,7 +274,8 @@ class BaselineIntake:
         with self._lock:
             existing = self._by_request.get(key)
             if existing is not None:
-                if not self._same_binding(existing.binding, binding):
+                if (not self._request_authorized(context, principal, request_id)
+                        or not self._same_binding(existing.binding, binding)):
                     return None, "INTAKE_REFUSED"
                 verified = self._verified_read(existing, context, principal)
                 return (existing.result, "OK") if verified is not None else (None, "INTAKE_REFUSED")
@@ -285,7 +298,7 @@ class BaselineIntake:
         with self._lock:
             # Authorization is checked again at the publication boundary; a
             # revocation during vault I/O must not publish a successful result.
-            if not self._authorized(context, principal):
+            if not self._request_authorized(context, principal, request_id):
                 return None, "INTAKE_REFUSED"
             existing = self._by_request.get(key)
             if existing is not None:
@@ -319,11 +332,11 @@ class BaselineIntake:
     def recover(self, *, context: TrustedCaptureContext, principal: Principal,
                 request_id: str) -> tuple[BaselineResult | None, str]:
         """Recover an exact published request only after fresh full-scope authorization."""
-        if not self._authorized(context, principal) or not _bounded_text(request_id, _MAX_ID):
+        if not self._request_authorized(context, principal, request_id):
             return None, "INTAKE_REFUSED"
         with self._lock:
             published = self._by_request.get((context.caller_namespace, request_id))
-            if published is None:
+            if published is None or not self._request_authorized(context, principal, request_id):
                 return None, "INTAKE_REFUSED"
             if self._verified_read(published, context, principal) is None:
                 return None, "INTAKE_REFUSED"

@@ -668,3 +668,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: the S5 comparator compares exact scoped representations and caps result detail and aggregate text. Layer: offline source implementation. Rule: do not promote equality of supplied representations into completeness or native equivalence.
 
 - 2026-11-18 SUCCESS: S5 intake binds the selected report and scope before storing bytes and reauthorizes read-back before returning the receipt. Layer: source integration. Rule: a vault scope alone does not prove company or report context, and a partial publication must be rolled back before it can be read.
+
+- 2026-11-18 SHORTCOMING: the first intake adapter validated ID shape and caller context but omitted the trusted issuer binding. Layer: source integration. Rule: an opaque identifier is a lookup key; require independent proof of its authority before work or recovery.
