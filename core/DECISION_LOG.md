@@ -2141,3 +2141,7 @@ GPT-PM request c4b15625-134f-4dff-b026-5a128602162d, correlated reply 92606631-a
 ## 2026-11-18 - Preserve the disposable S4 SQL foundation
 
 The manually selected testbed SQL adds model modes, scoped eligibility and append-only-event fingerprint companions. It fences the legacy promotion entry before replay under the source lock for enrolled or paused models. Source comparison preserved SECURITY DEFINER and its fixed search_path, bound eligibility revocation to the verifier company scope, and retained the existing direct-write restrictions rather than adding a trigger with inverted lock order. No verifier grants, new atomic promotion or recovery entry point, schema application, or runtime qualification are present. The fixture is outside the ordinary migration directory.
+
+## 2026-11-18 - Implement the synthetic S4 promotion transaction
+
+Keep both SQL fixtures outside the normal migration directory and restrict them to an explicitly opted-in s4_disposable_* database. The new transaction source joins synthetic actor bindings, an immutable owner-registered request, verification eligibility and the target revision before its scoped compare-and-swap. The same transaction inserts the event and v1 fingerprint. Authorized recovery checks the result after the source lock at READ COMMITTED and refuses conflicting or historical use without disclosing receipt detail. This is source-only until the named disposable tests are run.

@@ -642,3 +642,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: isolated the S4 request encoder from authority and storage and recorded independent SHA-256 examples before integration. Layer: implementation contract. Rule: freeze framing examples at the byte level and reject field representations that cannot be shared with PostgreSQL.
 
 - 2026-11-18 SHORTCOMING: the first SQL fixture replaced a hardened function without retaining its explicit execution mode, and a proposed row trigger would have inverted the lock order. Layer: integration source review. Rule: compare every replaced function with the prior grants, ownership, execution mode and search path, and keep authorization checks on the same lock path.
+
+- 2026-11-18 SHORTCOMING: an early S4 recovery draft used current eligibility state before considering an already committed result. Layer: transaction source review. Rule: authorize recovery separately, identify the immutable committed request, and retain commit evidence across later revocation without allowing a new write.

@@ -1,6 +1,6 @@
 -- S4 R2-US-016: disposable-only durable promotion eligibility foundation.
 -- This is intentionally outside db/phase2 and is NOT a normal migration.
--- Manually select a disposable database and set s4.disposable_fixture=on for this
+-- Manually select a dedicated s4_disposable_* database and set s4.disposable_fixture=on for this
 -- psql session before applying. No schema is applied by this file or by application startup.
 -- This foundation does not enable new promotions: it adds durable records, a fail-closed
 -- legacy write fence, and eligibility administration. A later reviewed adapter must add the
@@ -11,7 +11,7 @@ BEGIN;
 DO $guard$
 BEGIN
  IF current_setting('s4.disposable_fixture', true) IS DISTINCT FROM 'on'
-    OR current_database() !~* '(test|disposable|scratch)' THEN
+    OR current_database() !~ '^s4_disposable_[a-z0-9_]+$' THEN
   RAISE EXCEPTION 'S4_DISPOSABLE_FIXTURE_REQUIRED';
  END IF;
  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname='living_owner') THEN
