@@ -597,3 +597,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 FAILURE: disposable SQL tests caught030 depending on unregistered legacy patches028/029. Root cause: renumbering assumed filename and registry identity were identical. Rule: inspect actual record_migration calls; preserve historical patches and require their schema without fabricating registration rows. Keep negative missing-patch and fresh-chain cases.
 
 - 2026-11-17 FAILURE: fresh-chain tests caught CREATE used for two already-published function signatures in030. Rule: classify new overloads separately from body replacements and execute a real disposable migration chain before accepting an append-only source port.
+
+- 2026-11-17 FAILURE: feature-level static disposition marked S10 ownership fixes present after inspecting only some changed modules. Named tests exposed missing runtime state/drain logic and optional composition wiring. Rule: review every source path of a multi-file historical change; preserve ownership after ambiguous enqueue and bound shutdown, then run its behavioral cases before acceptance.
