@@ -1755,3 +1755,7 @@ After commit `13cbd2d` recorded the project-plan/Git reconciliation and the peri
 ## 2026-11-17 — Record FIN-S1.2's verified external block in the native ledger
 
 `python .harness-tools/ledger.py block FIN-S1.2 --class EXTERNAL ...` records that the registered read-only source has no qualified authenticated period-status interface or closed/open mapping. The task's earlier `verified` diagnostic evidence remains intact; the block reflects the unmet real-data acceptance, not a failed test. `reconcile-project` again scanned 103 refs/21 sprints/104 tasks, and the regenerated report shows FIN harness done 8/10 separately from project-plan bounded acceptance 2/10, with 7 in review and 1 external block. Source: `docs/phase2/CHANGE_RECORD_403.md` and `docs/phase2/OPERATOR_BACKLOG.md`.
+
+## 2026-11-17 — Refresh report at the FIN-S1.2 block commit
+
+After commit `69899f9` recorded FIN-S1.2's external source dependency in the native ledger, regenerated the live report and verified its snapshot HEAD matches that commit. The rendered FIN row separates native harness progress (8/10 done) from project-plan status (2/10 accepted, 7 in review, 1 external block), while retaining the historical twelve sprint-level outcome note.
