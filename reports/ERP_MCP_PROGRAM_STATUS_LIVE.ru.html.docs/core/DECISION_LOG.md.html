@@ -2203,4 +2203,8 @@ The bounded S5 design requires a workflow-issued request ID. Current intake auth
 ## 2026-11-18 - Implement the synthetic S5 capture executor
 
 The source implements R2-US-022 for a synthetic port only. Authority-issued permit, attempt, intake request and caller identities are bound to normalized trusted recipe context. Capture takes shared in-process session and output leases before observing the initial state, checks each known selector and state, rejects stale or misbound export, and audits the permit again during intake publication. Unknown outcomes retain the lease until an exact idle reconciliation. Completed replay reads its scoped receipt without UI redispatch. The pure comparator and executor are independently defined. No live provider, 1C, native storage, resumed-process lease, or product acceptance is claimed.
+
+## 2026-11-18 - Pin the S5 named offline acceptance inputs
+
+Pin the two named S5 test modules after the bounded source was written. The manual intake tests exercise scope, bytes, retry, concurrent publication and permit loss before publication. The synthetic executor tests exercise trusted permit and recipe binding, wrong identity and modal refusal, stale output, exact replay, exclusive leases and reconciliation. Assign the named executions to their designated roles and retain any failure evidence. These files do not establish native UI/product qualification.
 </pre></main></body></html>
