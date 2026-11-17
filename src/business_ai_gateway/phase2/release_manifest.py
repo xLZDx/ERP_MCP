@@ -6,7 +6,9 @@ import hashlib
 import json
 import re
 import subprocess
+import threading
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
@@ -36,12 +38,40 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _CASE_IN_TEST_NAME = re.compile(r"(?:R2[-_]?)?TC[-_]?([0-9]{3})", re.IGNORECASE)
 
 
+_COMMAND_TIMEOUT_SECONDS = 30
+_IMMUTABLE_BLOB = re.compile(r"[a-f0-9]{40}:[^\x00\r\n]+")
+_BLOB_CACHE_ENTRIES = 64
+_BLOB_CACHE_ITEM_BYTES = 256 * 1024
+_blob_cache: OrderedDict[tuple[str, str], bytes] = OrderedDict()
+_blob_cache_lock = threading.Lock()
+
+
 def _git(root: Path, *args: str) -> str:
-    return subprocess.check_output(["git", *args], cwd=root, text=True).strip()
+    return subprocess.check_output(
+        ["git", *args], cwd=root, text=True, timeout=_COMMAND_TIMEOUT_SECONDS,
+    ).strip()
 
 
 def _git_bytes(root: Path, *args: str) -> bytes:
-    return subprocess.check_output(["git", *args], cwd=root)
+    # Only full commit identities are immutable. Never cache HEAD, refs, status,
+    # remote queries or working-tree content used by the readiness checks.
+    key = None
+    if len(args) == 2 and args[0] == "show" and _IMMUTABLE_BLOB.fullmatch(args[1]):
+        key = (str(root.resolve()), args[1])
+        with _blob_cache_lock:
+            cached = _blob_cache.get(key)
+            if cached is not None:
+                _blob_cache.move_to_end(key)
+                return cached
+    command = ["git", "--no-replace-objects", *args] if key is not None else ["git", *args]
+    value = subprocess.check_output(command, cwd=root, timeout=_COMMAND_TIMEOUT_SECONDS)
+    if key is not None and len(value) <= _BLOB_CACHE_ITEM_BYTES:
+        with _blob_cache_lock:
+            _blob_cache[key] = value
+            _blob_cache.move_to_end(key)
+            while len(_blob_cache) > _BLOB_CACHE_ENTRIES:
+                _blob_cache.popitem(last=False)
+    return value
 
 
 def _sha256(path: Path) -> str:
@@ -70,6 +100,7 @@ def _github_pr(root: Path, pr_number: int) -> dict[str, Any]:
          "--json", "url,state,headRefOid"],
         cwd=root,
         text=True,
+        timeout=_COMMAND_TIMEOUT_SECONDS,
     )
     result = json.loads(raw)
     if (not isinstance(result, dict) or result.get("state") != "OPEN"

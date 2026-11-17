@@ -269,6 +269,7 @@ class CaptureLoop:
     async def _call(self, request: CaptureRequest, state: dict[str, Any], job_id: UUID
                     ) -> tuple[CaptureOutcomeKind | None, str | None]:
         """(kind, digest); kind None = SDK-invalid. Typed failures are returned as kinds."""
+        future: Future | None = None
         try:
             future = self._executor.submit(checked_capture_page, self._connector, request)
             with self._inflight_lock:
@@ -284,15 +285,23 @@ class CaptureLoop:
             digest = (response.provenance.content_digest
                       if kind is CaptureOutcomeKind.OK_COMPLETE else None)
             return kind, digest
+        except asyncio.CancelledError:
+            # Cancelling the asyncio waiter does not cancel shielded executor work.
+            # Cancel a queued call; a running synchronous call stays tracked for drain.
+            if future is not None:
+                future.cancel()
+            raise
         except ValidationError:
             return None, None
         except ConnectorFailure as exc:
             return exc.kind, None
         except TimeoutError:
+            if future is not None:
+                future.cancel()
             return CaptureOutcomeKind.TIMEOUT, None
         except Exception:
-            # record the failure for the result, then let the scheduler account it by class name
-            # only (WORK_EXCEPTION:<ClassName>); the raw text is never read here.
+            # Record only the fixed WORK_EXCEPTION reason; neither text nor class names
+            # are safe persistence values.
             state["kind"] = CaptureOutcomeKind.OUTAGE
             state["decision"] = classify(
                 CaptureOutcome(CaptureOutcomeKind.OUTAGE), None)

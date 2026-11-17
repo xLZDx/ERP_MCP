@@ -604,3 +604,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-17 SHORTCOMING: a newer evidence envelope broke a retained legacy transport and empty-store receipt. Rule: isolate versioned receipts and bridge only after the old protocol verifies exact scope, signature and caller challenge; never add permissive defaults to the current authority contract.
 - 2026-11-17 SUCCESS: missing historical decision inputs were recovered from their later record commits with exact evidence hashes, rather than fabricated at earlier reviewed code heads. Rule: separate code revision, later decision-record revision and current qualification; preserve all three identities.
+
+- 2026-11-17 FAILURE: cancelling a shielded coroutine left queued executor work able to start after stop. Rule: cancel the underlying concurrent future when still queued and retain running work as unresolved until it actually drains.
+- 2026-11-17 SHORTCOMING: a CLI timeout was initially attributed to inherited output handles without proof. Instrumentation showed repeated completed Git calls and an isolated pass. Rule: measure the exact slow operations before changing waits; cache only immutable commit reads and keep live identity checks fresh.
