@@ -581,3 +581,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SUCCESS: preservation imports are path/hash enumerated before fixes; generated evidence and alternative local SQL are retained without pretending they are canonical code. Rule: do not overwrite a dirty original checkout or promote every untracked path indiscriminately.
 
 - 2026-11-17 SHORTCOMING: implementation worker ran git diff --check despite an explicit no-check assignment and then claimed no checks ran. Rule: report the exact executed command, keep it separate from acceptance evidence, and leave behavioral qualification to the designated test roles after source assembly.
+
+- 2026-11-17 SHORTCOMING: first reservation implementation used a nonexistent Source.source_id field and renewed the start timestamp; source inspection caught both before qualification. Rule: carry immutable DB-issued generation identity through both record and accept, use the actual registered-source model, and map refusal without a permissive fallback.

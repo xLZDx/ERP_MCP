@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncpg
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 
 class Database:
@@ -77,7 +77,9 @@ class Database:
                    pg_has_role(session_user, 'business_ai_capability_acceptor', 'MEMBER') AS acceptor_member,
                    has_table_privilege(current_user, 'bag.source_capabilities', 'SELECT') AS can_read_capabilities,
                    has_function_privilege(current_user,
-                     'bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
+                     'bag.reserve_capability_probe(text,uuid,bigint)', 'EXECUTE') AS can_reserve_capability_probe,
+                   has_function_privilege(current_user,
+                     'bag.record_capability_observation(text,uuid,bigint,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
                      'EXECUTE') AS can_record_capability_observation,
                    has_function_privilege(current_user, 'bag.accept_capability_observation(text,uuid,bigint)',
                      'EXECUTE') AS can_accept_capability_observation,
@@ -96,6 +98,7 @@ class Database:
         """)
         if (not row["runtime_member"] or not row["can_read_capabilities"]
             or row["writer_member"] or row["acceptor_member"]
+            or row["can_reserve_capability_probe"]
             or row["can_record_capability_observation"]
             or row["can_accept_capability_observation"]
             or not row["can_read_accepted_capability_observation"] or any(row[key] for key in (
@@ -109,7 +112,9 @@ class Database:
                    pg_has_role(session_user, 'business_ai_capability_acceptor', 'MEMBER') AS acceptor_member,
                    pg_has_role(session_user, 'business_ai_app', 'MEMBER') AS app_member,
                    has_function_privilege(current_user,
-                     'bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
+                     'bag.reserve_capability_probe(text,uuid,bigint)', 'EXECUTE') AS can_reserve,
+                   has_function_privilege(current_user,
+                     'bag.record_capability_observation(text,uuid,bigint,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
                      'EXECUTE') AS can_record,
                    has_function_privilege(current_user, 'bag.read_accepted_capability_observation(text,uuid,bigint)',
                      'EXECUTE') AS can_read_accepted,
@@ -118,7 +123,7 @@ class Database:
                    has_table_privilege(current_user, 'bag.source_capabilities', 'INSERT,UPDATE,DELETE') AS can_write_accepted_state
         """)
         if (not row["writer_member"] or row["acceptor_member"] or row["app_member"]
-            or not row["can_record"] or row["can_accept"] or row["can_read_accepted"]
+            or not row["can_reserve"] or not row["can_record"] or row["can_accept"] or row["can_read_accepted"]
             or row["can_write_accepted_state"]):
             raise RuntimeError("capability observation database role violates least-privilege contract")
 
@@ -128,7 +133,9 @@ class Database:
                    pg_has_role(session_user, 'business_ai_capability_writer', 'MEMBER') AS writer_member,
                    pg_has_role(session_user, 'business_ai_app', 'MEMBER') AS app_member,
                    has_function_privilege(current_user,
-                     'bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
+                     'bag.reserve_capability_probe(text,uuid,bigint)', 'EXECUTE') AS can_reserve,
+                   has_function_privilege(current_user,
+                     'bag.record_capability_observation(text,uuid,bigint,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)',
                      'EXECUTE') AS can_record,
                    has_function_privilege(current_user, 'bag.read_accepted_capability_observation(text,uuid,bigint)',
                      'EXECUTE') AS can_read_accepted,
@@ -137,6 +144,6 @@ class Database:
                    has_table_privilege(current_user, 'bag.source_capabilities', 'INSERT,UPDATE,DELETE') AS can_write_accepted_state
         """)
         if (not row["acceptor_member"] or row["writer_member"] or row["app_member"]
-            or row["can_record"] or not row["can_accept"]
+            or row["can_reserve"] or row["can_record"] or not row["can_accept"]
             or row["can_read_accepted"] or row["can_write_accepted_state"]):
             raise RuntimeError("capability acceptance database role violates least-privilege contract")

@@ -13,6 +13,7 @@ import os
 from contextlib import asynccontextmanager
 from uuid import UUID
 
+import asyncpg
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.applications import Starlette
@@ -221,32 +222,52 @@ class CapabilityObservationWorker:
         source = await self._authorize_and_resolve_source(body.source_id, authorization)
         if source.row_version is None:
             raise HTTPException(status_code=503, detail="SOURCE_VERSION_UNAVAILABLE")
-        capabilities = await self.onec.capabilities(source, refresh=True)
-
-        # A live retry reuses its pending observation; after its five-minute acceptance window,
-        # this fresh probe can replace the stale pending observation for the same source.
-        observation_id = await self.writer_db.require_pool().fetchval(
-            """
-            SELECT bag.record_capability_observation(
-                $1, $2::uuid, $3::bigint, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-                $13::jsonb, $14::jsonb
+        try:
+            reservation_id = await self.writer_db.require_pool().fetchval(
+                """
+                SELECT bag.reserve_capability_probe($1, $2::uuid, $3::bigint)
+                """,
+                source.id,
+                body.request_id,
+                source.row_version,
             )
-            """,
-            capabilities.source_id,
-            body.request_id,
-            source.row_version,
-            capabilities.metadata_fingerprint,
-            capabilities.platform_version,
-            capabilities.compatibility_status.value,
-            capabilities.adapter_profile.value,
-            capabilities.metadata_supported,
-            capabilities.json_supported,
-            capabilities.atom_supported,
-            capabilities.expand_supported,
-            capabilities.entity_set_count,
-            json.dumps(capabilities.evidence, ensure_ascii=False),
-            json.dumps(capabilities.register_capabilities, ensure_ascii=False),
-        )
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
+            raise HTTPException(status_code=503, detail="CAPABILITY_OBSERVER_UNAVAILABLE") from exc
+        if type(reservation_id) is not int or reservation_id <= 0:
+            raise HTTPException(status_code=503, detail="CAPABILITY_OBSERVER_UNAVAILABLE")
+
+        capabilities = await self.onec.capabilities(source, refresh=True)
+        if capabilities.source_id != source.id:
+            raise HTTPException(status_code=503, detail="CAPABILITY_OBSERVER_UNAVAILABLE")
+
+        try:
+            observation_id = await self.writer_db.require_pool().fetchval(
+                """
+                SELECT bag.record_capability_observation(
+                    $1, $2::uuid, $3::bigint, $4::bigint, $5, $6, $7, $8, $9, $10, $11,
+                    $12, $13, $14::jsonb, $15::jsonb
+                )
+                """,
+                source.id,
+                body.request_id,
+                reservation_id,
+                source.row_version,
+                capabilities.metadata_fingerprint,
+                capabilities.platform_version,
+                capabilities.compatibility_status.value,
+                capabilities.adapter_profile.value,
+                capabilities.metadata_supported,
+                capabilities.json_supported,
+                capabilities.atom_supported,
+                capabilities.expand_supported,
+                capabilities.entity_set_count,
+                json.dumps(capabilities.evidence, ensure_ascii=False),
+                json.dumps(capabilities.register_capabilities, ensure_ascii=False),
+            )
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
+            raise HTTPException(status_code=503, detail="CAPABILITY_OBSERVER_UNAVAILABLE") from exc
+        if type(observation_id) is not int or observation_id <= 0:
+            raise HTTPException(status_code=503, detail="CAPABILITY_OBSERVER_UNAVAILABLE")
         try:
             response = await self.acceptor_http.post(
                 self.acceptor_url + ACCEPTOR_PATH,

@@ -21,6 +21,8 @@ from pathlib import Path
 
 import asyncpg
 
+from business_ai_gateway.db import SCHEMA_VERSION
+
 ROOT = Path(__file__).resolve().parents[2]
 E2E_DIR = Path(os.environ.get("E2E_DIR") or ROOT / ".e2e")
 
@@ -338,7 +340,7 @@ def write_env(seed: str) -> None:
                  "idp": f"http://{HOST}:{PORTS['idp']}"},
         "identities": {n: {"sub": n, "groups": g} for n, g in IDENTITIES.items()},
         "source_id": SOURCE_ID, "companies": {"one": COMPANY_ONE, "two": COMPANY_TWO},
-        "schema_version": 16,
+        "schema_version": SCHEMA_VERSION,
     }, indent=2))
 
 
