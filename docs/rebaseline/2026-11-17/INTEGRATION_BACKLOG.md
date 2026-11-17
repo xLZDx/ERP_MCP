@@ -81,3 +81,7 @@ No integration merge or deletion has been performed by this rebaseline pass.
 - S16: implement/qualify durable atomic ChangeStore and cross-process restart/replay guarantees; bounded process-local fake-backed acceptance remains preserved.
 
 Details and inspected paths: ADAPTERS_TESTBED_AUDIT.md and S15_S16_AUDIT.md.
+
+## Audit-tool nonblocking diagnostic follow-up
+
+MINOR: the OS-guard helper preserves the original OSError as a chained exception but maps its summary to a contention message for every lock-call OSError. Unsupported-filesystem and invalid-handle failures remain nonzero and cannot become success. Distinguish contention errno from other locking failures in a later diagnostic improvement; this does not delay preserved evidence or authorize product integration.

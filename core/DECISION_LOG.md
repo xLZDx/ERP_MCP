@@ -1958,3 +1958,7 @@ The designated functional reviewer ran the 11-case named audit file on b357eea: 
 ## 2026-11-17 — Publish start status before informational marker
 
 Final reliability review requested IN_PROGRESS publication before marker creation and inclusion of marker errors in FAILED handling. Both collector entrypoints now perform that order under the OS guard. This closes the marker-before-invalidation interruption window. The previous 11-test pass remains tied to source19bc599; rerun the named file after this two-line ordering delta.
+
+## 2026-11-17 — Audit acceptance and next integration boundary
+
+RB-01..03 now have real named functional qualification and four routed independent review receipts through ledger.py. Eleven tests passed at ae48e290 in9.907s. One diagnostic minor is backlogged; no remaining audit-tool BLOCKER/MAJOR. Original program acceptance remains48/104; three bounded audit tasks are additional, not a reset. Actual product integration into main is not done, and dirty/unmerged source is preserved. The next execution batch must first address G-01/A-01, reconcile source dependency order, then qualify the candidate and obtain exact-head approval before remote promotion. FIN-S1.2 remains deferred until final project verification.

@@ -1,6 +1,6 @@
 ---
 project: ERP_MCP
-as_of: 2026-11-16
+as_of: 2026-11-17
 active_sprint: REBASELINE
 scope: single_sprint
 approved_sprints: FIN, REBASELINE
@@ -23,16 +23,16 @@ The 12 historical S0-S11 outcome records remain historical outcomes; they are no
 
 | ID | Title | Acceptance criteria | Status | Evidence | Owner | Dependency | Commits |
 |---|---|---|---|---|---|---|---|
-| RB-01 | Source, architecture, document and branch audit | Hash-bound coverage and concrete contradictions, with uncovered areas explicit | IN_PROGRESS | docs/rebaseline/2026-11-17/ARCHITECTURE_AUDIT.md; all-ref file/document inventories; deeper subsystem mapping still pending | Codex | | |
-| RB-02 | Evidence-backed program plan and ledger | Every original task retained; changed states cite code/docs/commits; original evidence preserved | IN_PROGRESS | TASK_EVIDENCE.json preserves 104 original records plus 3 audit tasks; S11 milestone restored | Codex | RB-01 | |
-| RB-03 | Main integration and cleanup preparation | All branch dispositions listed; unique work preserved; automatic post-merge cleanup defined | IN_PROGRESS | BRANCH_INVENTORY.json, PATCH_EQUIVALENCE.json, WORKTREE_STATES.json, INTEGRATION_BACKLOG.md; deleteBranchOnMerge enabled | Codex | RB-01 | |
+| RB-01 | Source, architecture, document and branch audit | Hash-bound coverage and concrete contradictions, with uncovered areas explicit | ACCEPTED_BOUNDED | docs/rebaseline/2026-11-17/ARCHITECTURE_AUDIT.md; all-ref file/document inventories; subsystem findings and capture limits recorded | Codex | | |
+| RB-02 | Evidence-backed program plan and ledger | Every original task retained; changed states cite code/docs/commits; original evidence preserved | ACCEPTED_BOUNDED | TASK_EVIDENCE.json preserves 104 original records plus 3 audit tasks; S11 milestone restored | Codex | RB-01 | |
+| RB-03 | Main integration and cleanup preparation | All branch dispositions listed; unique work preserved; automatic post-merge cleanup defined | ACCEPTED_BOUNDED | BRANCH_INVENTORY.json, PATCH_EQUIVALENCE.json, WORKTREE_STATES.json, INTEGRATION_BACKLOG.md; deleteBranchOnMerge enabled | Codex | RB-01 | |
 
 Integration order: preserve root and refs; reconcile autonomous dirty delta on current remote main; reconcile S0/S12 then stacked S13; audit residual rescue/archive patches; review candidate exact heads; merge approved candidates; then clean only proven merged branches/worktrees. Architecture findings A-01..03 enter the integration backlog before claiming deployment readiness.
 
 ## Roadmap
 | Sprint | Title | Status | Goal |
 |---|---|---|---|
-| REBASELINE | Full evidence-based program rebaseline | ACTIVE | Reconcile all source/document/ref evidence and prepare main integration and cleanup. |
+| REBASELINE | Full evidence-based program rebaseline | IN_REVIEW | Reconcile all source/document/ref evidence and prepare main integration and cleanup. |
 | FIN | Phase 2 finisher backlog (sprint beea27520b33) | IN_REVIEW | Complete authorized S12/S13 follow-ups and the S16 rev. 2 fake-backed approval/tool slice, then collect exact-final-head evidence and reconcile acceptance. |
 | S0 | Baseline | IN_PROGRESS | Current plan and task records still show R2-US-001 in progress and R2-US-002 not started. A separate S0 closeout branch says 2/2 bounded tasks, but PR #42 is open and that snapshot is not integrated; keep it as an alternative historical claim, not current closure. |
 | S1 | Connector contracts | CLOSED_BOUNDED_SPRINT (4/4 tasks accepted; R2-US-006 pushed to PR #41) | GPT-PM requests c5cf6d30 and f23c36e1 accepted TC016–TC018 in bounded scope. The approved six-file patch is integrated without blob changes as b23604c, parent 9e211b5, and pushed fast-forward to open PR #41. Canonical product/runtime remains NOT_RUN/NOT_VERIFIED; PR is not merged. |

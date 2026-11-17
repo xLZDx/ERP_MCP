@@ -43,7 +43,7 @@ is evidence coverage, not a claim that every line has received human review.
 
 ## Integration and cleanup policy
 
-Remote `main` is the integration baseline; local `main` is stale. Never merge
+Remote `main` is the integration baseline; local `main` was safely refreshed to the same baseline. Never merge
 every branch indiscriminately or replace main with the dirty root checkout.
 First classify unique commits and overlapping patch sets, then integrate in
 dependency order on a scratch branch based on the fetched remote main.
@@ -78,13 +78,12 @@ their original revision and environment limits.
 
 The first independent review found two MAJOR coverage gaps: source blobs were
 not enumerated per ref and patch comparison excluded remote-only branches.
-Both tools were extended and rerun. CODE_VERSIONS.json now enumerates 2,768
-code/config/test path/blob versions; DOCUMENT_VERSIONS.json has 1,846 document
+Both tools were extended and rerun. CODE_VERSIONS.json now enumerates 2,770
+code/config/test path/blob versions; DOCUMENT_VERSIONS.json has 3,461 document
 versions across 104 refs (the empty prepared integration branch was subsequently removed).
 Patch comparison covers all 103 current local/remote branch refs. Comparison failures
-are unavailable/null, never zero unique patches. Full semantic SQL and Python
-gateway reviews are still running; RB-01 remains open until their findings are
-recorded. No claim of full line-by-line source acceptance is made.
+are unavailable/null, never zero unique patches. Subsystem SQL, gateway, adapter, S15/S16 and Phase 2 reviews are recorded
+in their audit artifacts. Confirmed product defects remain integration work. No claim of full line-by-line source acceptance is made.
 
 
 ## Snapshot semantics after local audit commit

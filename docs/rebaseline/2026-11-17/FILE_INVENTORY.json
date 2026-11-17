@@ -1,6 +1,7 @@
 {
-  "captured_at": "2026-11-17T12:44:05.003994+00:00",
-  "head": "240070b029ac020e895e9f84eb4bd02dd36b2e03",
+  "run_id": "2c1e6f82-04e8-475b-b0ac-7f1fc2b87e32",
+  "captured_at": "2026-11-17T13:23:49.859362+00:00",
+  "head": "a85b4f524fc2665d27aba59e9c988e7d2869b1c8",
   "branch": "codex/erp-mcp-autonomous-2026-10-21",
   "refs": [
     "refs/codex/turn-diffs/checkpoints/29540cb39796f8e61f144648dba743af/2d2e9ca14dbd6559fae0bd3aadf2a916/1794860279416/3dcaa878-7152-42fb-b795-f98ffe4e38fc 6190d7f2c4543642ae01c1dfe7ac106b8a8abd85",
@@ -17,7 +18,7 @@
     "refs/heads/backlog/2026-10-21-final 4dfceeddb071a63e7d8f815e7c276555de6d2375",
     "refs/heads/ci-off/ERP_MCP-20261112 969d0b7d767b334a497d6e5ff41510c9303a4bc8",
     "refs/heads/ci-off/ERP_MCP-20261112-183553 44fc5ec99dfde404d8e0544621f98cedaa39427f",
-    "refs/heads/codex/erp-mcp-autonomous-2026-10-21 240070b029ac020e895e9f84eb4bd02dd36b2e03",
+    "refs/heads/codex/erp-mcp-autonomous-2026-10-21 a85b4f524fc2665d27aba59e9c988e7d2869b1c8",
     "refs/heads/codex/fin-s12-budget-snapshot-20261107 7d9bbc00006be30b1e85610d379d5a23eca4693d",
     "refs/heads/codex/fin-s13-inflight-status-20261107 015e9fc0967d3a98466e9e03033b4500181f1c1c",
     "refs/heads/codex/fin-s13-integration-20261107 b6557547075df0b9864fd0a8f8d51a067e748d35",
@@ -108,17 +109,13 @@
     "refs/remotes/r2/worktree-agent-aebf3202355a7a3f7 f03852476d66c61c552c66fcb994ad25611d5d57",
     "refs/remotes/r2local/main 7d9a01df9c649b2137bc19bf25590968d63eeaca"
   ],
-  "worktrees": "worktree D:/Repo/ERP_MCP\nHEAD 240070b029ac020e895e9f84eb4bd02dd36b2e03\nbranch refs/heads/codex/erp-mcp-autonomous-2026-10-21\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-p12-exact-10e7973\nHEAD b8cb958aa79588104780eb5224404ccc69cdcf8b\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-r2-tc001-compat\nHEAD f8260da96b578176d7e06353b12d8a3e04d1256b\nbranch refs/heads/codex/s0-r2-tc001-compat-20261104\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-tc001-cash-bank\nHEAD 219c5e96ea21927b0507bce41289db2446423781\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-tc001-cash-bank-integration\nHEAD 31afbc5c1ea205cc9d088e8c6ecb030e0c253f23\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s12-05-post-go-20261109-4d990e\nHEAD 7e1e732ead6a130c9e39159c8a2efbe72c4411b8\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s12-budget-snapshot-20261107\nHEAD 7d9bbc00006be30b1e85610d379d5a23eca4693d\nbranch refs/heads/codex/fin-s12-budget-snapshot-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s12-pr41-update-20261108\nHEAD 727b2dac91b8da0fdaac237d1b8b7cd94a0654b8\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s13-inflight-status-20261107\nHEAD 015e9fc0967d3a98466e9e03033b4500181f1c1c\nbranch refs/heads/codex/fin-s13-inflight-status-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s13-integration-20261107\nHEAD b6557547075df0b9864fd0a8f8d51a067e748d35\nbranch refs/heads/codex/fin-s13-integration-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-03297ec\nHEAD 03297eca8fb4939bbc3f3677acdc4be1672af618\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-3af\nHEAD 3af73797533e7cb4d8dd6762c42e847416b4cea8\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-4e32714\nHEAD 4e327147cde0d10e9cee206495cbc384bc3a24d7\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-713627f\nHEAD 713627facae2c9ce9ed11d682eedf81a99b2c575\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s0-pr42-repair-20261107\nHEAD 3b2bd0acb5a061f798c288b7671c9639f89e1269\nbranch refs/heads/codex/s0-pr42-finalize-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s0-r2-us-001\nHEAD c67de52f5ef1b203b2c0835b291fb1f2540cd896\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s1-1-isolated-current\nHEAD f23a7af75facb69e297958f4be13c337c005863c\nbranch refs/heads/codex/s1-1-isolated-current\n\nworktree D:/Repo/ERP_MCP/.worktrees/s1-us006-integration-20261106\nHEAD b23604c92149f3c8cc78e4e93e2cfe49b9933e65\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s10-r2-canary-dev-20261108\nHEAD 75718fbc38de2b882f0ba6caab42b6325332801e\nbranch refs/heads/codex/s10-r2-canary-dev-20261108\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-exit-reconcile-20261109\nHEAD 5803c2061bc48fc4226c729d4eb9e071e6d07a01\nbranch refs/heads/codex/s11-exit-reconcile-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-lf-identity-receipt-20261109\nHEAD 0e344c97d717e0a3a7239e49619928f249a00b32\nbranch refs/heads/codex/s11-lf-identity-receipt-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-lf-pointer-fix-20261109\nHEAD 89e7a498abd449fc00eb93d763b1499ae92f124a\nbranch refs/heads/codex/s11-lf-pointer-fix-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-lf-validator-reconcile-20261109\nHEAD 7b36785e5d19c53be77c86f9de9baa01fa16fe77\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-only-s1-1\nHEAD 9454d904d60d371920608088cb326b688895f0cf\nbranch refs/heads/codex/s11-only-s1-1\n\nworktree D:/Repo/ERP_MCP/.worktrees/s12-06-pr54-adaptation-20261109\nHEAD 2629aa2a20f6e40641a5ece7de42a1587a2748a1\nbranch refs/heads/codex/s12-06-pr54-adaptation-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s12-contract-revision-20261109\nHEAD 061e921a595a9df7fc648dc9db5e19842a65ff8d\nbranch refs/heads/codex/s12-contract-revision-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s3-pr-noci-20261105\nHEAD f5fc733f0a1c09bf86d961eb3cd485fa33d500d0\nbranch refs/heads/codex/s3-pr-noci-20261105\n\nworktree D:/Repo/ERP_MCP/.worktrees/s3-review-20261105\nHEAD 2c731147deb541afde8cb62ba9c9a022495d99ac\nbranch refs/heads/codex/s3-bounded-closure-20261105\n\nworktree D:/Repo/ERP_MCP/.worktrees/s4-plan-closeout-20261107\nHEAD 97a8916e264d9646094fb1fc9533bc06a622e5dc\nbranch refs/heads/codex/s4-plan-closeout-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s4-postmerge-closeout-20261106\nHEAD 2d12b95c0cd79fb832e36a6d5cc51701527b71d3\nbranch refs/heads/codex/s4-postmerge-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s4-us015-candidate-20261106\nHEAD 57842bbc75699151d4d88b8c6730fe9cd54fae11\nbranch refs/heads/codex/s4-us015-candidate-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s5-pr-closeout-20261106\nHEAD 11c15be62a105af5853a557dfe9f60ac291ed357\nbranch refs/heads/codex/s5-pr-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s5-windows-memory-closeout-20261106\nHEAD b156154cf195e438e9dc057c408fe0f2e692d3a3\nbranch refs/heads/codex/s5-windows-memory-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s6-closeout-20261106\nHEAD b4859c67e58e6f6515eb681e89b419c6bc1b3c9e\nbranch refs/heads/codex/s6-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s6b-us032-major01-20261106\nHEAD 572a9cda2877c20831171f227fd4ba34e5992a3c\nbranch refs/heads/codex/s6b-us032-major01-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s8-us040-source-owner-20261106\nHEAD bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e\nbranch refs/heads/codex/s8-us040-source-owner-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-plan-closeout-20261107\nHEAD dba68fbf5aaf64a4f1de2617a219cfaa83e216ab\nbranch refs/heads/codex/s9-plan-closeout-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-us043-closeout-20261107\nHEAD 588ddd1f1bd08c8fe7579d3c03345de722eb07b0\nbranch refs/heads/codex/s9-us043-closeout-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-us044-submit-588ddd1-20261107\nHEAD 4bf347e0be47e64e91bf4214aa8728d95742e21c\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-us044-verification-e2eb-20261107\nHEAD a6351cd29e32aab75ec4380807556fbe8176846a\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s12-01-origin-main-20261108\nHEAD 7e1e732ead6a130c9e39159c8a2efbe72c4411b8\nbranch refs/heads/codex/v2-s12-01-20261108\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s12-01-review-20261108\nHEAD 78a852c5155ea4ba93a3596037175ed10ff54a7e\nbranch refs/heads/codex/v2-s12-01-review-20261108\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s13-01-ledger-20261110\nHEAD e3c98f2d514f2d25981030379558a1ab4b0a9407\nbranch refs/heads/codex/v2-s13-01-ledger-20261110\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s13-02-transactional-claim-20261110\nHEAD 06b6895c162aececba26bdb210b94deac75db794\nbranch refs/heads/codex/v2-s13-02-transactional-claim-20261110\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s13-03-key-auth-20261110\nHEAD 65c408657d5cae857c66ecfeef74028475680ad3\nbranch refs/heads/codex/v2-s13-03-key-auth-20261110\n\nworktree D:/tmp/scratch_worktrees/erp-mcp-fin-s31-e30e2ec\nHEAD e30e2ec10bdd37b6e3d41763865857cafa969574\ndetached\n\nworktree D:/tmp/scratch_worktrees/erp-mcp-s13-pr58-head-20261116\nHEAD 9bd6d3840437a811db4f3f8ad7e12619e102c57b\ndetached\n\n",
+  "worktrees": "worktree D:/Repo/ERP_MCP\nHEAD a85b4f524fc2665d27aba59e9c988e7d2869b1c8\nbranch refs/heads/codex/erp-mcp-autonomous-2026-10-21\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-p12-exact-10e7973\nHEAD b8cb958aa79588104780eb5224404ccc69cdcf8b\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-r2-tc001-compat\nHEAD f8260da96b578176d7e06353b12d8a3e04d1256b\nbranch refs/heads/codex/s0-r2-tc001-compat-20261104\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-tc001-cash-bank\nHEAD 219c5e96ea21927b0507bce41289db2446423781\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s0-tc001-cash-bank-integration\nHEAD 31afbc5c1ea205cc9d088e8c6ecb030e0c253f23\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/codex-s12-05-post-go-20261109-4d990e\nHEAD 7e1e732ead6a130c9e39159c8a2efbe72c4411b8\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s12-budget-snapshot-20261107\nHEAD 7d9bbc00006be30b1e85610d379d5a23eca4693d\nbranch refs/heads/codex/fin-s12-budget-snapshot-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s12-pr41-update-20261108\nHEAD 727b2dac91b8da0fdaac237d1b8b7cd94a0654b8\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s13-inflight-status-20261107\nHEAD 015e9fc0967d3a98466e9e03033b4500181f1c1c\nbranch refs/heads/codex/fin-s13-inflight-status-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/fin-s13-integration-20261107\nHEAD b6557547075df0b9864fd0a8f8d51a067e748d35\nbranch refs/heads/codex/fin-s13-integration-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-03297ec\nHEAD 03297eca8fb4939bbc3f3677acdc4be1672af618\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-3af\nHEAD 3af73797533e7cb4d8dd6762c42e847416b4cea8\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-4e32714\nHEAD 4e327147cde0d10e9cee206495cbc384bc3a24d7\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/pm-review-713627f\nHEAD 713627facae2c9ce9ed11d682eedf81a99b2c575\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s0-pr42-repair-20261107\nHEAD 3b2bd0acb5a061f798c288b7671c9639f89e1269\nbranch refs/heads/codex/s0-pr42-finalize-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s0-r2-us-001\nHEAD c67de52f5ef1b203b2c0835b291fb1f2540cd896\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s1-1-isolated-current\nHEAD f23a7af75facb69e297958f4be13c337c005863c\nbranch refs/heads/codex/s1-1-isolated-current\n\nworktree D:/Repo/ERP_MCP/.worktrees/s1-us006-integration-20261106\nHEAD b23604c92149f3c8cc78e4e93e2cfe49b9933e65\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s10-r2-canary-dev-20261108\nHEAD 75718fbc38de2b882f0ba6caab42b6325332801e\nbranch refs/heads/codex/s10-r2-canary-dev-20261108\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-exit-reconcile-20261109\nHEAD 5803c2061bc48fc4226c729d4eb9e071e6d07a01\nbranch refs/heads/codex/s11-exit-reconcile-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-lf-identity-receipt-20261109\nHEAD 0e344c97d717e0a3a7239e49619928f249a00b32\nbranch refs/heads/codex/s11-lf-identity-receipt-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-lf-pointer-fix-20261109\nHEAD 89e7a498abd449fc00eb93d763b1499ae92f124a\nbranch refs/heads/codex/s11-lf-pointer-fix-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-lf-validator-reconcile-20261109\nHEAD 7b36785e5d19c53be77c86f9de9baa01fa16fe77\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s11-only-s1-1\nHEAD 9454d904d60d371920608088cb326b688895f0cf\nbranch refs/heads/codex/s11-only-s1-1\n\nworktree D:/Repo/ERP_MCP/.worktrees/s12-06-pr54-adaptation-20261109\nHEAD 2629aa2a20f6e40641a5ece7de42a1587a2748a1\nbranch refs/heads/codex/s12-06-pr54-adaptation-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s12-contract-revision-20261109\nHEAD 061e921a595a9df7fc648dc9db5e19842a65ff8d\nbranch refs/heads/codex/s12-contract-revision-20261109\n\nworktree D:/Repo/ERP_MCP/.worktrees/s3-pr-noci-20261105\nHEAD f5fc733f0a1c09bf86d961eb3cd485fa33d500d0\nbranch refs/heads/codex/s3-pr-noci-20261105\n\nworktree D:/Repo/ERP_MCP/.worktrees/s3-review-20261105\nHEAD 2c731147deb541afde8cb62ba9c9a022495d99ac\nbranch refs/heads/codex/s3-bounded-closure-20261105\n\nworktree D:/Repo/ERP_MCP/.worktrees/s4-plan-closeout-20261107\nHEAD 97a8916e264d9646094fb1fc9533bc06a622e5dc\nbranch refs/heads/codex/s4-plan-closeout-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s4-postmerge-closeout-20261106\nHEAD 2d12b95c0cd79fb832e36a6d5cc51701527b71d3\nbranch refs/heads/codex/s4-postmerge-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s4-us015-candidate-20261106\nHEAD 57842bbc75699151d4d88b8c6730fe9cd54fae11\nbranch refs/heads/codex/s4-us015-candidate-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s5-pr-closeout-20261106\nHEAD 11c15be62a105af5853a557dfe9f60ac291ed357\nbranch refs/heads/codex/s5-pr-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s5-windows-memory-closeout-20261106\nHEAD b156154cf195e438e9dc057c408fe0f2e692d3a3\nbranch refs/heads/codex/s5-windows-memory-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s6-closeout-20261106\nHEAD b4859c67e58e6f6515eb681e89b419c6bc1b3c9e\nbranch refs/heads/codex/s6-closeout-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s6b-us032-major01-20261106\nHEAD 572a9cda2877c20831171f227fd4ba34e5992a3c\nbranch refs/heads/codex/s6b-us032-major01-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s8-us040-source-owner-20261106\nHEAD bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e\nbranch refs/heads/codex/s8-us040-source-owner-20261106\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-plan-closeout-20261107\nHEAD dba68fbf5aaf64a4f1de2617a219cfaa83e216ab\nbranch refs/heads/codex/s9-plan-closeout-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-us043-closeout-20261107\nHEAD 588ddd1f1bd08c8fe7579d3c03345de722eb07b0\nbranch refs/heads/codex/s9-us043-closeout-20261107\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-us044-submit-588ddd1-20261107\nHEAD 4bf347e0be47e64e91bf4214aa8728d95742e21c\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/s9-us044-verification-e2eb-20261107\nHEAD a6351cd29e32aab75ec4380807556fbe8176846a\ndetached\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s12-01-origin-main-20261108\nHEAD 7e1e732ead6a130c9e39159c8a2efbe72c4411b8\nbranch refs/heads/codex/v2-s12-01-20261108\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s12-01-review-20261108\nHEAD 78a852c5155ea4ba93a3596037175ed10ff54a7e\nbranch refs/heads/codex/v2-s12-01-review-20261108\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s13-01-ledger-20261110\nHEAD e3c98f2d514f2d25981030379558a1ab4b0a9407\nbranch refs/heads/codex/v2-s13-01-ledger-20261110\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s13-02-transactional-claim-20261110\nHEAD 06b6895c162aececba26bdb210b94deac75db794\nbranch refs/heads/codex/v2-s13-02-transactional-claim-20261110\n\nworktree D:/Repo/ERP_MCP/.worktrees/v2-s13-03-key-auth-20261110\nHEAD 65c408657d5cae857c66ecfeef74028475680ad3\nbranch refs/heads/codex/v2-s13-03-key-auth-20261110\n\nworktree D:/tmp/scratch_worktrees/erp-mcp-fin-s31-e30e2ec\nHEAD e30e2ec10bdd37b6e3d41763865857cafa969574\ndetached\n\nworktree D:/tmp/scratch_worktrees/erp-mcp-s13-pr58-head-20261116\nHEAD 9bd6d3840437a811db4f3f8ad7e12619e102c57b\ndetached\n\n",
   "tracked_changes": [
     "M\t.env.production.example",
     "M\t.github/workflows/ci.yml",
     "M\t.harness/ledger.json",
     "M\tAGENTS.md",
-    "M\tPROJECT_PLAN.md",
-    "M\tcore/DECISION_LOG.md",
-    "M\tcore/LESSONS_LOG.md",
     "M\tdb/phase2/027_private_writer_admission_schema.sql",
-    "M\tdocs/DOCUMENT_INDEX.md",
     "M\tdocs/phase2/CHANGE_RECORD_403.md",
     "M\tdocs/phase2/CHANGE_RECORD_FIN_S32_20261114.md",
     "M\tdocs/phase2/DECISION_LOG.md",
@@ -134,7 +131,6 @@
     "M\tdocs/sdlc/verify-evidence.md",
     "M\treports/ERP_MCP_PHASE2_STATUS_2026-10-31.html",
     "M\treports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html",
-    "M\treports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html",
     "M\tscripts/check_db_privileges.py",
     "M\tscripts/e2e/_common.ps1",
     "M\tscripts/e2e/down.ps1",
@@ -149,6 +145,8 @@
     "M\tscripts/real1c/lane_setup.py",
     "M\tscripts/real1c/period_lock_evidence_readonly.py",
     "M\tscripts/real1c/probes.py",
+    "M\tscripts/rebaseline_branch_details.py",
+    "M\tscripts/rebaseline_inventory.py",
     "M\tscripts/remote/register-stack-task.ps1",
     "M\tscripts/remote/run-mcp-stack.ps1",
     "M\tscripts/verify_schema.py",
@@ -192,6 +190,39 @@
     "M\ttests/test_semantic_profiles.py"
   ],
   "files": [
+    {
+      "path": ".dockerignore",
+      "bytes": 277,
+      "sha256": "4b4f6a0e38120ee158f5a03cf687b38dd2948725209fdd52d65d99d2ac088137"
+    },
+    {
+      "path": ".env.development.example",
+      "content": "EXCLUDED_SENSITIVE_NAME"
+    },
+    {
+      "path": ".env.production.example",
+      "content": "EXCLUDED_SENSITIVE_NAME"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 93,
+      "sha256": "fe521dbc705b0f7557e375d82021825f7711f1a560bfa9c2a0eca8a726736dbd"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 20805,
+      "sha256": "1fdd5b8e2bf9a292e4a7abd10523c85257664653ad4d01fbaddab86b58c071d7"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 368,
+      "sha256": "68bbe290ef8afadff60d8cb18209625e68d8039e07c29f52d1b937a7e728575e"
+    },
+    {
+      "path": ".gitmodules",
+      "bytes": 412,
+      "sha256": "50cb1b8c6977b368065e140ca033242a3e05bea06b520f39e017bd1ed6229fb6"
+    },
     {
       "path": ".harness-tools/_agentio.py",
       "bytes": 18903,
@@ -277,6 +308,91 @@
       "sha256": "343e0c24d1656f8b81120ca1aa7b7fff47fed28c00a8c8fc89187fed985a0921"
     },
     {
+      "path": ".harness/ledger.json",
+      "bytes": 599640,
+      "sha256": "da3bf9e5adf9f9324c12e27fe1796ea384471eca0141d3d9bbb49ae7a1a93154"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 2548,
+      "sha256": "01142ce061c8ed8bf5cc4d74e442149a17c268a5d9a2809a890c6e3672d5a585"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 2270,
+      "sha256": "92cd576fdd97fef7a003d0018d30703aeaa2aed376dcecb51762fb0857362cba"
+    },
+    {
+      "path": "CODEX.md",
+      "bytes": 611,
+      "sha256": "9d425c46254d9a3a6daaee58102b0b7b867d27d1523254d7a2e23c7217609ddd"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 927,
+      "sha256": "47f4b50ef21792ff2498cfc0819d949db8d2d3314cd175782c3d4ced91be39ef"
+    },
+    {
+      "path": "Dockerfile",
+      "bytes": 1006,
+      "sha256": "f4148532cf04d89c6087a9375d40b67716fb185b58f787529b1e796926aa2ebf"
+    },
+    {
+      "path": "ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
+      "bytes": 470203,
+      "sha256": "f41118305df6570697651db48c02b02dc791cdb618de49f1b63d3cb73ce381d4"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 749,
+      "sha256": "9b90c972a22e6ad47f04e4d630297b1f6e08df928920d7e179acaafd6eb98678"
+    },
+    {
+      "path": "MCP-RSV-Data.zip",
+      "bytes": 5340161,
+      "sha256": "11de9a47cc4d0fc38d0e93e032b3cc69c5641774cb51fd529f930699f12c8a12"
+    },
+    {
+      "path": "PROJECT_PLAN.md",
+      "bytes": 87230,
+      "sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709"
+    },
+    {
+      "path": "PROJECT_PLAN.pre-current-S12-reconcile-20261109-210106.md",
+      "bytes": 50101,
+      "sha256": "8ad403349398260683fc73e35d293943c85af22cb6b6ee98518d4f8ea49862a8"
+    },
+    {
+      "path": "PROJECT_PLAN.pre-no-operator-iam-20261109-223503.md",
+      "bytes": 51754,
+      "sha256": "1004666e2678fe7919d1fbd00451f4f3e95d545b31f992856c876dbeedcc3e14"
+    },
+    {
+      "path": "README.md",
+      "bytes": 14116,
+      "sha256": "d33bd04fcf3997263eef838c418e269f16739c30f4c7216a09b0d6ad3171d466"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 5693,
+      "sha256": "352fbcf0c82fee40418dcacae563dce3cd9e40c1281ca75d65c9fb4e0caf3786"
+    },
+    {
+      "path": "SKILLS.md",
+      "bytes": 1438,
+      "sha256": "1b585adccd1be6c17d192c0cd475eee0e26aafbc4c2041b15df42030e9b1dc77"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 2396,
+      "sha256": "a4cfe7498f91581a941ddbb089e5e7e91ee47980f1a4933fb3df9cfb0f35c79f"
+    },
+    {
+      "path": "adapters/odata-sidecar/Dockerfile",
+      "bytes": 2091,
+      "sha256": "b7eb1ad729f531cccec06926423e9ef12b836d0650e2aa4bc21393dbb3104735"
+    },
+    {
       "path": "adapters/odata-sidecar/package-lock.json",
       "bytes": 642,
       "sha256": "3b0c9e06b3ad64f2760d53dcd25f3a9560eeae6eb84b1deef22e6f0cac176bb2"
@@ -285,6 +401,26 @@
       "path": "adapters/odata-sidecar/package.json",
       "bytes": 165,
       "sha256": "79f4110cfe45bd2b6901d0e32bebb49e68c07cb2adee70e1154d31764bc144b4"
+    },
+    {
+      "path": "compose.development.yml",
+      "bytes": 1054,
+      "sha256": "d66c30f3b39321b5fe8690247868bc56f6fa860e13722f6b4927b9d5ed5aa1a9"
+    },
+    {
+      "path": "compose.e2e.yml",
+      "bytes": 1506,
+      "sha256": "63af32885ec9675710349f099b5d598b50f7db19c3630653c0e4ab78c819819f"
+    },
+    {
+      "path": "core/DECISION_LOG.md",
+      "bytes": 512389,
+      "sha256": "252c4252e1efa9833fd2fa2e8349fc066c8e4a256feb64852c0ee70076a2614b"
+    },
+    {
+      "path": "core/LESSONS_LOG.md",
+      "bytes": 145795,
+      "sha256": "9269405e17bd7702e082b710b5793c3a8e15bbbd43978f8ed8e4ceaf8ccedfef"
     },
     {
       "path": "db/migrations/001_init.sql",
@@ -865,6 +1001,11 @@
       "path": "docs/adr/ADR-0009-private-test-writer.md",
       "bytes": 4510,
       "sha256": "faf40e349365bedae5aff8622d2b2c9d86e7e26122d75f47bc4567a23250714e"
+    },
+    {
+      "path": "docs/commits/.wp3-generator-output-reference.txt",
+      "bytes": 311,
+      "sha256": "4ca5d05830db1bb0ae0bec2d762a57c5a606e8f5b4d2308f720fb9480589c752"
     },
     {
       "path": "docs/commits/2026-10-20-english-policy-inventory.md",
@@ -4140,6 +4281,21 @@
       "sha256": "49411d249c1107891fbc48092930c633ba0c9ff80f52df139f0995b9f9500b24"
     },
     {
+      "path": "docs/phase2/g1_full_pytest_local.txt",
+      "bytes": 368,
+      "sha256": "37b84cb7e268fcb9d4dbd52e68830498ea7f11e4155febb7446ab711c46b1429"
+    },
+    {
+      "path": "docs/phase2/g1_pytest_local.txt",
+      "bytes": 202,
+      "sha256": "8622b008813e3cd0d59329b50b3576d3aaf926fd102d694bfd76d892e5d8b217"
+    },
+    {
+      "path": "docs/phase2/g1_ruff_local.txt",
+      "bytes": 42,
+      "sha256": "af352a86840ad0af3d37ea0d9197f868363a6dac6b1c2ef5d2722f6b41d2d9af"
+    },
+    {
       "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/README.md",
       "bytes": 275,
       "sha256": "e641b7b5b6e67fb224f019fdcd0b8fc078ae714d143a9de76d598bcfdf658627"
@@ -4260,6 +4416,11 @@
       "sha256": "87feaa7d8a80ca4fa9d06fbbc03de6f86ea14d71f1fb61765f63084b71719949"
     },
     {
+      "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/traceability.csv",
+      "bytes": 10552,
+      "sha256": "47dacf3a155a380ff36f6803e7ec10fb297cdcb78b852616c714b808a607841b"
+    },
+    {
       "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/validation_report.json",
       "bytes": 236,
       "sha256": "c60e7fe415a806e0314dd4cc1b6e1a9c1559d3ced1a0f37143145472cd453aef"
@@ -4368,6 +4529,31 @@
       "path": "docs/sdlc/verify-evidence.md",
       "bytes": 169629,
       "sha256": "0112dac90c25517f6d04ee13567ffafb0bc601a7c37a8e2b36c10ccc6b77c11c"
+    },
+    {
+      "path": "governance/DOCUMENT_REGISTRY.md",
+      "bytes": 106826,
+      "sha256": "6306fcb551d1ec434a8539f2ede8d11664c0dee979bf7dbde11531aa71348a8e"
+    },
+    {
+      "path": "governance/ENGLISH_POLICY_ALLOWLIST.json",
+      "bytes": 141703,
+      "sha256": "24b606d4b44bc47e209a7c70f93c8f06641eb7630a01df84d75ea3d49a096c10"
+    },
+    {
+      "path": "governance/GATE_MANIFEST.json",
+      "bytes": 6536,
+      "sha256": "365ffaae355f94d07e5b9bc9a3ed666bc48bb385269ef58c988a8eaae3a327b3"
+    },
+    {
+      "path": "governance/WAIVER_SIGNERS.json",
+      "bytes": 185,
+      "sha256": "6ae1441aee7d073f583c9f3a240b478d2c263bf4ce4e5f50e56ac75a2a9c4fd5"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 1836,
+      "sha256": "d16a3dd28ff111cf52f0c1d47644fd344dfa03cdb556c8682632f10e5df5c096"
     },
     {
       "path": "reports/.qa_current_20261101/final-en/extensions_crx_cache/metadata.json",
@@ -5486,8 +5672,8 @@
     },
     {
       "path": "reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html",
-      "bytes": 174624,
-      "sha256": "3928ee9ef73eb4f7ca18e9da5d69c88ffc08297e4d6a3215fe5ce26145672694"
+      "bytes": 174252,
+      "sha256": "784210d02c4194d2e82ba43646b801ce4e1afb0997b2cce5c4f1c857ba9a1f92"
     },
     {
       "path": "reports/ERP_MCP_PROJECT_PLAN.html",
@@ -5805,6 +5991,11 @@
       "sha256": "e682ef8aec3387beb275e7993eef5fc13a0830c01029b57fd485060bf4094195"
     },
     {
+      "path": "reports/real1c/case_results.csv",
+      "bytes": 40741,
+      "sha256": "5ad2bfe97f7e4021ed9d244eb31733750a91ff2b51ee8a198b214af0373fe363"
+    },
+    {
       "path": "reports/real1c/case_results.json",
       "bytes": 774464,
       "sha256": "bdc3609015c4a430241f0756a80c1b6e428bc0ae2c48fdc5bb785f726f7dd4f4"
@@ -5813,6 +6004,16 @@
       "path": "reports/real1c/summary.json",
       "bytes": 3247,
       "sha256": "bea685b6a82bb0df18ea14fa35978949cff46a55730e8df32e282edbb6725b81"
+    },
+    {
+      "path": "requirements-runtime.lock",
+      "bytes": 61540,
+      "sha256": "f280d995cb7b083633d020c7e0267d1357d50c7390e0c9f6d220782a89d3ec3f"
+    },
+    {
+      "path": "requirements.lock.txt",
+      "bytes": 1236,
+      "sha256": "ba7da5686e087a8af89403702e62b41d074cbdb100f85126198dc7562a16ca93"
     },
     {
       "path": "scripts/acl_load_drill.py",
@@ -6270,13 +6471,13 @@
     },
     {
       "path": "scripts/rebaseline_branch_details.py",
-      "bytes": 2413,
-      "sha256": "bda0ef2120db7cbf111f6eaea2b5a72b4006874ce5849bc5b3cf844a57d44796"
+      "bytes": 4303,
+      "sha256": "b9c0f32ed7e18c06aee1f4596bd8980f8a094c54de242b0184f08f15881bd536"
     },
     {
       "path": "scripts/rebaseline_inventory.py",
-      "bytes": 4701,
-      "sha256": "e3c5e71fcdca086e3030a1ad70ee699b2e3b36a6925866ff109ba366f0b9cdcc"
+      "bytes": 6882,
+      "sha256": "665526e85b2707297a739505a19be24dbcb3443105ebfc94fc03c1a89add8d94"
     },
     {
       "path": "scripts/release_evidence_bundle.py",
@@ -7253,6 +7454,26 @@
       "path": "src/business_ai_gateway/tool_errors.py",
       "bytes": 8349,
       "sha256": "b8add75ee34576084b9a42484c06730de36edd5b09c776342d7123a8ff976bcc"
+    },
+    {
+      "path": "src/erp_mcp.egg-info/SOURCES.txt",
+      "bytes": 12528,
+      "sha256": "e9e836c1469addcc5ffca7d9bf54cb0f734515fc8f0412aa3496d9c5081fc58c"
+    },
+    {
+      "path": "src/erp_mcp.egg-info/dependency_links.txt",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "src/erp_mcp.egg-info/requires.txt",
+      "bytes": 442,
+      "sha256": "6651e1413cc954d7e037f69327a7afdde44bc50370494204b610cd2bc13e9958"
+    },
+    {
+      "path": "src/erp_mcp.egg-info/top_level.txt",
+      "bytes": 43,
+      "sha256": "e8eedf1544a48f2219d71a8e52469cf8d2dc104184c7c8971d612f087c674447"
     },
     {
       "path": "src/erp_mcp_private_writer/__init__.py",
@@ -10699,6 +10920,11 @@
       "path": "tests/testlane/test_reconcile_two_bases.py",
       "bytes": 8434,
       "sha256": "bcee6438c134604beb0912f9ccb716baeb3358dd2f7b08a080b0ca44967f67dc"
+    },
+    {
+      "path": "uv.lock",
+      "bytes": 378659,
+      "sha256": "7212b0c0ca5c064ef243ee9504664dc40fffde78fefcd6337f6b93762fedab80"
     }
   ],
   "limits": "Content hashes only; excluded dependency/worktree trees and sensitive names; no tests or runtime probes."

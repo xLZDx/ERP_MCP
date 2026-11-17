@@ -90550,7 +90550,7 @@
   },
   {
     "path": ".harness/ledger.json",
-    "blob": "75e465833f601770d5723b278407e5a1811df063",
+    "blob": "d542e3987f55329887ec10473efadecb21d7f2e2",
     "refs": [
       "refs/heads/codex/erp-mcp-autonomous-2026-10-21"
     ]
@@ -90572,6 +90572,20 @@
   {
     "path": "scripts/real1c/period_lock_evidence_readonly.py",
     "blob": "100227b81c47d08d862cd0264f592ecf6d4e178e",
+    "refs": [
+      "refs/heads/codex/erp-mcp-autonomous-2026-10-21"
+    ]
+  },
+  {
+    "path": "scripts/rebaseline_branch_details.py",
+    "blob": "5138cbb2540c8618baad9ca21dd30147b79c099b",
+    "refs": [
+      "refs/heads/codex/erp-mcp-autonomous-2026-10-21"
+    ]
+  },
+  {
+    "path": "scripts/rebaseline_inventory.py",
+    "blob": "90c48b07f1b80501c85cabb99bc2c310d661f0f4",
     "refs": [
       "refs/heads/codex/erp-mcp-autonomous-2026-10-21"
     ]

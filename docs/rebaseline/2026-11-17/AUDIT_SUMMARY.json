@@ -6,8 +6,8 @@
   "comparison_errors": 0,
   "worktrees": 47,
   "dirty_worktrees": 19,
-  "document_versions": 1846,
-  "code_support_versions": 2768,
+  "document_versions": 3461,
+  "code_support_versions": 2770,
   "original_tasks": 104,
   "bounded_accepted_original_tasks": 48,
   "audit_tasks": 3,
@@ -16,9 +16,18 @@
   "integration_merge_performed": false,
   "full_line_by_line_audit_claimed": false,
   "remaining": [
-    "Independent acceptance of current audit package",
-    "Finalize task/source coverage gaps as explicit backlog",
-    "Prepare reviewed integration candidate from unique work; preserve dirty worktrees",
-    "Correct G-01 race and A-01 packaging boundary before rollout approval"
-  ]
+    "Integrate preserved product work in dependency-ordered reviewed batches",
+    "Correct G-01 race and A-01 packaging boundary before rollout approval",
+    "Qualify concrete adapter, anchor and durable store boundaries",
+    "Remove only verified integrated clean historical branches; retain dirty/unmerged work"
+  ],
+  "current_files": 2150,
+  "inventory_run_id": "2c1e6f82-04e8-475b-b0ac-7f1fc2b87e32",
+  "independent_review": "Final code/Python/reliability/silent-failure audit-tool review: zero remaining BLOCKER/MAJOR; one diagnostic MINOR backlogged; reliability source-read limitation recorded",
+  "named_functional_tests": {
+    "command": "python tests/test_rebaseline_audit_tools.py",
+    "result": "11 passed",
+    "source_head": "ae48e290c779b8b4be1d09f25e48ac7890270d60",
+    "role": "functional-test-reviewer"
+  }
 }

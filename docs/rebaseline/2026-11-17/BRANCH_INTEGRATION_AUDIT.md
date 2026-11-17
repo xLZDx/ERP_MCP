@@ -1,6 +1,6 @@
 # Branch integration audit
 
-Evidence date: 2026-11-17. All counts below were observed by the Git explorer.
+Evidence date: 2026-11-17. Initial observations below were made by the Git explorer; subsequent actions are recorded separately.
 
 | Reference | Observed state |
 |---|---|
@@ -25,7 +25,7 @@ different remote branch and must not be confused with origin/main divergence.
 | 41 | `900a3d060c648b9a809a6b7094adb430fb60f0bd` | main | Inspect actual GitHub base/head refs before integration; local tip differs |
 
 PR facts were read via authenticated gh. None is assumed approved for the
-current integration. `origin/pr-57` is not an open PR; state still needs checking.
+current integration. `origin/pr-57` is a helper ref. PR57 was independently confirmed MERGED into main at 7c1f69c.
 
 ## Integration order
 
@@ -99,3 +99,7 @@ and no observable process cwd in the target. Process cwd could not be read for
 198 protected/inaccessible processes; no such process was identified as using
 the target. Git removal completed successfully. Main/master were retained.
 The integration plan remains prepared; no code integration candidate was merged.
+
+## Current baseline after preservation
+
+Local main was safely fast-forwarded to origin/main at 7c1f69cf51b16d3849772fdb1e32015b17cb1aa7. The empty prepared scratch branch was removed after its tip was proved integrated and its tree clean. The original active checkout and dirty application work were not merged or overwritten. Initial divergence rows remain dated source observations, not current HEAD counts.

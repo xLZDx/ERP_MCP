@@ -27,7 +27,7 @@
         "status": "BLOCKED_EXTERNAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "BLOCKED_EXTERNAL — Earlier bounded AC-2/AC-3 approval remains unchanged. 2026-11-16 protected read-only COM diagnostic succeeded against fixed disposable clone 818HA_test_ready: live configuration version 3.0.67.1, 1184 metadata objects. The local versioned export has the same version and exact metadata-name-set fingerprint 91409995b2a67a79fda459fe12eb33587589f8679ed318d71a6a6e544f0632ee; this does not hash/verify BSL contents. Collector now fails closed on version/name-set mismatch. Probe saw one all-user date-lock (2025-12-31) and 233 close-operation records (2022-12..2026-06), states Выполнено/Пропущено, all Проведен=false. Exported 3.0.67.1 logic computes required/stale status dynamically; raw records do not establish period closure. AC-1 remains OPEN/NOT_RUN and candidate-only; 2026-11-16 native status follow-up: the fixed-file COM diagnostic now derives the exact UI blocking rule for required/stale operations and returned 18 rows, 0 blockers, close_flow_ready=true for 2025-12. Empty status fails closed. This is only workflow readiness, not accounting-period closure. ERP_MCP_Razer confirms the registered company GUID matches the COM organization GUID, but the local file clone is not proven to be the gateway source/base; OData entity searches for Закрытие and Регламентная both return empty lists; neither a close-status nor scheduled-operation EntitySet is discovered. FIN-S1.2 AC-1 remains OPEN/NOT_RUN. Verified blocker: no registered-source authenticated period-status interface and no qualified closed/open mapping. Human provider owner is not assigned. Per operator decision, defer live-source acceptance until final project verification; no further source probing or adapter work is scheduled during implementation. The synthetic period/budget producer contract has a recorded 18-pass run at source HEAD e30e2ec (docs/sdlc/verify-evidence.md), but it does not prove native 1C period closure. At the final project pass, qualify the registered read-only source once; if unavailable, keep FIN-S1.2 BLOCKED_EXTERNAL against final project acceptance. No repeat synthetic test run is scheduled.",
+        "evidence": "BLOCKED_EXTERNAL \u2014 Earlier bounded AC-2/AC-3 approval remains unchanged. 2026-11-16 protected read-only COM diagnostic succeeded against fixed disposable clone 818HA_test_ready: live configuration version 3.0.67.1, 1184 metadata objects. The local versioned export has the same version and exact metadata-name-set fingerprint 91409995b2a67a79fda459fe12eb33587589f8679ed318d71a6a6e544f0632ee; this does not hash/verify BSL contents. Collector now fails closed on version/name-set mismatch. Probe saw one all-user date-lock (2025-12-31) and 233 close-operation records (2022-12..2026-06), states \u0412\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u043e/\u041f\u0440\u043e\u043f\u0443\u0449\u0435\u043d\u043e, all \u041f\u0440\u043e\u0432\u0435\u0434\u0435\u043d=false. Exported 3.0.67.1 logic computes required/stale status dynamically; raw records do not establish period closure. AC-1 remains OPEN/NOT_RUN and candidate-only; 2026-11-16 native status follow-up: the fixed-file COM diagnostic now derives the exact UI blocking rule for required/stale operations and returned 18 rows, 0 blockers, close_flow_ready=true for 2025-12. Empty status fails closed. This is only workflow readiness, not accounting-period closure. ERP_MCP_Razer confirms the registered company GUID matches the COM organization GUID, but the local file clone is not proven to be the gateway source/base; OData entity searches for \u0417\u0430\u043a\u0440\u044b\u0442\u0438\u0435 and \u0420\u0435\u0433\u043b\u0430\u043c\u0435\u043d\u0442\u043d\u0430\u044f both return empty lists; neither a close-status nor scheduled-operation EntitySet is discovered. FIN-S1.2 AC-1 remains OPEN/NOT_RUN. Verified blocker: no registered-source authenticated period-status interface and no qualified closed/open mapping. Human provider owner is not assigned. Per operator decision, defer live-source acceptance until final project verification; no further source probing or adapter work is scheduled during implementation. The synthetic period/budget producer contract has a recorded 18-pass run at source HEAD e30e2ec (docs/sdlc/verify-evidence.md), but it does not prove native 1C period closure. At the final project pass, qualify the registered read-only source once; if unavailable, keep FIN-S1.2 BLOCKED_EXTERNAL against final project acceptance. No repeat synthetic test run is scheduled.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -113,7 +113,7 @@
         "status": "IN_REVIEW",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_REVIEW — Historical evidence: 75 functional tests on 3af7379; CODE-1/CODE-2 and SEC1 closed; GPT-PM narrowly approved S2.1 delta. 2026-11-14 source review found session and stored approval expiry values were compared before validation; core now checks aware UTC expiry, bounded snapshot/proposal expiry, session chronology, and digest metadata before nonce consumption. The apply path now normalizes expiry comparisons to UTC before claim, after evidence refresh, and before the apply port; invalid timezone conversion fails closed. `S16Core.expire` also normalizes both timestamps and refuses malformed expiry state. Shared principal/requester-record validation now rejects malformed role containers/members, epoch and MFA/revocation types before membership checks and apply revalidation. Store reads now fail closed before claim and on repeat apply; a known claim is released only before durable `BEGIN_APPLY`. If the receipt read/validation fails after `BEGIN_APPLY`, the core returns `AUDIT_UNAVAILABLE`, retains the claim and in-progress anchor for recovery, and makes no apply-port call. `S16Core.status`, `expire`, and `verify` now map store exceptions, non-receipt values, validator exceptions, and malformed validator error codes to `AUDIT_UNAVAILABLE` without returning corrupt state; expiration read-back failure leaves the durable transition intact; `verify` rejects malformed identifiers before store access; expiration and claim-release read-backs require immutable receipt identity to match. Approval/apply receipt validators now also normalize exceptions and malformed refusal codes; post-BEGIN target-validator failures retain the durable in-progress claim and do not call the apply port. Approval persistence read-back now checks exact receipt identity before claiming success. The apply-port result boundary validates status, correlation ID and optional document-reference fields before persistence; post-save read-back must equal the exact expected DomainReceipt before success or setting the verification anchor, otherwise return APPLY_UNKNOWN without retry. The earlier NOT_RUN notes are superseded by assigned functional-test-reviewer runs: 65 passed in 0.96s at source HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b (approval core/private ingress, covering commit-then-raise, post-commit read failure, replay, status recovery, and a single apply-port call) and 90 passed with 2 warnings at source HEAD 71cd251de8c1081ea5f964fd701bc6cead0b7bb0 across the named S16 modules. These are synthetic evidence only; SQL durability, live IdP/browser, and production acceptance remain separate. Official AF phase-8 result remains UNRECOGNIZED. On 2026-11-15, source review found the CSRF format check referenced an unimported standard `re` module; the missing import was fixed in commit `aa3e389`. Regression remains NOT_RUN. 2026-11-16 exact committed HEAD 7bbbe153259e480d8836234bf298278e2c0fdf57: assigned functional-test-reviewer ran only tests/phase2/test_s16_approval_core.py and test_s16_approval_page.py, 59 passed/0 skipped in 0.72s. code-reviewer, silent-failure-hunter and python-reviewer found no actionable findings at this HEAD. These are synthetic S16 results; SQL durability, live IdP/browser and production acceptance remain separate. Current working-tree rerun at HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b (dirty tree): assigned functional-test-reviewer ran only tests/phase2/test_s16_approval_core.py and tests/phase2/test_s16_approval_page.py; 59 passed in 0.63s, no warnings or skips shown. Synthetic-only evidence; no live IdP, database, writer, or production acceptance. Final sprint review remains pending.",
+        "evidence": "IN_REVIEW \u2014 Historical evidence: 75 functional tests on 3af7379; CODE-1/CODE-2 and SEC1 closed; GPT-PM narrowly approved S2.1 delta. 2026-11-14 source review found session and stored approval expiry values were compared before validation; core now checks aware UTC expiry, bounded snapshot/proposal expiry, session chronology, and digest metadata before nonce consumption. The apply path now normalizes expiry comparisons to UTC before claim, after evidence refresh, and before the apply port; invalid timezone conversion fails closed. `S16Core.expire` also normalizes both timestamps and refuses malformed expiry state. Shared principal/requester-record validation now rejects malformed role containers/members, epoch and MFA/revocation types before membership checks and apply revalidation. Store reads now fail closed before claim and on repeat apply; a known claim is released only before durable `BEGIN_APPLY`. If the receipt read/validation fails after `BEGIN_APPLY`, the core returns `AUDIT_UNAVAILABLE`, retains the claim and in-progress anchor for recovery, and makes no apply-port call. `S16Core.status`, `expire`, and `verify` now map store exceptions, non-receipt values, validator exceptions, and malformed validator error codes to `AUDIT_UNAVAILABLE` without returning corrupt state; expiration read-back failure leaves the durable transition intact; `verify` rejects malformed identifiers before store access; expiration and claim-release read-backs require immutable receipt identity to match. Approval/apply receipt validators now also normalize exceptions and malformed refusal codes; post-BEGIN target-validator failures retain the durable in-progress claim and do not call the apply port. Approval persistence read-back now checks exact receipt identity before claiming success. The apply-port result boundary validates status, correlation ID and optional document-reference fields before persistence; post-save read-back must equal the exact expected DomainReceipt before success or setting the verification anchor, otherwise return APPLY_UNKNOWN without retry. The earlier NOT_RUN notes are superseded by assigned functional-test-reviewer runs: 65 passed in 0.96s at source HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b (approval core/private ingress, covering commit-then-raise, post-commit read failure, replay, status recovery, and a single apply-port call) and 90 passed with 2 warnings at source HEAD 71cd251de8c1081ea5f964fd701bc6cead0b7bb0 across the named S16 modules. These are synthetic evidence only; SQL durability, live IdP/browser, and production acceptance remain separate. Official AF phase-8 result remains UNRECOGNIZED. On 2026-11-15, source review found the CSRF format check referenced an unimported standard `re` module; the missing import was fixed in commit `aa3e389`. Regression remains NOT_RUN. 2026-11-16 exact committed HEAD 7bbbe153259e480d8836234bf298278e2c0fdf57: assigned functional-test-reviewer ran only tests/phase2/test_s16_approval_core.py and test_s16_approval_page.py, 59 passed/0 skipped in 0.72s. code-reviewer, silent-failure-hunter and python-reviewer found no actionable findings at this HEAD. These are synthetic S16 results; SQL durability, live IdP/browser and production acceptance remain separate. Current working-tree rerun at HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b (dirty tree): assigned functional-test-reviewer ran only tests/phase2/test_s16_approval_core.py and tests/phase2/test_s16_approval_page.py; 59 passed in 0.63s, no warnings or skips shown. Synthetic-only evidence; no live IdP, database, writer, or production acceptance. Final sprint review remains pending.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -241,7 +241,7 @@
         "status": "IN_REVIEW",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_REVIEW — Historical evidence: 6 page/ingress tests passed in-process at 3af7379; UI1 closed. 2026-11-14 source review found unchecked expiry values and a weaker HTML session check; shared validators now reject malformed timestamps, stale/mismatched binding metadata, expired principal, missing MFA, invalid IDs/CSRF secret, and timezone errors before nonce use or page rendering. The approval nonce now uses UTC-normalized expiry and cannot outlive the approver principal. Shared principal validation rejects malformed role container/member, epoch and MFA types before approval role checks, and the preview path now performs that shape check before role membership. A later source pass found successful decision POSTs referenced a ticket UUID initialized only on GET; UUID parsing is now shared before method dispatch. Source review also bounded service-supplied approval display content: malformed or overlong confirmation phrases refuse, and invalid UTF-8 display values render as a fixed placeholder. The focused malformed-service regression is NOT_RUN. Malformed ASGI scope objects now return fixed SCHEMA_INVALID before reading fields or calling the authenticator/service; malformed header containers also return a fixed schema refusal. The page now validates exact approver identity/role/epoch/scope shapes before dispatch and requires the service `ApprovalDecision` to match the submitted action, canonical ticket, session and approver, with valid digest formats and future timezone-aware expiry before showing success. POST also rejects malformed decision-reference alphabet/length and non-canonical CSRF token shape before service dispatch. The bounded-form zero-service-call case is covered by `test_approval_post_bounds_body_bytes_and_asgi_message_count_before_service_call`, included in the 2026-11-16 named S16 core/page run (59 passed in 0.63s at source HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b); the test asserts `submit_calls == []` for both over-limit requests. This supersedes the earlier ledger verify=NOT_RUN note for these cases. Focused malformed-session and malformed-service regressions remain NOT_RUN under operator rule 4. Focused browser/ASGI regressions remain NOT_RUN; real browser/IdP/UAT remain NOT_RUN; no formal sprint approval. On 2026-11-15, source review found an invalid Unicode approver label could escape context validation and crash UTF-8 response encoding; strict boundary-text validation was added in `6aea446`. Regression remains NOT_RUN. 2026-11-16 exact committed HEAD 7bbbe153259e480d8836234bf298278e2c0fdf57: assigned functional-test-reviewer ran the two named S16 core/page modules, 59 passed/0 skipped in 0.72s; clock exceptions return fixed 503 and missing authentication remains 401. code-reviewer, silent-failure-hunter and python-reviewer found no actionable findings at this HEAD. Current working-tree rerun at dirty HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b: assigned functional-test-reviewer ran the named S16 core/page selections; 59 passed in 0.63s, no warnings or skips shown. Synthetic evidence only; live browser/IdP/UAT and deployment remain unverified; final sprint review is pending.",
+        "evidence": "IN_REVIEW \u2014 Historical evidence: 6 page/ingress tests passed in-process at 3af7379; UI1 closed. 2026-11-14 source review found unchecked expiry values and a weaker HTML session check; shared validators now reject malformed timestamps, stale/mismatched binding metadata, expired principal, missing MFA, invalid IDs/CSRF secret, and timezone errors before nonce use or page rendering. The approval nonce now uses UTC-normalized expiry and cannot outlive the approver principal. Shared principal validation rejects malformed role container/member, epoch and MFA types before approval role checks, and the preview path now performs that shape check before role membership. A later source pass found successful decision POSTs referenced a ticket UUID initialized only on GET; UUID parsing is now shared before method dispatch. Source review also bounded service-supplied approval display content: malformed or overlong confirmation phrases refuse, and invalid UTF-8 display values render as a fixed placeholder. The focused malformed-service regression is NOT_RUN. Malformed ASGI scope objects now return fixed SCHEMA_INVALID before reading fields or calling the authenticator/service; malformed header containers also return a fixed schema refusal. The page now validates exact approver identity/role/epoch/scope shapes before dispatch and requires the service `ApprovalDecision` to match the submitted action, canonical ticket, session and approver, with valid digest formats and future timezone-aware expiry before showing success. POST also rejects malformed decision-reference alphabet/length and non-canonical CSRF token shape before service dispatch. The bounded-form zero-service-call case is covered by `test_approval_post_bounds_body_bytes_and_asgi_message_count_before_service_call`, included in the 2026-11-16 named S16 core/page run (59 passed in 0.63s at source HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b); the test asserts `submit_calls == []` for both over-limit requests. This supersedes the earlier ledger verify=NOT_RUN note for these cases. Focused malformed-session and malformed-service regressions remain NOT_RUN under operator rule 4. Focused browser/ASGI regressions remain NOT_RUN; real browser/IdP/UAT remain NOT_RUN; no formal sprint approval. On 2026-11-15, source review found an invalid Unicode approver label could escape context validation and crash UTF-8 response encoding; strict boundary-text validation was added in `6aea446`. Regression remains NOT_RUN. 2026-11-16 exact committed HEAD 7bbbe153259e480d8836234bf298278e2c0fdf57: assigned functional-test-reviewer ran the two named S16 core/page modules, 59 passed/0 skipped in 0.72s; clock exceptions return fixed 503 and missing authentication remains 401. code-reviewer, silent-failure-hunter and python-reviewer found no actionable findings at this HEAD. Current working-tree rerun at dirty HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b: assigned functional-test-reviewer ran the named S16 core/page selections; 59 passed in 0.63s, no warnings or skips shown. Synthetic evidence only; live browser/IdP/UAT and deployment remain unverified; final sprint review is pending.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -336,7 +336,7 @@
         "status": "IN_REVIEW",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_REVIEW — Selected fake-backed tool tests passed at 3af7379 (five-tool registry, safe errors, rollback boundaries). 2026-11-14 source review found `verify` serialization omitted S15 `Finding.detail`; serialization now preserves typed findings and permits only a bounded exception-class identifier on `READ_ERROR`. Follow-up validates result/status/finding types, known codes/classes, and bounded identifier-shaped finding/unverified paths; valid S15 fields remain unchanged and malformed output becomes a safe failure. Current source review also found FastMCP's generic handler signature would publish arguments/context metadata instead of the immutable manifest schema; each FastMCP wrapper now derives parameter names and nested JSON Schema from that manifest, with transport Context injected. MCP SDK source inspection confirms its signature-driven schema path; schema-parity regression is covered by the current-tree synthetic run below. The custom error-renderer path now receives only normalized registered `ErrorCode` values; public proposal/status/apply serializers reject malformed service-returned fields and map them to fixed safe errors. Malformed-result behavior remains bounded to the synthetic harness evidence below. The `ChangeServicePort.verify` adapter now preserves the concrete S15 `VerificationResult` type instead of `Any`; this annotation-only contract correction remains covered only by the synthetic harness evidence below. Functional-test-reviewer added FastMCP manifest-schema parity, S15 findings/unverified-path pass-through, and escaped aggregate-input refusal cases in tests/phase2/test_s16_tools.py on 2026-11-15; that earlier run was superseded by the current-tree synthetic result below. Real chat clients, final coverage/review and formal approval remain NOT_RUN. On 2026-11-15, source review found `UUID()` accepted non-string `change_id` values despite the model-facing string schema; the adapter now rejects non-string IDs before dispatch in `802969a`. Current-tree synthetic verification is recorded below. Current-tree synthetic contract run at dirty HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b: assigned functional-test-reviewer ran the named S16 model-tool selection; 15 passed in 0.29s, no warnings or skips reported. Live clients, deployed listener, final review, and production acceptance remain unverified.",
+        "evidence": "IN_REVIEW \u2014 Selected fake-backed tool tests passed at 3af7379 (five-tool registry, safe errors, rollback boundaries). 2026-11-14 source review found `verify` serialization omitted S15 `Finding.detail`; serialization now preserves typed findings and permits only a bounded exception-class identifier on `READ_ERROR`. Follow-up validates result/status/finding types, known codes/classes, and bounded identifier-shaped finding/unverified paths; valid S15 fields remain unchanged and malformed output becomes a safe failure. Current source review also found FastMCP's generic handler signature would publish arguments/context metadata instead of the immutable manifest schema; each FastMCP wrapper now derives parameter names and nested JSON Schema from that manifest, with transport Context injected. MCP SDK source inspection confirms its signature-driven schema path; schema-parity regression is covered by the current-tree synthetic run below. The custom error-renderer path now receives only normalized registered `ErrorCode` values; public proposal/status/apply serializers reject malformed service-returned fields and map them to fixed safe errors. Malformed-result behavior remains bounded to the synthetic harness evidence below. The `ChangeServicePort.verify` adapter now preserves the concrete S15 `VerificationResult` type instead of `Any`; this annotation-only contract correction remains covered only by the synthetic harness evidence below. Functional-test-reviewer added FastMCP manifest-schema parity, S15 findings/unverified-path pass-through, and escaped aggregate-input refusal cases in tests/phase2/test_s16_tools.py on 2026-11-15; that earlier run was superseded by the current-tree synthetic result below. Real chat clients, final coverage/review and formal approval remain NOT_RUN. On 2026-11-15, source review found `UUID()` accepted non-string `change_id` values despite the model-facing string schema; the adapter now rejects non-string IDs before dispatch in `802969a`. Current-tree synthetic verification is recorded below. Current-tree synthetic contract run at dirty HEAD 20b2833f78316f51f1096402a3ff35ba3ae9a26b: assigned functional-test-reviewer ran the named S16 model-tool selection; 15 passed in 0.29s, no warnings or skips reported. Live clients, deployed listener, final review, and production acceptance remain unverified.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -420,7 +420,7 @@
         "status": "IN_REVIEW",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_REVIEW — Source fixes cover authenticated principal shape, private TEST scope, proxy/redirect and unresolved-route refusal, bounded Content-Length and streamed body, malformed ASGI messages, empty-message flood, and explicit origin port `:0`; details remain in the S24 change record. Earlier current-tree run at dirty HEAD 0768c3f8d1f71f314f0ae82da81a09e0080fcbcc: 9 passed, 0 failed, 0 skipped, one httpx2 raw-content deprecation warning. Fresh 2026-11-16 assigned functional-test-reviewer run of only `tests/phase2/test_s16_private_ingress.py` with `--confcutdir=tests/phase2`: 11 passed, exit 0, one DeprecationWarning, 0.50s; this skips the broken root conftest import of `MCPServer`. Synthetic dirty-tree evidence only; no live listener, browser/IdP, deployed binding or production acceptance is established. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.",
+        "evidence": "IN_REVIEW \u2014 Source fixes cover authenticated principal shape, private TEST scope, proxy/redirect and unresolved-route refusal, bounded Content-Length and streamed body, malformed ASGI messages, empty-message flood, and explicit origin port `:0`; details remain in the S24 change record. Earlier current-tree run at dirty HEAD 0768c3f8d1f71f314f0ae82da81a09e0080fcbcc: 9 passed, 0 failed, 0 skipped, one httpx2 raw-content deprecation warning. Fresh 2026-11-16 assigned functional-test-reviewer run of only `tests/phase2/test_s16_private_ingress.py` with `--confcutdir=tests/phase2`: 11 passed, exit 0, one DeprecationWarning, 0.50s; this skips the broken root conftest import of `MCPServer`. Synthetic dirty-tree evidence only; no live listener, browser/IdP, deployed binding or production acceptance is established. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -526,7 +526,7 @@
         "status": "IN_REVIEW",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_REVIEW — 2026-11-17 current rerun: assigned functional-test-reviewer ran the documented 21-module FIN-S3.1 selection at exact HEAD 240070b029ac020e895e9f84eb4bd02dd36b2e03 in a dirty tree. Exact command is in docs/sdlc/verify-evidence.md. Exit 0: 1,048 passed, 2 warnings, 56 subtests in 34.05s; no failures or skips. Warnings: test_s13_checkpoint_suffix_functional.py::test_python_classifier returned int; private-ingress httpx2 raw-content deprecation. Selected test inputs included modified and untracked files, so this is not clean commit-only evidence. This supersedes the older 82648cc run only and clears test execution evidence; FIN-S3.1 remains IN_REVIEW pending routed final FIN review. No S12/S13/G8, runtime, or production acceptance is claimed.",
+        "evidence": "IN_REVIEW \u2014 2026-11-17 current rerun: assigned functional-test-reviewer ran the documented 21-module FIN-S3.1 selection at exact HEAD 240070b029ac020e895e9f84eb4bd02dd36b2e03 in a dirty tree. Exact command is in docs/sdlc/verify-evidence.md. Exit 0: 1,048 passed, 2 warnings, 56 subtests in 34.05s; no failures or skips. Warnings: test_s13_checkpoint_suffix_functional.py::test_python_classifier returned int; private-ingress httpx2 raw-content deprecation. Selected test inputs included modified and untracked files, so this is not clean commit-only evidence. This supersedes the older 82648cc run only and clears test execution evidence; FIN-S3.1 remains IN_REVIEW pending routed final FIN review. No S12/S13/G8, runtime, or production acceptance is claimed.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -621,7 +621,7 @@
         "status": "IN_REVIEW",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_REVIEW — 2026-11-16 AC-1: ERP_MCP_Razer reports read_only=true, subject auditor, 3 sources; registered source onec-818ha-reference is read-only and health returned HTTP 200/ok=true. Registration script exited 0; at test time the task had the one-minute logon trigger and daily PT5M/P1D trigger, RunLevel Highest, NextRunTime set, last result 0. AC-2: e2e-runner stopped only Redis at 17:30:26; scheduled task ran at 17:32:15, completed result 0, and the same Redis container was healthy/listening on 127.0.0.1:19379 at 17:33:06; IdP and gateway remained HTTP 200. No manual Redis start or other component stop. E2E port resolver fix is present in the dirty worktree at HEAD 8e42a1b; five focused regressions passed (5 passed, 10 deselected). After the successful bounded restart, the operator asked to disable recurring five-minute checks; the daily trigger is absent now, the enabled one-minute logon trigger remains, and the installer was updated so future registrations also create only that trigger. The separate Codex completion watchdog is disabled. A full status preflight remains red on schema_version=15 and absent capability services; these do not invalidate the scoped Redis recovery result. The first Pester fixture failed because scheduler mocks were out of scope; the final isolated Pester 3.4 run passed 7/7 at HEAD 240070b. The in-memory installer body was exercised with only its elevation gate removed; the separate test asserts both admin guards, and all scheduler cmdlets were mocked. Fresh routed code-reviewer and silent-failure-hunter review accepted this exact scope with zero remaining findings. Final sprint review remains pending; project status stays IN_REVIEW. Next: complete the routed final FIN review; retain FIN-S1.2 as a separate external backlog item.",
+        "evidence": "IN_REVIEW \u2014 2026-11-16 AC-1: ERP_MCP_Razer reports read_only=true, subject auditor, 3 sources; registered source onec-818ha-reference is read-only and health returned HTTP 200/ok=true. Registration script exited 0; at test time the task had the one-minute logon trigger and daily PT5M/P1D trigger, RunLevel Highest, NextRunTime set, last result 0. AC-2: e2e-runner stopped only Redis at 17:30:26; scheduled task ran at 17:32:15, completed result 0, and the same Redis container was healthy/listening on 127.0.0.1:19379 at 17:33:06; IdP and gateway remained HTTP 200. No manual Redis start or other component stop. E2E port resolver fix is present in the dirty worktree at HEAD 8e42a1b; five focused regressions passed (5 passed, 10 deselected). After the successful bounded restart, the operator asked to disable recurring five-minute checks; the daily trigger is absent now, the enabled one-minute logon trigger remains, and the installer was updated so future registrations also create only that trigger. The separate Codex completion watchdog is disabled. A full status preflight remains red on schema_version=15 and absent capability services; these do not invalidate the scoped Redis recovery result. The first Pester fixture failed because scheduler mocks were out of scope; the final isolated Pester 3.4 run passed 7/7 at HEAD 240070b. The in-memory installer body was exercised with only its elevation gate removed; the separate test asserts both admin guards, and all scheduler cmdlets were mocked. Fresh routed code-reviewer and silent-failure-hunter review accepted this exact scope with zero remaining findings. Final sprint review remains pending; project status stays IN_REVIEW. Next: complete the routed final FIN review; retain FIN-S1.2 as a separate external backlog item.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -727,7 +727,7 @@
         "status": "IN_REVIEW",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_REVIEW — 2026-11-17 reconciliation: FIN remains open with 2/10 accepted, 7/10 in review, 0/10 operator-blocked, and FIN-S1.2 BLOCKED_EXTERNAL. The newest 21-module FIN-S3.1 rerun passed at dirty-tree HEAD 240070b029ac020e895e9f84eb4bd02dd36b2e03 (1,048 passed, 2 warnings, 56 subtests in 34.05s; no skips/failures); selected inputs included modified/untracked test files, and the exact command/limits are in docs/sdlc/verify-evidence.md. The run clears the test-execution block only; final routed review is not recorded. Release 2 remains NO_GO; G0 PASSED, G1 IN_PROGRESS, G8 NOT_PASSED; production authorization NONE. S16 remains synthetic-only. No gate promotion, production authorization, or 1C mutation follows.",
+        "evidence": "IN_REVIEW \u2014 2026-11-17 reconciliation: FIN remains open with 2/10 accepted, 7/10 in review, 0/10 operator-blocked, and FIN-S1.2 BLOCKED_EXTERNAL. The newest 21-module FIN-S3.1 rerun passed at dirty-tree HEAD 240070b029ac020e895e9f84eb4bd02dd36b2e03 (1,048 passed, 2 warnings, 56 subtests in 34.05s; no skips/failures); selected inputs included modified/untracked test files, and the exact command/limits are in docs/sdlc/verify-evidence.md. The run clears the test-execution block only; final routed review is not recorded. Release 2 remains NO_GO; G0 PASSED, G1 IN_PROGRESS, G8 NOT_PASSED; production authorization NONE. S16 remains synthetic-only. No gate promotion, production authorization, or 1C mutation follows.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -910,7 +910,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED — Exact bounded disposition: CLOSED_BOUNDED at commit f23a7af75facb69e297958f4be13c337c005863c, reachable from remote integration ref 1ca4f85fa0a988e8d6f127864e4a013d84421822. Assigned e2e-runner ran `.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_s11_sql_code_parity.py`: 2 passed in 8.15s on a disposable loopback PostgreSQL 16; cleanup passed. database-reviewer and python-reviewer found no actionable issues. GPT-PM request 2408116e-cf26-4f7e-8e1f-4d8ad94c9a10: APPROVE/CLOSED_BOUNDED for this exact two-file delta. PR #41 remains open; its full diff/merge was not approved.",
+        "evidence": "ACCEPTED \u2014 Exact bounded disposition: CLOSED_BOUNDED at commit f23a7af75facb69e297958f4be13c337c005863c, reachable from remote integration ref 1ca4f85fa0a988e8d6f127864e4a013d84421822. Assigned e2e-runner ran `.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_s11_sql_code_parity.py`: 2 passed in 8.15s on a disposable loopback PostgreSQL 16; cleanup passed. database-reviewer and python-reviewer found no actionable issues. GPT-PM request 2408116e-cf26-4f7e-8e1f-4d8ad94c9a10: APPROVE/CLOSED_BOUNDED for this exact two-file delta. PR #41 remains open; its full diff/merge was not approved.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -944,7 +944,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED — GPT-PM request 71f0ba89-b909-4156-9667-04548a7bf611 approved bounded AC-1/AC-2 for exact candidate tree ba26f6840e177161eb5bdfec1c56b7cc81aa9cb6. e2e-runner reported 6 passed in 7.68s on disposable PostgreSQL; code-reviewer, database-reviewer and security-reviewer found no actionable findings. Commit b6557547075df0b9864fd0a8f8d51a067e748d35 (parent f59db79ac9be7170f830c955838b0a44679458c9) was pushed fast-forward to open PR #41. GPT-PM authorized commit and PR update; merge/deployment/production are not authorized. FIN-S1.2 AC-1 remains NOT_RUN; FIN sprint remains open.",
+        "evidence": "ACCEPTED \u2014 GPT-PM request 71f0ba89-b909-4156-9667-04548a7bf611 approved bounded AC-1/AC-2 for exact candidate tree ba26f6840e177161eb5bdfec1c56b7cc81aa9cb6. e2e-runner reported 6 passed in 7.68s on disposable PostgreSQL; code-reviewer, database-reviewer and security-reviewer found no actionable findings. Commit b6557547075df0b9864fd0a8f8d51a067e748d35 (parent f59db79ac9be7170f830c955838b0a44679458c9) was pushed fast-forward to open PR #41. GPT-PM authorized commit and PR update; merge/deployment/production are not authorized. FIN-S1.2 AC-1 remains NOT_RUN; FIN sprint remains open.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -978,7 +978,7 @@
         "status": "IN_PROGRESS",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_PROGRESS — Historical ledger IN_PROGRESS, current status unconfirmed; Supporting tests passed at 3af73797 (spec catalog 13, mapping/assembly/TC003 7); product TC001-TC003 remain NOT_RUN; GPT-PM read-only APPROVE of the uncommitted delta is not product acceptance",
+        "evidence": "IN_PROGRESS \u2014 Historical ledger IN_PROGRESS, current status unconfirmed; Supporting tests passed at 3af73797 (spec catalog 13, mapping/assembly/TC003 7); product TC001-TC003 remain NOT_RUN; GPT-PM read-only APPROVE of the uncommitted delta is not product acceptance",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1003,7 +1003,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
+        "evidence": "NOT_STARTED \u2014 Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1028,7 +1028,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "BOUNDED_SCOPE_COMPLETE — GPT-PM request 3a35f7ee approved offline TC007–TC009; focused suite reported 189 passed; commit e35497f is reachable from verified remote PR #42 branch. Product cases remain NOT_RUN; no live registry or connector.",
+        "evidence": "BOUNDED_SCOPE_COMPLETE \u2014 GPT-PM request 3a35f7ee approved offline TC007\u2013TC009; focused suite reported 189 passed; commit e35497f is reachable from verified remote PR #42 branch. Product cases remain NOT_RUN; no live registry or connector.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1062,7 +1062,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "BOUNDED_SCOPE_COMPLETE — GPT-PM request 69ec1ee8 approved bounded SQL TC010–TC012; 10 disposable-PostgreSQL cases reported passed; commit 72d90a8 is reachable from verified remote PR #42 branch. Product cases remain NOT_RUN; runtime wiring unverified.",
+        "evidence": "BOUNDED_SCOPE_COMPLETE \u2014 GPT-PM request 69ec1ee8 approved bounded SQL TC010\u2013TC012; 10 disposable-PostgreSQL cases reported passed; commit 72d90a8 is reachable from verified remote PR #42 branch. Product cases remain NOT_RUN; runtime wiring unverified.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1096,7 +1096,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "BOUNDED_SCOPE_COMPLETE — GPT-PM request a6d63e49 approved bounded SQL TC013–TC015; 5 focused disposable-PostgreSQL cases reported passed; commit 9cbfbf2 is reachable from verified remote PR #42 branch. Product cases remain NOT_RUN; scheduler/application integration unverified.",
+        "evidence": "BOUNDED_SCOPE_COMPLETE \u2014 GPT-PM request a6d63e49 approved bounded SQL TC013\u2013TC015; 5 focused disposable-PostgreSQL cases reported passed; commit 9cbfbf2 is reachable from verified remote PR #42 branch. Product cases remain NOT_RUN; scheduler/application integration unverified.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1130,7 +1130,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM requests c5cf6d30 and f23c36e1 accept bounded TC016–TC018. Assigned e2e-runner reported 45 focused passes and 1 in-process gateway health pass. Same six source/test blobs integrated as b23604c (parent 9e211b5), pushed fast-forward to open PR #41; CI not run and no PR checks present on this HEAD. Deployed-process and production-provider rotation are not established; OB-13 remains separate.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM requests c5cf6d30 and f23c36e1 accept bounded TC016\u2013TC018. Assigned e2e-runner reported 45 focused passes and 1 in-process gateway health pass. Same six source/test blobs integrated as b23604c (parent 9e211b5), pushed fast-forward to open PR #41; CI not run and no PR checks present on this HEAD. Deployed-process and production-provider rotation are not established; OB-13 remains separate.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1164,7 +1164,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request 31f75d53 reconciles approved revisions 45a7b1a and df92cc8. TC028–TC030 bounded scope accepted; product execution NOT_RUN, G1 NOT_PASSED. Historical a8b5b4d rejection retained.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request 31f75d53 reconciles approved revisions 45a7b1a and df92cc8. TC028\u2013TC030 bounded scope accepted; product execution NOT_RUN, G1 NOT_PASSED. Historical a8b5b4d rejection retained.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1189,7 +1189,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM 28a091ba authorizes bounded closure; TC031–TC033 linked to recorded historical test_temporal.py evidence; product execution NOT_RUN, G1 NOT_PASSED.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM 28a091ba authorizes bounded closure; TC031\u2013TC033 linked to recorded historical test_temporal.py evidence; product execution NOT_RUN, G1 NOT_PASSED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1214,7 +1214,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM 7fb244c0 authorizes bounded closure; single-host multiprocess evidence only; product execution NOT_RUN, G1 NOT_PASSED.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM 7fb244c0 authorizes bounded closure; single-host multiprocess evidence only; product execution NOT_RUN, G1 NOT_PASSED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1239,7 +1239,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM 1c1cc8d2 authorizes bounded closure; database cursor/outbox only; publisher/consumer and product execution NOT_RUN.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM 1c1cc8d2 authorizes bounded closure; database cursor/outbox only; publisher/consumer and product execution NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1264,7 +1264,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged — GPT-PM 3f51d1d2 accepted the bounded R1-compatibility criterion; exact-candidate GPT-PM approval c3d13d9d; 11 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5.",
+        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged \u2014 GPT-PM 3f51d1d2 accepted the bounded R1-compatibility criterion; exact-candidate GPT-PM approval c3d13d9d; 11 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1310,7 +1310,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged — GPT-PM 0e47a539 approved bounded offline criteria; 47 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5. Canonical product scenario remains NOT_RUN.",
+        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged \u2014 GPT-PM 0e47a539 approved bounded offline criteria; 47 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5. Canonical product scenario remains NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1351,7 +1351,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged — GPT-PM 46f27838 accepted TC025–TC027 in bounded scope; 74 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5.",
+        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged \u2014 GPT-PM 46f27838 accepted TC025\u2013TC027 in bounded scope; 74 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1384,7 +1384,7 @@
       "sprint": "S3",
       "title": "Auditor sees gaps and completeness",
       "criteria": [
-        "REQ05,09; TC034 SNAPSHOT_ONLY interval; TC035 A–B–A changes are not invented; TC036 lost cursor causes controlled resnapshot and gap"
+        "REQ05,09; TC034 SNAPSHOT_ONLY interval; TC035 A\u2013B\u2013A changes are not invented; TC036 lost cursor causes controlled resnapshot and gap"
       ],
       "native_state": "verified",
       "project_status": "CLOSED_BOUNDED_SPRINT",
@@ -1392,7 +1392,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged — GPT-PM 891c04fc accepted the bounded criteria, with TC035 limited to monotonic +1 ledger epoch; no new test execution requested. Included in PR #43 merge 9e211b5. Product runtime remains NOT_RUN; restored/rebased non-monotonic stores and later US-020 direct-run delta are outside this decision.",
+        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged \u2014 GPT-PM 891c04fc accepted the bounded criteria, with TC035 limited to monotonic +1 ledger epoch; no new test execution requested. Included in PR #43 merge 9e211b5. Product runtime remains NOT_RUN; restored/rebased non-monotonic stores and later US-020 direct-run delta are outside this decision.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1433,7 +1433,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged — GPT-PM b21d936d approved bounded single-process offline criteria; 61 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5. Broader-suite failures remain separate evidence and are not recast as task acceptance.",
+        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged \u2014 GPT-PM b21d936d approved bounded single-process offline criteria; 61 focused tests are inherited evidence, not rerun here. Included in PR #43 merge 9e211b5. Broader-suite failures remain separate evidence and are not recast as task acceptance.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1474,7 +1474,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged — GPT-PM 370c2c01 approved bounded criteria; runner reported 27 focused passes on exact candidate, accepted by GPT-PM without rerun. Included in PR #43 merge 9e211b5. One compatible fixture edit in test_capture_loop.py was not executed.",
+        "evidence": "CLOSED_BOUNDED_SPRINT; PR #43 merged \u2014 GPT-PM 370c2c01 approved bounded criteria; runner reported 27 focused passes on exact candidate, accepted by GPT-PM without rerun. Included in PR #43 merge 9e211b5. One compatible fixture edit in test_capture_loop.py was not executed.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1515,7 +1515,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request 8b8e5da9-2f8a-4de3-9b74-a2e04d3ec792 approved TC037–039 bounded in-memory. At HEAD f6c1efce64c4a0f4b52892a350f66dde2e34e338, e2e-runner ran .\\.venv\\Scripts\\python.exe -m pytest tests/phase2/test_taxonomy.py -q: 72 passed in 1.49s, exit 0; code/security reviewers found no bounded blocker. Source resides in shared commit 223a30f, verified ancestor of remote PR #41 head b23604c; PR is open/unmerged and this task has no dedicated ID-tagged commit. Product TC037–039 remain NOT_RUN; Actor identity is caller-asserted; in-memory state/policy, durable storage and product wiring are not established.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request 8b8e5da9-2f8a-4de3-9b74-a2e04d3ec792 approved TC037\u2013039 bounded in-memory. At HEAD f6c1efce64c4a0f4b52892a350f66dde2e34e338, e2e-runner ran .\\.venv\\Scripts\\python.exe -m pytest tests/phase2/test_taxonomy.py -q: 72 passed in 1.49s, exit 0; code/security reviewers found no bounded blocker. Source resides in shared commit 223a30f, verified ancestor of remote PR #41 head b23604c; PR is open/unmerged and this task has no dedicated ID-tagged commit. Product TC037\u2013039 remain NOT_RUN; Actor identity is caller-asserted; in-memory state/policy, durable storage and product wiring are not established.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1540,7 +1540,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request e5426bd2-dde2-44fa-a061-f013a48a1e9c approved TC040–042 bounded in-memory. At HEAD f6c1efce64c4a0f4b52892a350f66dde2e34e338, e2e-runner ran .\\.venv\\Scripts\\python.exe -m pytest tests/phase2/test_aliases.py -q: 63 passed in 0.77s, exit 0; code/security reviewers found no bounded blocker. Shared source/fix commits 223a30f and 3f0d444 are ancestors of remote PR #41 head b23604c; PR #41 is open/unmerged and is a broad S1.1 PR, not a dedicated S4 PR. No task-ID-specific commit. Product TC040–042 remain NOT_RUN; HUMAN identity is caller-asserted; durable/runtime authorization is unverified.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request e5426bd2-dde2-44fa-a061-f013a48a1e9c approved TC040\u2013042 bounded in-memory. At HEAD f6c1efce64c4a0f4b52892a350f66dde2e34e338, e2e-runner ran .\\.venv\\Scripts\\python.exe -m pytest tests/phase2/test_aliases.py -q: 63 passed in 0.77s, exit 0; code/security reviewers found no bounded blocker. Shared source/fix commits 223a30f and 3f0d444 are ancestors of remote PR #41 head b23604c; PR #41 is open/unmerged and is a broad S1.1 PR, not a dedicated S4 PR. No task-ID-specific commit. Product TC040\u2013042 remain NOT_RUN; HUMAN identity is caller-asserted; durable/runtime authorization is unverified.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1565,7 +1565,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — delivered to open PR #44 — GPT-PM request bbd6289c-7987-4201-a8c9-39deba3e54a9 closed MAJOR-01 and approved TC043–045 bounded in-memory. At base HEAD f6c1efce64c4a0f4b52892a350f66dde2e34e338, assigned e2e-runner ran the focused file: 46 passed, exit 0; Codex did not run tests. GPT-PM approved delivery request c3989b9d-20cf-48e9-9efa-2079d5bdab79. Candidate ff3c5320dbbcb860862f940f66488c88941c2cd0 has parent b23604c92149f3c8cc78e4e93e2cfe49b9933e65, only the two approved files, and `[skip ci]`; it is pushed to `codex/s4-us015-candidate-20261106` and open as stacked PR #44 targeting the S1 branch. Workflow-run and status-check queries returned empty; CI was not run. PR must remain open; no merge/deploy authority. Product TC043–045 remain NOT_RUN; runtime blocking, trusted graph completeness, persistence and production remain unverified.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 delivered to open PR #44 \u2014 GPT-PM request bbd6289c-7987-4201-a8c9-39deba3e54a9 closed MAJOR-01 and approved TC043\u2013045 bounded in-memory. At base HEAD f6c1efce64c4a0f4b52892a350f66dde2e34e338, assigned e2e-runner ran the focused file: 46 passed, exit 0; Codex did not run tests. GPT-PM approved delivery request c3989b9d-20cf-48e9-9efa-2079d5bdab79. Candidate ff3c5320dbbcb860862f940f66488c88941c2cd0 has parent b23604c92149f3c8cc78e4e93e2cfe49b9933e65, only the two approved files, and `[skip ci]`; it is pushed to `codex/s4-us015-candidate-20261106` and open as stacked PR #44 targeting the S1 branch. Workflow-run and status-check queries returned empty; CI was not run. PR must remain open; no merge/deploy authority. Product TC043\u2013045 remain NOT_RUN; runtime blocking, trusted graph completeness, persistence and production remain unverified.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1599,7 +1599,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — `PromotionService` exists and checks expected version, evidence digest, expiry/revocation, trusted reviewer and independence, but no production binding was found; the only `promote_head` implementation found is the fake. Dependency R2-US-028 remains partial/caller-asserted, without real evidence-byte verification or wiring. Historical evidence: 82 tests and disposable-PostgreSQL integration in traceability; not rerun on current HEAD.",
+        "evidence": "PARTIAL \u2014 `PromotionService` exists and checks expected version, evidence digest, expiry/revocation, trusted reviewer and independence, but no production binding was found; the only `promote_head` implementation found is the fake. Dependency R2-US-028 remains partial/caller-asserted, without real evidence-byte verification or wiring. Historical evidence: 82 tests and disposable-PostgreSQL integration in traceability; not rerun on current HEAD.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1624,7 +1624,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
+        "evidence": "NOT_STARTED \u2014 Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1649,7 +1649,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
+        "evidence": "NOT_STARTED \u2014 Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1674,7 +1674,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1699,7 +1699,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1724,7 +1724,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1749,7 +1749,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Rebaseline: detailed docs/phase2/TASK_LEDGER.md records CLOSED_BOUNDED_SPRINT at approved S5 HEAD af9f287 with test/source blob correspondence and GPT-PM approval; US027 includes exact Windows memory-test candidate approval. Historical bounded acceptance only, not product/runtime qualification.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1774,7 +1774,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
+        "evidence": "NOT_STARTED \u2014 Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1799,7 +1799,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM-approved S6 batch c194760; 43 offline cases recorded. Real identity, accountant signature and promotion wiring NOT_RUN.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM-approved S6 batch c194760; 43 offline cases recorded. Real identity, accountant signature and promotion wiring NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1833,7 +1833,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM-approved S6 batch c194760; 114 focused passes on 2d12b95 with unchanged source/test blobs in integration. Real runner identity, persistence and 1C runtime NOT_RUN.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM-approved S6 batch c194760; 114 focused passes on 2d12b95 with unchanged source/test blobs in integration. Real runner identity, persistence and 1C runtime NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1867,7 +1867,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM c25bc6fe approved bounded scope; 109 focused passes recorded; PR #46 merged at 98b740590761b5567127337eb0ce5487ce21b334. Real 521.1 bytes/accountant acceptance NOT_RUN.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM c25bc6fe approved bounded scope; 109 focused passes recorded; PR #46 merged at 98b740590761b5567127337eb0ce5487ce21b334. Real 521.1 bytes/accountant acceptance NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1906,7 +1906,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM 7e939bb1 approved bounded offline TC091–093. Real 818HA/source mapping, accountant attestation, persistence/runtime NOT_RUN; ap.account_based remains NOT_AUTHORIZED.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM 7e939bb1 approved bounded offline TC091\u2013093. Real 818HA/source mapping, accountant attestation, persistence/runtime NOT_RUN; ap.account_based remains NOT_AUTHORIZED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1940,7 +1940,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM c7fb5f38 approved TC094–096 and closed MAJOR-01; 12 focused passes, Python/code reviews no actionable findings. PR #47 merged at e2ebf0ec6a85c8e71b176d653567798226dccdf9. Real MOLDRETAIL/native journal/pagination and runtime NOT_RUN.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM c7fb5f38 approved TC094\u2013096 and closed MAJOR-01; 12 focused passes, Python/code reviews no actionable findings. PR #47 merged at e2ebf0ec6a85c8e71b176d653567798226dccdf9. Real MOLDRETAIL/native journal/pagination and runtime NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -1979,7 +1979,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM-approved S6 batch c194760; 40 passing offline cases recorded for test_comparison_snapshot.py. In-memory only; persistent storage/live runtime NOT_RUN.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM-approved S6 batch c194760; 40 passing offline cases recorded for test_comparison_snapshot.py. In-memory only; persistent storage/live runtime NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2013,7 +2013,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM-approved S6 batch c194760; assigned e2e-runner recorded 61 focused passes at c0a5135 and current blobs match. Real runtime/persistent evidence NOT_RUN; ap.account_based remains disabled.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM-approved S6 batch c194760; assigned e2e-runner recorded 61 focused passes at c0a5135 and current blobs match. Real runtime/persistent evidence NOT_RUN; ap.account_based remains disabled.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2047,7 +2047,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_port.py, drive_fake.py, drive_oauth.py, drive_scope.py, 334 offline tests (108+110+116); scoped access, broad-never-isolation, ERP_MCP-owned fake consent over a scripted fake ...",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_port.py, drive_fake.py, drive_oauth.py, drive_scope.py, 334 offline tests (108+110+116); scoped access, broad-never-isolation, ERP_MCP-owned fake consent over a scripted fake ...",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2072,7 +2072,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_baseline.py, drive_cursor.py, 109 offline tests (53+56, count as of drafting); start-token-first baseline, namespaces, durable fail-closed cursor over the existing cursor CAS ...",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_baseline.py, drive_cursor.py, 109 offline tests (53+56, count as of drafting); start-token-first baseline, namespaces, durable fail-closed cursor over the existing cursor CAS ...",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2097,7 +2097,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_revisions.py, drive_membership.py, 90 offline tests (48+42); new revision UNATTESTED / old PASS historical, scope escape denied, removal tombstone over fakes only; no real ...",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_revisions.py, drive_membership.py, 90 offline tests (48+42); new revision UNATTESTED / old PASS historical, scope escape denied, removal tombstone over fakes only; no real ...",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2122,7 +2122,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_auth_state.py, 57 offline tests (41+16); AUTH_REQUIRED on invalid_grant/revoke, hint-only notifications, polling without watch over fakes only; no real Google auth or watch; G4 ...",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 Current bounded acceptance is recorded in TASK_LEDGER.md and the 2026-11-07 report; S7 code commit: drive_auth_state.py, 57 offline tests (41+16); AUTH_REQUIRED on invalid_grant/revoke, hint-only notifications, polling without watch over fakes only; no real Google auth or watch; G4 ...",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2147,7 +2147,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request c1d12be6-5291-4d11-833f-3576e9f3e630 accepted TC115–117 bounded offline; security-reviewer/silent-failure-hunter no actionable finding. Existing run-count discrepancy (ledger 194 vs traceability 91+129+26) remains accepted as non-blocking; source-linkage limitations remain explicit. Canonical product/UI, real accounting data, persistence/runtime, UAT and G5 remain NOT_RUN/NOT_PASSED.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request c1d12be6-5291-4d11-833f-3576e9f3e630 accepted TC115\u2013117 bounded offline; security-reviewer/silent-failure-hunter no actionable finding. Existing run-count discrepancy (ledger 194 vs traceability 91+129+26) remains accepted as non-blocking; source-linkage limitations remain explicit. Canonical product/UI, real accounting data, persistence/runtime, UAT and G5 remain NOT_RUN/NOT_PASSED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2189,7 +2189,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request 70e36811-3811-4bcf-9faf-04c93de001b1 accepted TC118–120; supplemental request cf1d3956-8b88-4e15-8d34-dd6e8362e3fa approved the one-line test-fixture fix. e2e-runner reported 432 focused passes in 2.91s at 2236f060 plus the exact fixture diff; code-reviewer/security-reviewer no actionable findings. Source commit 2236f060 and test-only commit bb6ef080 are pushed to origin branch; PR #48 merged at 5672c9c. Canonical product/UI, live source linkage, runtime/UAT and G5 remain NOT_RUN/NOT_PASSED.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request 70e36811-3811-4bcf-9faf-04c93de001b1 accepted TC118\u2013120; supplemental request cf1d3956-8b88-4e15-8d34-dd6e8362e3fa approved the one-line test-fixture fix. e2e-runner reported 432 focused passes in 2.91s at 2236f060 plus the exact fixture diff; code-reviewer/security-reviewer no actionable findings. Source commit 2236f060 and test-only commit bb6ef080 are pushed to origin branch; PR #48 merged at 5672c9c. Canonical product/UI, live source linkage, runtime/UAT and G5 remain NOT_RUN/NOT_PASSED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2228,7 +2228,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request 8af9760a-1cb2-4d76-9af8-3cf14699f718 accepted bounded TC121–123. e2e-runner reported 239 focused tests passed in 4.50s at integration HEAD 2236f060; code-reviewer/security-reviewer no actionable source finding. Code already present in integration base; no new implementation commit required. Expired-session 401 vs plan’s 403 text is a non-blocking documentation follow-up. HTTP/cookie/RBAC, SQL-backed JobQueuePort, canonical product scenarios, UAT and G5 remain NOT_RUN/NOT_PASSED.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request 8af9760a-1cb2-4d76-9af8-3cf14699f718 accepted bounded TC121\u2013123. e2e-runner reported 239 focused tests passed in 4.50s at integration HEAD 2236f060; code-reviewer/security-reviewer no actionable source finding. Code already present in integration base; no new implementation commit required. Expired-session 401 vs plan\u2019s 403 text is a non-blocking documentation follow-up. HTTP/cookie/RBAC, SQL-backed JobQueuePort, canonical product scenarios, UAT and G5 remain NOT_RUN/NOT_PASSED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2253,7 +2253,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request 7c4e68ac-69f1-4916-95a1-78ad58957cac records APPROVE — BOUNDED OFFLINE, 0 BLOCKER/MAJOR. PR #49 records functional-test-reviewer results: 112 passed in 2.18s for the focused module and 1 passed in 0.88s for the latest digest node; code-reviewer and silent-failure-hunter reported no remaining actionable findings. Exact commit 588ddd1f1bd08c8fe7579d3c03345de722eb07b0 is pushed; PR #49 is OPEN on base e2ebf0e. Real load/1C, staging/production, distributed budget and G6-pre remain NOT_RUN/NOT_VERIFIED. This S9 task was completed before S8 exit; US044–046 remain IMPLEMENTED_UNVERIFIED, and no further S9 acceptance/delivery is advanced until S8 exit is resolved.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request 7c4e68ac-69f1-4916-95a1-78ad58957cac records APPROVE \u2014 BOUNDED OFFLINE, 0 BLOCKER/MAJOR. PR #49 records functional-test-reviewer results: 112 passed in 2.18s for the focused module and 1 passed in 0.88s for the latest digest node; code-reviewer and silent-failure-hunter reported no remaining actionable findings. Exact commit 588ddd1f1bd08c8fe7579d3c03345de722eb07b0 is pushed; PR #49 is OPEN on base e2ebf0e. Real load/1C, staging/production, distributed budget and G6-pre remain NOT_RUN/NOT_VERIFIED. This S9 task was completed before S8 exit; US044\u2013046 remain IMPLEMENTED_UNVERIFIED, and no further S9 acceptance/delivery is advanced until S8 exit is resolved.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2267,7 +2267,7 @@
       "all_ref_id_mentions": [
         {
           "sha": "1ca4f85fa0a988e8d6f127864e4a013d84421822",
-          "subject": "[S9] Bounded acceptance for R2-US-043–046"
+          "subject": "[S9] Bounded acceptance for R2-US-043\u2013046"
         },
         {
           "sha": "e5761eb89a7ecdbd6a8cecb1b0c842c651b6eb21",
@@ -2300,7 +2300,7 @@
         "status": "CLOSED_BOUNDED_SPRINT",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "CLOSED_BOUNDED_SPRINT — GPT-PM request f4776bf0-1bd1-4c50-a9a4-2d13ff37e2a4 accepted TC130–132; assigned functional-test-reviewer/e2e-runner evidence and exact reviewed hashes are recorded in docs/phase2/TASK_LEDGER.md. Commit 0e4bb017ce26cc187b16cb6caf5293712fc137b5 is on open PR #49. Real audit sink, delivery transport, human alert delivery, persistence and production remain NOT_RUN/NOT_VERIFIED; G6-pre remains separate.",
+        "evidence": "CLOSED_BOUNDED_SPRINT \u2014 GPT-PM request f4776bf0-1bd1-4c50-a9a4-2d13ff37e2a4 accepted TC130\u2013132; assigned functional-test-reviewer/e2e-runner evidence and exact reviewed hashes are recorded in docs/phase2/TASK_LEDGER.md. Commit 0e4bb017ce26cc187b16cb6caf5293712fc137b5 is on open PR #49. Real audit sink, delivery transport, human alert delivery, persistence and production remain NOT_RUN/NOT_VERIFIED; G6-pre remains separate.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2334,7 +2334,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Historical ledger IMPLEMENTED_UNVERIFIED, current status unconfirmed; S9 code: release_migration.py, release_rollback.py, 304 offline tests (134+126+44 SQL guard); typed step classification, shadow compare by digest, decision-only rollback (executed=False), effective ...",
+        "evidence": "PARTIAL \u2014 Historical ledger IMPLEMENTED_UNVERIFIED, current status unconfirmed; S9 code: release_migration.py, release_rollback.py, 304 offline tests (134+126+44 SQL guard); typed step classification, shadow compare by digest, decision-only rollback (executed=False), effective ...",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2359,7 +2359,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Historical ledger IMPLEMENTED_UNVERIFIED, current status unconfirmed; S9 code: restore_verify.py, export_safety.py, retention_hold.py, 318 offline tests (118+143+57); restore manifest/FK catalogue/digest/head verification over in-memory rows, export masking/tenant ...",
+        "evidence": "PARTIAL \u2014 Historical ledger IMPLEMENTED_UNVERIFIED, current status unconfirmed; S9 code: restore_verify.py, export_safety.py, retention_hold.py, 318 offline tests (118+143+57); restore manifest/FK catalogue/digest/head verification over in-memory rows, export masking/tenant ...",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2384,7 +2384,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof; S10 offline closure is ENGINEERING_HANDOFF only (`S10_RELEASE_HANDOFF.md`), canary NOT_RUN pending operator permission and real data",
+        "evidence": "NOT_STARTED \u2014 Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof; S10 offline closure is ENGINEERING_HANDOFF only (`S10_RELEASE_HANDOFF.md`), canary NOT_RUN pending operator permission and real data",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2414,7 +2414,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof; no exact-head release bundle approved (see `S10_RELEASE_HANDOFF.md`), Release 2 NO-GO",
+        "evidence": "NOT_STARTED \u2014 Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof; no exact-head release bundle approved (see `S10_RELEASE_HANDOFF.md`), Release 2 NO-GO",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2439,7 +2439,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
+        "evidence": "NOT_STARTED \u2014 Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2464,7 +2464,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED_BOUNDED / PR OPEN — V2-S12-01 is included in PR #54, head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8. GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c / reply 68a05b11-12e4-59e1-976c-6a7c1027f917 confirms V2-S12-01–05 remain accepted only in their bounded offline scope. PR #54 is open/unmerged; no formal S12 entry or operational authority.",
+        "evidence": "ACCEPTED_BOUNDED / PR OPEN \u2014 V2-S12-01 is included in PR #54, head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8. GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c / reply 68a05b11-12e4-59e1-976c-6a7c1027f917 confirms V2-S12-01\u201305 remain accepted only in their bounded offline scope. PR #54 is open/unmerged; no formal S12 entry or operational authority.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2489,7 +2489,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED_BOUNDED / PR OPEN — V2-S12-02 is included in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8; GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c confirms V2-S12-01–05 remain accepted in bounded offline scope. PR #54 is unmerged.",
+        "evidence": "ACCEPTED_BOUNDED / PR OPEN \u2014 V2-S12-02 is included in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8; GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c confirms V2-S12-01\u201305 remain accepted in bounded offline scope. PR #54 is unmerged.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2514,7 +2514,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED_BOUNDED / PR OPEN — V2-S12-03 is synthetic TEST-lane principal/approval only, included in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8; GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c preserves acceptance only within bounded offline scope. PR #54 is unmerged; no real identity evidence.",
+        "evidence": "ACCEPTED_BOUNDED / PR OPEN \u2014 V2-S12-03 is synthetic TEST-lane principal/approval only, included in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8; GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c preserves acceptance only within bounded offline scope. PR #54 is unmerged; no real identity evidence.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2539,7 +2539,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED_BOUNDED / PR OPEN — V2-S12-04 is offline synthetic standing-grant policy and CT13 accounting matrix, included in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8; GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c preserves bounded acceptance. PR #54 is unmerged; no runtime or deployment qualification.",
+        "evidence": "ACCEPTED_BOUNDED / PR OPEN \u2014 V2-S12-04 is offline synthetic standing-grant policy and CT13 accounting matrix, included in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8; GPT-PM follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c preserves bounded acceptance. PR #54 is unmerged; no runtime or deployment qualification.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2564,7 +2564,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED_BOUNDED / PR OPEN — V2-S12-05 accepted OFFLINE_SYNTHETIC_ONLY by GPT-PM request f1223daf-2a5a-4eef-9048-e44fd624c2fb; current follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c confirms V2-S12-01–05 remain accepted only in bounded scope. Commit 9b61e73 is in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8, open/unmerged.",
+        "evidence": "ACCEPTED_BOUNDED / PR OPEN \u2014 V2-S12-05 accepted OFFLINE_SYNTHETIC_ONLY by GPT-PM request f1223daf-2a5a-4eef-9048-e44fd624c2fb; current follow-up 71ff3f3f-7c50-496a-9fb1-d181f00f9a3c confirms V2-S12-01\u201305 remain accepted only in bounded scope. Commit 9b61e73 is in PR #54 at head 7e1e732ead6a130c9e39159c8a2efbe72c4411b8, open/unmerged.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2590,7 +2590,7 @@
       "sprint": "S12",
       "title": "error-code registry and crash matrix",
       "criteria": [
-        "Constant safe error rendering; §11 local reducer crosswalk W1–W11b; fail-closed offline TEST-lane guard; focused tests; internal and final GPT-PM review."
+        "Constant safe error rendering; \u00a711 local reducer crosswalk W1\u2013W11b; fail-closed offline TEST-lane guard; focused tests; internal and final GPT-PM review."
       ],
       "native_state": "verified",
       "project_status": "ACCEPTED_BOUNDED",
@@ -2598,7 +2598,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED_BOUNDED / PUSHED IN PR #54 — GPT-PM exact-artifact verdict APPROVE — OFFLINE_SYNTHETIC_ONLY, request 625a5172-1310-4e46-a723-e472aed4cf6c, bound to PR #54 base 7e1e732ead6a130c9e39159c8a2efbe72c4411b8 and four verified SHA-256 hashes. e2e-runner command: .venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_s12_crash_windows.py — 24 passed in 6.12s, exit 0. Code/security/reliability reviews: no actionable findings. Commit 4b59d3de4e6d73359fc8ea2ef2588ef6d442cc17 pushed to codex/v2-s12-01-20261108 / PR #54, now open and unmerged. Persistence, durable recovery, runtime, OAuth/IAM, live 1C/COM and deployment remain NOT_RUN / NOT_VERIFIED / NOT_AUTHORIZED as applicable.",
+        "evidence": "ACCEPTED_BOUNDED / PUSHED IN PR #54 \u2014 GPT-PM exact-artifact verdict APPROVE \u2014 OFFLINE_SYNTHETIC_ONLY, request 625a5172-1310-4e46-a723-e472aed4cf6c, bound to PR #54 base 7e1e732ead6a130c9e39159c8a2efbe72c4411b8 and four verified SHA-256 hashes. e2e-runner command: .venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_s12_crash_windows.py \u2014 24 passed in 6.12s, exit 0. Code/security/reliability reviews: no actionable findings. Commit 4b59d3de4e6d73359fc8ea2ef2588ef6d442cc17 pushed to codex/v2-s12-01-20261108 / PR #54, now open and unmerged. Persistence, durable recovery, runtime, OAuth/IAM, live 1C/COM and deployment remain NOT_RUN / NOT_VERIFIED / NOT_AUTHORIZED as applicable.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2623,7 +2623,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED_BOUNDED / PUSHED IN PR #54 — Task GO a6707f38-22d6-4ae1-8789-20261110a120 / reply 32ed66f2-7628-5df1-aacf-867781a580b1. Designated functional-test-reviewer: pytest -q tests/phase2/test_s12_07_ct14_e47.py, 15 passed in 1.52s at baseline 4b59d3de4e6d73359fc8ea2ef2588ef6d442cc17. Internal reviews /root/s12_07_code_review, /root/s12_07_security_review, /root/s12_07_reliability_review: no material/actionable findings. Final exact-candidate GPT-PM verdict APPROVE — OFFLINE_SYNTHETIC_ONLY, request c9c09b84-3b58-4f23-8978-89ef3e606c71 / correlated reply 09f3304f-9af3-53e8-b54c-57ced17495eb; all three attached candidate hashes matched. Commit 2629aa2a20f6e40641a5ece7de42a1587a2748a1 pushed to origin/codex/v2-s12-01-20261108; PR #54 open/unmerged at this head. Runtime/1C, PostgreSQL, migrations, deployment and production qualification remain NOT_RUN / NOT_VERIFIED / NOT_AUTHORIZED as applicable and are not S12-07 acceptance.",
+        "evidence": "ACCEPTED_BOUNDED / PUSHED IN PR #54 \u2014 Task GO a6707f38-22d6-4ae1-8789-20261110a120 / reply 32ed66f2-7628-5df1-aacf-867781a580b1. Designated functional-test-reviewer: pytest -q tests/phase2/test_s12_07_ct14_e47.py, 15 passed in 1.52s at baseline 4b59d3de4e6d73359fc8ea2ef2588ef6d442cc17. Internal reviews /root/s12_07_code_review, /root/s12_07_security_review, /root/s12_07_reliability_review: no material/actionable findings. Final exact-candidate GPT-PM verdict APPROVE \u2014 OFFLINE_SYNTHETIC_ONLY, request c9c09b84-3b58-4f23-8978-89ef3e606c71 / correlated reply 09f3304f-9af3-53e8-b54c-57ced17495eb; all three attached candidate hashes matched. Commit 2629aa2a20f6e40641a5ece7de42a1587a2748a1 pushed to origin/codex/v2-s12-01-20261108; PR #54 open/unmerged at this head. Runtime/1C, PostgreSQL, migrations, deployment and production qualification remain NOT_RUN / NOT_VERIFIED / NOT_AUTHORIZED as applicable and are not S12-07 acceptance.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2648,7 +2648,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED BOUNDED TEST DELTA / PUSHED; PR #58 OPEN (STACKED ON #54) — GPT-PM request 7d2a8328-62de-44a1-9d9d-1cfa4936f8e1 authorized only bounded pre-entry S13-01 work. e2e-runner changed only tests/phase2/test_change_ledger_sql.py (84 insertions/7 adjustments); source/migrations untouched. Focused disposable PostgreSQL 16.14 result: 12 passed in 24.65s, exit 0; temporary container and volume removed after ID/owner-label verification. Database/security/reliability reviews: no actionable findings. GPT-PM exact-diff review request 2c9ed582-0d9d-457a-b0b6-f0df5f5eb3b7: APPROVE, 0 BLOCKER/0 MAJOR; it accepts this test delta only. Commit e3c98f2 pushed to codex/v2-s13-01-ledger-20261110; PR #58 open, based on PR #54 branch. Full runtime/deployment/live-1C, formal S13, and S12/G8 closure remain NOT_RUN/NOT_APPROVED.",
+        "evidence": "ACCEPTED BOUNDED TEST DELTA / PUSHED; PR #58 OPEN (STACKED ON #54) \u2014 GPT-PM request 7d2a8328-62de-44a1-9d9d-1cfa4936f8e1 authorized only bounded pre-entry S13-01 work. e2e-runner changed only tests/phase2/test_change_ledger_sql.py (84 insertions/7 adjustments); source/migrations untouched. Focused disposable PostgreSQL 16.14 result: 12 passed in 24.65s, exit 0; temporary container and volume removed after ID/owner-label verification. Database/security/reliability reviews: no actionable findings. GPT-PM exact-diff review request 2c9ed582-0d9d-457a-b0b6-f0df5f5eb3b7: APPROVE, 0 BLOCKER/0 MAJOR; it accepts this test delta only. Commit e3c98f2 pushed to codex/v2-s13-01-ledger-20261110; PR #58 open, based on PR #54 branch. Full runtime/deployment/live-1C, formal S13, and S12/G8 closure remain NOT_RUN/NOT_APPROVED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2689,7 +2689,7 @@
         "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED BOUNDED SYNTHETIC POSTGRESQL TEST DELTA / PUSHED; PR #58 OPEN (NOT MERGED) — GPT-PM bounded GO request fc6c4073-53b7-4fc2-9b50-08a9fa6e22b5. e2e-runner added four focused tests only in tests/phase2/test_change_ledger_sql.py (+159 lines); no source/migration changes. Exact focused run: 9 passed in 19.58s; owned disposable PostgreSQL cleanup: CLEANUP: owned container absent. Database/reliability/security review: no actionable findings. GPT-PM exact-diff request da358ca4-9a24-4bd4-b1a8-5fc465a0cf5a: APPROVE — BOUNDED TEST DELTA, 0 BLOCKER/0 MAJOR. Same-target lock-wait test is bounded SQL evidence and not independent proof of physical target-lock enforcement. Commit 9d3cb5f pushed to the S13 sprint branch; PR #58 updated/open. Physical 1C writer/runtime, full story completion and formal S13 remain NOT_RUN/NOT_APPROVED.",
+        "evidence": "ACCEPTED BOUNDED SYNTHETIC POSTGRESQL TEST DELTA / PUSHED; PR #58 OPEN (NOT MERGED) \u2014 GPT-PM bounded GO request fc6c4073-53b7-4fc2-9b50-08a9fa6e22b5. e2e-runner added four focused tests only in tests/phase2/test_change_ledger_sql.py (+159 lines); no source/migration changes. Exact focused run: 9 passed in 19.58s; owned disposable PostgreSQL cleanup: CLEANUP: owned container absent. Database/reliability/security review: no actionable findings. GPT-PM exact-diff request da358ca4-9a24-4bd4-b1a8-5fc465a0cf5a: APPROVE \u2014 BOUNDED TEST DELTA, 0 BLOCKER/0 MAJOR. Same-target lock-wait test is bounded SQL evidence and not independent proof of physical target-lock enforcement. Commit 9d3cb5f pushed to the S13 sprint branch; PR #58 updated/open. Physical 1C writer/runtime, full story completion and formal S13 remain NOT_RUN/NOT_APPROVED.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2730,7 +2730,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "ACCEPTED BOUNDED PRE-ENTRY + SYNTHETIC KEY/RESTORE/LATESTNESS/NONCE/ROLLBACK-REPLAY SLICES / FULL TASK OPEN — GPT-PM request a8b92ce2-35b1-411c-8b79-9d4f18c09e30 approved the exact five latestness snapshots as a bounded synthetic delta. Nonce candidate was corrected after MAJOR test-integrity finding (4cd2d4b4-a40e-4053-93c4-3d66008da0ca); corrected exact snapshots approved by 55d6f3d5-3c2f-4b46-9cba-85431f0ac4d1. Test-only rollback/replay slice commit 5ed9c52f3879932f1877521d5b787966cd0f534a was approved by GPT-PM request 61a30424-fcf1-4eee-8f2c-1d23e72da630 for exact test hash e4158f3f653406561991e24062fdd6a186042b315eb90f98e0a4148791b12787 (0/0/0); assigned functional-test-reviewer reported 2 passed, 31 deselected. Local fetch and PR #58 metadata confirm remote head 5ed9c52; PR remains open/unmerged. Earlier broader nonce-candidate results and the final 1-test fixture correction remain separate; no broad rerun at 5ed9c52. Synthetic tests still have no real/durable provider, external anchor store, trust-root custody, production key policy/revocation, full restore/recovery or shared physical-writer fence. S12/G8/formal S13 and full S13-03 remain open; runtime/1C/production NOT_RUN.",
+        "evidence": "ACCEPTED BOUNDED PRE-ENTRY + SYNTHETIC KEY/RESTORE/LATESTNESS/NONCE/ROLLBACK-REPLAY SLICES / FULL TASK OPEN \u2014 GPT-PM request a8b92ce2-35b1-411c-8b79-9d4f18c09e30 approved the exact five latestness snapshots as a bounded synthetic delta. Nonce candidate was corrected after MAJOR test-integrity finding (4cd2d4b4-a40e-4053-93c4-3d66008da0ca); corrected exact snapshots approved by 55d6f3d5-3c2f-4b46-9cba-85431f0ac4d1. Test-only rollback/replay slice commit 5ed9c52f3879932f1877521d5b787966cd0f534a was approved by GPT-PM request 61a30424-fcf1-4eee-8f2c-1d23e72da630 for exact test hash e4158f3f653406561991e24062fdd6a186042b315eb90f98e0a4148791b12787 (0/0/0); assigned functional-test-reviewer reported 2 passed, 31 deselected. Local fetch and PR #58 metadata confirm remote head 5ed9c52; PR remains open/unmerged. Earlier broader nonce-candidate results and the final 1-test fixture correction remain separate; no broad rerun at 5ed9c52. Synthetic tests still have no real/durable provider, external anchor store, trust-root custody, production key policy/revocation, full restore/recovery or shared physical-writer fence. S12/G8/formal S13 and full S13-03 remain open; runtime/1C/production NOT_RUN.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2760,7 +2760,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
+        "evidence": "NOT_STARTED \u2014 UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2785,7 +2785,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
+        "evidence": "NOT_STARTED \u2014 UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2810,7 +2810,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
+        "evidence": "PARTIAL \u2014 Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2835,7 +2835,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
+        "evidence": "PARTIAL \u2014 Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2860,7 +2860,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
+        "evidence": "PARTIAL \u2014 Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2885,7 +2885,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
+        "evidence": "PARTIAL \u2014 Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2910,7 +2910,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
+        "evidence": "PARTIAL \u2014 Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2935,7 +2935,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
+        "evidence": "PARTIAL \u2014 Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2960,7 +2960,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
+        "evidence": "PARTIAL \u2014 Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -2985,7 +2985,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
+        "evidence": "PARTIAL \u2014 Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3010,7 +3010,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
+        "evidence": "PARTIAL \u2014 Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3035,7 +3035,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
+        "evidence": "PARTIAL \u2014 Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3060,7 +3060,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
+        "evidence": "PARTIAL \u2014 Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3085,7 +3085,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
+        "evidence": "PARTIAL \u2014 Committed source exists under src/erp_mcp_s15 (8d991bc, 89f8cf9, 15f9b70, ba01714); real-ledger and formal sprint acceptance remain unproven. See rebaseline task evidence audit.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3110,7 +3110,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
+        "evidence": "PARTIAL \u2014 Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3135,7 +3135,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
+        "evidence": "PARTIAL \u2014 Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3160,7 +3160,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
+        "evidence": "PARTIAL \u2014 Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3185,7 +3185,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
+        "evidence": "PARTIAL \u2014 Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3210,7 +3210,7 @@
         "status": "PARTIAL",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "PARTIAL — Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
+        "evidence": "PARTIAL \u2014 Source exists under src/erp_mcp_s16 (bbf2d9f and subsequent FIN hardening); current services.py includes dirty edits. Synthetic verification is recorded under FIN; main integration and full sprint acceptance remain unproven.",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3235,7 +3235,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3260,7 +3260,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3285,7 +3285,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3310,7 +3310,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3335,7 +3335,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3360,7 +3360,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3385,7 +3385,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3410,7 +3410,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3435,7 +3435,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3460,7 +3460,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3485,7 +3485,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3510,7 +3510,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — Queued; no task-ID commits",
+        "evidence": "NOT_STARTED \u2014 Queued; no task-ID commits",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3535,7 +3535,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
+        "evidence": "NOT_STARTED \u2014 UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3560,7 +3560,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
+        "evidence": "NOT_STARTED \u2014 UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3585,7 +3585,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
+        "evidence": "NOT_STARTED \u2014 UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3610,7 +3610,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
+        "evidence": "NOT_STARTED \u2014 UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3635,7 +3635,7 @@
         "status": "NOT_STARTED",
         "source": "PROJECT_PLAN.md",
         "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "NOT_STARTED — UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
+        "evidence": "NOT_STARTED \u2014 UNKNOWN: sprint-level status only, no task-ID commits or task evidence",
         "reconciled_at": "2026-11-17T14:31:09+02:00",
         "refs_scanned": 103,
         "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
@@ -3654,20 +3654,39 @@
       "criteria": [
         "All refs and selected source/document inventory captured with hashes; audit coverage and limits explicit"
       ],
-      "native_state": "in_progress",
-      "project_status": "IN_PROGRESS",
+      "native_state": "done",
+      "project_status": "ACCEPTED_BOUNDED",
       "evidence": {
-        "status": "IN_PROGRESS",
+        "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
-        "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_PROGRESS — docs/rebaseline/2026-11-17/ARCHITECTURE_AUDIT.md; all-ref file/document inventories; deeper subsystem mapping still pending",
-        "reconciled_at": "2026-11-17T14:31:09+02:00",
+        "source_sha256": "ada6346892c069d99ba9e98157c66a0899b76617765a79d849127386d7d768a0",
+        "evidence": "ACCEPTED_BOUNDED \u2014 docs/rebaseline/2026-11-17/ARCHITECTURE_AUDIT.md; all-ref file/document inventories; subsystem findings and capture limits recorded",
+        "reconciled_at": "2026-11-17T16:17:49+02:00",
         "refs_scanned": 103,
-        "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
+        "refs_sha256": "dd4bdf47e88152b3b632a252050ca6a84026b3aa95dc636a65722aa446699d4c"
       },
-      "recorded_commits": [],
-      "verify": null,
-      "review": null,
+      "recorded_commits": [
+        "431885750dec5615b3c880baea23906acf9ec82e",
+        "0c74e4799d04f5fa70247714eb681e9809e0cad8",
+        "284f2ddc2ebbd1dd91217c59441acc5b5c946d95",
+        "b357eead74c85f8593ab9b19fc92e752683aa159",
+        "19bc599cea9e023111666fa2f24fc251ee142930",
+        "ae48e290c779b8b4be1d09f25e48ac7890270d60"
+      ],
+      "verify": {
+        "result": "pass",
+        "evidence": "python tests/test_rebaseline_audit_tools.py: Ran 11 tests in 9.907s; OK; exit0 on ae48e290. Manual evidence criteria and explicit limits: docs/rebaseline/2026-11-17/FINAL_REVIEW_EVIDENCE.md and CAPTURE_LIMITS.md. Audit only, not product acceptance.",
+        "at": "2026-11-17T16:16:57+02:00",
+        "task_commit": "ae48e290c779b8b4be1d09f25e48ac7890270d60",
+        "by": "functional-test-reviewer"
+      },
+      "review": {
+        "result": "accepted",
+        "findings": 1,
+        "at": "2026-11-17T16:17:00+02:00",
+        "task_commit": "ae48e290c779b8b4be1d09f25e48ac7890270d60",
+        "by": "code-reviewer,python-reviewer,reliability-reviewer,silent-failure-hunter"
+      },
       "deferred_or_blocked": null,
       "all_ref_id_mentions": [],
       "commit_reachability": []
@@ -3679,20 +3698,34 @@
       "criteria": [
         "Every known task maps to source and commit evidence without fabricated acceptance"
       ],
-      "native_state": "todo",
-      "project_status": "IN_PROGRESS",
+      "native_state": "done",
+      "project_status": "ACCEPTED_BOUNDED",
       "evidence": {
-        "status": "IN_PROGRESS",
+        "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
-        "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_PROGRESS — TASK_EVIDENCE.json preserves 104 original records plus 3 audit tasks; S11 milestone restored",
-        "reconciled_at": "2026-11-17T14:31:09+02:00",
+        "source_sha256": "ada6346892c069d99ba9e98157c66a0899b76617765a79d849127386d7d768a0",
+        "evidence": "ACCEPTED_BOUNDED \u2014 TASK_EVIDENCE.json preserves 104 original records plus 3 audit tasks; S11 milestone restored",
+        "reconciled_at": "2026-11-17T16:17:49+02:00",
         "refs_scanned": 103,
-        "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
+        "refs_sha256": "dd4bdf47e88152b3b632a252050ca6a84026b3aa95dc636a65722aa446699d4c"
       },
-      "recorded_commits": [],
-      "verify": null,
-      "review": null,
+      "recorded_commits": [
+        "fb96887f8736d26c8cc742fe56159e9054ba9fed"
+      ],
+      "verify": {
+        "result": "pass",
+        "evidence": "python tests/test_rebaseline_audit_tools.py: Ran 11 tests in 9.907s; OK; exit0 on ae48e290. Manual evidence criteria and explicit limits: docs/rebaseline/2026-11-17/FINAL_REVIEW_EVIDENCE.md and CAPTURE_LIMITS.md. Audit only, not product acceptance.",
+        "at": "2026-11-17T16:17:03+02:00",
+        "task_commit": "fb96887f8736d26c8cc742fe56159e9054ba9fed",
+        "by": "functional-test-reviewer"
+      },
+      "review": {
+        "result": "accepted",
+        "findings": 1,
+        "at": "2026-11-17T16:17:05+02:00",
+        "task_commit": "fb96887f8736d26c8cc742fe56159e9054ba9fed",
+        "by": "code-reviewer,python-reviewer,reliability-reviewer,silent-failure-hunter"
+      },
       "deferred_or_blocked": null,
       "all_ref_id_mentions": [],
       "commit_reachability": []
@@ -3704,24 +3737,42 @@
       "criteria": [
         "Every branch disposition preserves unique work; automatic GitHub branch deletion enabled; local cleanup safety documented"
       ],
-      "native_state": "todo",
-      "project_status": "IN_PROGRESS",
+      "native_state": "done",
+      "project_status": "ACCEPTED_BOUNDED",
       "evidence": {
-        "status": "IN_PROGRESS",
+        "status": "ACCEPTED_BOUNDED",
         "source": "PROJECT_PLAN.md",
-        "source_sha256": "02eae2416e943f85ca7c56256f84a807e9661d2305d90bc2f8ca68d7953da709",
-        "evidence": "IN_PROGRESS — BRANCH_INVENTORY.json, PATCH_EQUIVALENCE.json, WORKTREE_STATES.json, INTEGRATION_BACKLOG.md; deleteBranchOnMerge enabled",
-        "reconciled_at": "2026-11-17T14:31:09+02:00",
+        "source_sha256": "ada6346892c069d99ba9e98157c66a0899b76617765a79d849127386d7d768a0",
+        "evidence": "ACCEPTED_BOUNDED \u2014 BRANCH_INVENTORY.json, PATCH_EQUIVALENCE.json, WORKTREE_STATES.json, INTEGRATION_BACKLOG.md; deleteBranchOnMerge enabled",
+        "reconciled_at": "2026-11-17T16:17:49+02:00",
         "refs_scanned": 103,
-        "refs_sha256": "f32daf9feb575eb6a6223e524158abb053cba138145675a538de84bf8d2a291a"
+        "refs_sha256": "dd4bdf47e88152b3b632a252050ca6a84026b3aa95dc636a65722aa446699d4c"
       },
-      "recorded_commits": [],
-      "verify": null,
-      "review": null,
+      "recorded_commits": [
+        "a85b4f524fc2665d27aba59e9c988e7d2869b1c8"
+      ],
+      "verify": {
+        "result": "pass",
+        "evidence": "python tests/test_rebaseline_audit_tools.py: Ran 11 tests in 9.907s; OK; exit0 on ae48e290. Manual evidence criteria and explicit limits: docs/rebaseline/2026-11-17/FINAL_REVIEW_EVIDENCE.md and CAPTURE_LIMITS.md. Audit only, not product acceptance.",
+        "at": "2026-11-17T16:17:07+02:00",
+        "task_commit": "a85b4f524fc2665d27aba59e9c988e7d2869b1c8",
+        "by": "functional-test-reviewer"
+      },
+      "review": {
+        "result": "accepted",
+        "findings": 1,
+        "at": "2026-11-17T16:17:09+02:00",
+        "task_commit": "a85b4f524fc2665d27aba59e9c988e7d2869b1c8",
+        "by": "code-reviewer,python-reviewer,reliability-reviewer,silent-failure-hunter"
+      },
       "deferred_or_blocked": null,
       "all_ref_id_mentions": [],
       "commit_reachability": []
     }
   ],
-  "limits": "Reconciled project status is not a fabricated test/review receipt. All-ref commit mentions prove mentions, not implementation or acceptance."
+  "limits": "Reconciled project status is not a fabricated test/review receipt. All-ref commit mentions prove mentions, not implementation or acceptance.",
+  "initial_ledger_sha256": "b049cf63cf0b24da32f97d67011bb86aface4b8bd2e4a784d853e47187adb00d",
+  "reviewed_ledger_sha256": "b134726ccc43aa7a419a6d702025467f02d296f5850f96b13fe169b601f8817b",
+  "reviewed_ledger_snapshot": "ledger.reviewed.snapshot.json",
+  "reviewed_at": "2026-11-17T14:18:08.725515+00:00"
 }
