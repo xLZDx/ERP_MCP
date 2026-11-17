@@ -2129,3 +2129,7 @@ R2-US-016 is in progress. Historical adc5ec7 included an Admin API, PostgreSQL a
 ## 2026-11-17 - Accept the S4 offline evidence design for implementation
 
 GPT-PM design request 68f7b4a3-8a29-439e-ba16-3a579d844395, correlated reply 2aa8aa8a-e465-5f88-b1db-e26949932f69, approved the bounded offline first slice at 2b46bdd9f14630a5225c0b693c3fdd99bc725b13. The architect independently confirmed that the revised contract addresses both major findings. The decision did not accept TC046-TC048 or any code, durable provider, migration, production operation or release. The implementation branch stays offline.
+
+## 2026-11-17 - Specify the durable S4 promotion transaction
+
+The offline implementation at 7e3b2b5 is retained. The durable design keeps the historical acceptance key, adds a companion fingerprint, defines a versioned length-framed encoding, and serializes eligibility, enrolment, head update, and authoritative read-back via the source row. Architecture review identified a legacy-call bypass and a registration race; the revised design places both paths under the same transaction lock and records role and row-level security rules. No code or migration was executed. This is a design candidate, not broadening the prior GPT-PM approval.

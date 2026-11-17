@@ -636,3 +636,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: the first S4 promotion design described verification and replay without defining where external revocation and full request equality are enforced. Layer: architecture review. Rule: specify the transaction linearization point and durable replay fingerprint before implementing a write boundary.
 
 - 2026-11-17 SUCCESS: bounded offline promotion verifies content bytes before new writes and keeps the historical reference-only path explicitly unqualified. Layer: integration design. Rule: carry trusted company scope separately and require a durable full fingerprint before claiming replay-safe promotion.
+
+- 2026-11-17 SHORTCOMING: the first durable promotion draft did not name every legacy entry point or lock eligibility registration. Layer: architecture review. Rule: specify how legacy clients and concurrent registration share the same lock before enabling a stronger transaction boundary.
