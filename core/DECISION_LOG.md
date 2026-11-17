@@ -1901,3 +1901,16 @@ structural_hash only; six current dirty scheduler/capture-related files differ,
 so historical acceptance is preserved without extending it to new bytes.
 Prepared integration review manifest covers 393 local paths; no product fix or
 new test/runtime qualification occurred in the audit.
+
+
+## 2026-11-17 — Prepare per-branch cleanup manifest
+
+CLEANUP_MANIFEST.json assigns every original local branch a protected,
+unmerged-preserve, dirty-worktree-preserve or merged-candidate disposition.
+Each candidate requires fresh tip/main ancestry and worktree/process/junction
+safety checks before deletion. Remote automatic deletion after merge is enabled;
+no periodic cleanup task was created. Main's CI YAML still contains historical
+push/PR triggers, while the actual GitHub workflow is already disabled_manually;
+the disable retry returned403 for inactive state and read-back remained disabled.
+Preserve manual-only workflow source in the future integration candidate.
+This completes cleanup preparation, not integration or old-branch deletion.
