@@ -2173,3 +2173,45 @@ All seven disposable PostgreSQL scenarios passed at 40d4547; the invocation-owne
 ## 2026-11-18 - Keep unbound promotion history private
 
 Two routed reviewers confirmed that the synthetic SQL classified old acceptance events before proving their company. Legacy events lack durable company provenance; the current source company does not establish historical ownership. Both new SQL entry points now give the same generic refusal as an unknown unregistered request. NO_COMMIT requires a registered, currently authorized company request. The modern receipt path checks request authorization before recovery details and binds the fingerprint to the referenced eligibility record. The correction is fixture-only.
+
+## 2026-11-18 - Close S4 on the reviewed PR
+
+GitHub reports PR #60 MERGED at fe0d771f911cdfffab0be593624b31fab0818d5a with no pending auto-merge. Its approved head is d4efd2cd661c1aef4563ccf5bce2a78b06702df6, GPT-PM request 2c684538-d7fe-48a7-b01d-079472836141, correlated reply f5f347d8-9edc-5f2f-a8ff-510e45a6ee2f. Close S4 with four bounded task acceptances. Keep real provider, authenticated runtime integration, real network failure recovery, and canonical product verification separate in the backlog. No deployment, release promotion, production migration or 1C operation took place.
+
+## 2026-11-18 - Start the bounded S5 native capture continuation
+
+After bounded S4 closure, the ledger selects R2-US-021 before R2-US-022. The historical S5 plan deferred both while it added the permit, operation boundary, vault and parser. The retained code does not implement an original-artifact intake, company-scoped baseline association or UI selector state machine. The design review corrected three risks: unsupported XLSX/MXL in the reference vault, missing company/database authority on baseline reads, and caller-asserted completeness. The reviewed candidate keeps the first implementation offline and retains native receipt and storage qualification as separate product evidence. S4 closeout commit f12742b changed documentation and generated report copies only; no application, SQL, test or script paths changed.
+
+## 2026-11-18 - Define S5 publication and permit authority
+
+Phase 5 review e02f18ab-fa4c-41fd-96d2-9b212654a6b2, correlated reply ee7e04eb-9a52-5583-b209-7a0b396452d0, returned REVISE for two major design gaps: publication identity and independent permit authority. The revised draft binds an authorized request ID to immutable bytes/scope/claims, serializes receipt publication and distinguishes an orphan from a successful baseline. It also binds an authority-issued permit to trusted recipe context, exact operation set, validity and current revocation, and restricts each attempt to an exclusive session/output lease. Pure offline comparison was accepted as an independent implementation slice. No native capture or durable product verification was executed.
+
+## 2026-11-18 - Approve the bounded S5 design and implement the comparison component
+
+GPT-PM request 06f08ca8-0e04-4c9d-ade0-df0647716207, correlated reply 2658cb55-f9c3-5803-8a08-362703349660, approved bounded offline implementation at 19bbb6ed7dd3ce425d42a2498d7033d7670cdd2b and resolved the publication and permit findings. Add the independently permitted pure comparison component for TC064. It compares typed bounded normalized observations only under exact tenant/source/database/configuration/company/report/variant/parameter identity. It carries no native or completeness authority. The manual intake remains the first open story. No execution, product evidence or native qualification is recorded.
+
+## 2026-11-18 - Implement offline manual baseline intake
+
+R2-US-021 now has a process-local CSV/PDF intake against ArtifactVault. It validates full trusted tenant/source/database/company/report context, stores only verified original bytes, keeps the vault reference private, returns UNATTESTED/UNVERIFIED, and publishes an exact-retry receipt under an in-process lock. Store errors and publication failure cannot report success; the provider, original XLSX/MXL storage and native execution remain in backlog. No named S5 verification was run before the two open stories are coded.
+
+## 2026-11-18 - Verify issued S5 intake request identities
+
+The bounded S5 design requires a workflow-issued request ID. Current intake authorized the trusted context and checked ID shape, but did not ask any authority whether the ID belonged to that intake. Introduce a mandatory request-authorization port checked before lookup, write, publication and recovery. Baseline-ID read remains separately scoped and reauthorized. No real identity provider is wired and named tests wait for the remaining S5 source.
+
+## 2026-11-18 - Implement the synthetic S5 capture executor
+
+The source implements R2-US-022 for a synthetic port only. Authority-issued permit, attempt, intake request and caller identities are bound to normalized trusted recipe context. Capture takes shared in-process session and output leases before observing the initial state, checks each known selector and state, rejects stale or misbound export, and audits the permit again during intake publication. Unknown outcomes retain the lease until an exact idle reconciliation. Completed replay reads its scoped receipt without UI redispatch. The pure comparator and executor are independently defined. No live provider, 1C, native storage, resumed-process lease, or product acceptance is claimed.
+
+## 2026-11-18 - Pin the S5 named offline acceptance inputs
+
+Pin the two named S5 test modules after the bounded source was written. The manual intake tests exercise scope, bytes, retry, concurrent publication and permit loss before publication. The synthetic executor tests exercise trusted permit and recipe binding, wrong identity and modal refusal, stale output, exact replay, exclusive leases and reconciliation. Assign the named executions to their designated roles and retain any failure evidence. These files do not establish native UI/product qualification.
+
+## 2026-11-18 - Distinguish pre-dispatch refusal from an uncertain capture
+
+The first S5 executor run at dcbc263 reached the missing-initial-selector case and returned UNKNOWN despite the adapter never receiving a dispatch. Record the attempt REFUSED and release the exact resource lease when an admission guard fails before the first dispatch. After dispatch starts, uncertain results still retain the lease pending idle reconciliation. Preserve the named prior failure and rerun after this correction.
+
+## 2026-11-18 - Prevent capture redispatch across executor instances
+
+Code and Python reviewers independently confirmed that a completed attempt was recorded only in its original executor, while the process resource lease was released. Keep a synthetic authority-side atomic claim for the exact issued permit, attempt ID and intake request ID. An already claimed attempt can only recover its scoped receipt; a changed or unresolved claim cannot dispatch. Model separate executor instances in the named regression. This does not establish cross-process or native authority durability.
+
+The Python reviewer also identified unguarded clock and permit timezone conversion. Normalize those values through a fixed fail-closed helper so malformed authority data returns refusal without dispatch.

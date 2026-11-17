@@ -658,3 +658,23 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: the S4 transaction scenarios isolate the actual PostgreSQL commit and recovery behavior from 1C and runtime provider integration. Layer: disposable E2E. Rule: preserve the precise source head and label-scope cleanup evidence with the named result.
 
 - 2026-11-18 FAILURE: the initial S4 recovery SQL disclosed the existence of a historical acceptance before establishing exact company authorization. Layer: routed database and failure-path review. Rule: treat status and existence as scoped data and make unbound history indistinguishable from an unknown request.
+
+- 2026-11-18 SUCCESS: a fresh designated end-to-end run attached the eight-case disposable SQL result to the reviewed head, and GitHub merged only that head. Layer: verification and delivery. Rule: retain exact approval and merge identities, and separate synthetic integration evidence from product acceptance.
+
+- 2026-11-18 SHORTCOMING: the initial S5 design treated the vault media allow-list, tenant/source ACL, and caller completion flag as stronger than their implementation. Layer: architecture review. Rule: inspect accepted primitives for actual representations and authorization dimensions, and keep claimed completeness separate from evidence.
+
+- 2026-11-18 SHORTCOMING: S5 initially required exact retry and valid capture permits without assigning a stable request key or an independent issuing authority. Layer: GPT-PM design review. Rule: specify exact publication identity and who can issue, attest and revoke admission before implementing capture.
+
+- 2026-11-18 SUCCESS: the S5 comparator compares exact scoped representations and caps result detail and aggregate text. Layer: offline source implementation. Rule: do not promote equality of supplied representations into completeness or native equivalence.
+
+- 2026-11-18 SUCCESS: S5 intake binds the selected report and scope before storing bytes and reauthorizes read-back before returning the receipt. Layer: source integration. Rule: a vault scope alone does not prove company or report context, and a partial publication must be rolled back before it can be read.
+
+- 2026-11-18 SHORTCOMING: the first intake adapter validated ID shape and caller context but omitted the trusted issuer binding. Layer: source integration. Rule: an opaque identifier is a lookup key; require independent proof of its authority before work or recovery.
+
+- 2026-11-18 SHORTCOMING: an early executor draft used Python object identity for its lease and observed before acquisition. Layer: source integration. Rule: lock declared shared session/output identities before the first state observation and bind the final artifact to both.
+
+- 2026-11-18 SUCCESS: the S5 acceptance inputs check observable dispatch and receipt effects, including lease collisions across distinct synthetic ports. Layer: acceptance test design. Rule: verify the resource identity and published outcome, not only the type of object used in the fixture.
+
+- 2026-11-18 FAILURE: the executor applied the unknown-outcome handler before any action was sent. Layer: E2E state-machine acceptance. Rule: distinguish a proved no-dispatch refusal from an uncertain attempted effect; retain exclusive ownership only when required for recovery.
+
+- 2026-11-18 FAILURE: a resource lease protected concurrent capture but did not retain completion identity after release, allowing a new executor instance to redispatch. Layer: routed source review. Rule: resource exclusion and one-time request ownership are separate invariants; verify replay after releasing the resource.

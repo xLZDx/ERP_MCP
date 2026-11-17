@@ -1,0 +1,381 @@
+<!doctype html>
+<!-- harness-report document v1 -->
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:1rem/1.55 system-ui;margin:2rem auto;padding:0 1rem;max-width:76rem}pre{overflow:auto}table{display:block;overflow:auto;border-collapse:collapse}td,th{border:1px solid;padding:.35rem}img{max-width:100%}</style><title>TDD</title></head><body><nav aria-label="Документация проекта"><section class="panel" id="project-documents" aria-labelledby="project-documents-title"><h2 id="project-documents-title">Документация проекта</h2><p><a href="../../ERP_MCP_PROGRAM_STATUS_LIVE.ru.html">Программный отчёт</a></p><div><strong>Мастер-план</strong><ul><li><a href="../PROJECT_PLAN.md.html">PROJECT_PLAN.md</a> · <a href="../../../PROJECT_PLAN.md">исходник</a></li><li><a href="MASTER_PLAN.md.html">MASTER_PLAN.md</a> · <a href="../../../docs/MASTER_PLAN.md">исходник</a></li></ul></div><div><strong>Технический дизайн (TDD)</strong><ul><li><a href="TDD.md.html">TDD.md</a> · <a href="../../../docs/TDD.md">исходник</a></li></ul></div><div><strong>Архитектура</strong><ul><li><a href="ARCHITECTURE.md.html">ARCHITECTURE.md</a> · <a href="../../../docs/ARCHITECTURE.md">исходник</a></li></ul></div><div><strong>Журнал решений</strong><ul><li><a href="../core/DECISION_LOG.md.html">DECISION_LOG.md</a> · <a href="../../../core/DECISION_LOG.md">исходник</a></li></ul></div><div><strong>Ретроспективы</strong><p>Источник не указан.</p></div><div><strong>Сопроводительные документы</strong><ul><li><a href="../README.md.html">README.md</a> · <a href="../../../README.md">исходник</a></li><li><a href="../core/LESSONS_LOG.md.html">LESSONS_LOG.md</a> · <a href="../../../core/LESSONS_LOG.md">исходник</a></li></ul></div></section></nav><main><p><a href="../../../docs/TDD.md">Открыть исходник</a></p><pre># Technical Design Document — ERP_MCP 1C-first Production MVP
+
+**Version:** 1.2
+**Date:** 2026-10-23
+**Status:** SCOPE-FROZEN FOR IMPLEMENTATION — see `SCOPE_FREEZE_BASELINE_2026-10-06.md`
+
+## 1. Purpose
+
+ERP_MCP provides a production-grade, read-only AI integration layer for many 1C information bases.
+It presents a safe MCP surface to authorized AI clients while isolating authentication, policy,
+source routing, secrets, audit and accounting semantics from the underlying 1C transport.
+
+The first production scope is 1C. ERP and Ferma production adapters reuse the same control plane
+later. Ferma is already part of the committed **test/assurance** scope as an independent synthetic
+scenario/oracle source; this does not make Ferma a production data adapter.
+
+The current scope is frozen except for the explicit 2026-10-22 test-only private writer rebaseline
+recorded in `SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.2 and ADR-0009. No other feature/scenario/
+integration family is promoted.
+
+## 2. Problem statement
+
+One AI user may need access to tens or hundreds of 1C companies. Company access changes regularly,
+different customers may run different 1C platform/configuration versions, and some bases expose
+standard OData while others require an extension, HTTP service or local COM bridge.
+
+The system must:
+- add/revoke company access without code changes or application restart;
+- never expose arbitrary target URLs or credentials to the model;
+- remain read-only even when an upstream library contains write support;
+- detect actual source capabilities instead of guessing from configuration names;
+- provide accounting answers that can be reconciled against native 1C reports;
+- reuse mature open-source 1C protocol implementations rather than creating a new protocol stack.
+
+## 3. Goals
+
+### G-01 Production-safe remote MCP
+
+Expose a Streamable HTTP MCP resource protected by OAuth/OIDC, with per-request identity,
+authorization and audit.
+
+### G-02 Multi-company source control
+
+Support at least 150 active 1C sources per operator/principal as the initial design target, with
+source/grant changes effective without service restart.
+
+### G-03 Version/configuration tolerance
+
+Use behavior-first capability negotiation to route sources to the safest compatible read transport.
+
+### G-04 Read-only accounting access
+
+Provide metadata, bounded entity reads, entity lookup/count and register virtual-table queries,
+then semantic accounting tools such as AR/AP, sales, purchases, cash, inventory, VAT and account
+turnovers.
+
+### G-05 Evidence-based correctness
+
+No semantic accounting tool is production-approved until its representative outputs are reconciled
+against native 1C reports/UI on a real test base.
+
+### G-06 Reusable common control plane
+
+Identity, ACL, source registry, audit, limits, secrets and observability must be reusable by future
+ERP/Ferma adapters without weakening their native authorization boundaries.
+
+### G-07 DAD business assurance
+
+Implement the already accepted DAD read-only assurance scope above validated 1C primitives:
+
+- accountant-selected month-close checks;
+- invoice/e-factura reconciliation;
+- versioned month-close rule packs;
+- P&amp;L / Cash Flow / Balance Sheet;
+- bank/Z/terminal/customs/CCAC reconciliation;
+- tax/payroll prechecks with explicit evidence dependencies and human review.
+
+Missing required evidence must produce an explicit non-PASS state rather than model inference.
+
+### G-08 Dual real/synthetic correctness
+
+Use both:
+
+- a private real-reference 1C test copy for real configuration/known-error/native-report validation;
+- Ferma-controlled synthetic scenarios for deterministic edge cases, multi-company isolation, scale
+  and an independent expected/oracle.
+
+Neither path may contaminate the other into a correlated false green.
+
+## 4. Non-goals for 1C MVP
+
+The MVP does **not**:
+- create/update/delete/post/unpost 1C objects;
+- expose arbitrary 1C code execution;
+- expose raw administrator credentials;
+- emulate internal 1C SQL tables;
+- build a new general-purpose OData v3 implementation when a licensed mature implementation exists;
+- guarantee universal support for every private/custom 1C installation without capability evidence;
+- persist a general-purpose copy/data lake of business transactions;
+- act as a generic document-management/archive product beyond evidence required by frozen scenarios;
+- add new business-rule families during the active scope freeze without operator rebaseline;
+- promote historical test/write capability into the production MCP.
+
+The separate private disposable-clone writer authorized by ADR-0009 is test/assurance infrastructure,
+not a production 1C capability and not a model-facing tool.
+
+## 5. Hard invariants
+
+1. **READ-ONLY HARD BOUNDARY:** no production tool can mutate 1C.
+2. **FAIL-CLOSED:** production does not start without mandatory auth, state and secret dependencies.
+3. AI requests address only a registered `source_id` / `company_id`, never an arbitrary host.
+4. Source credentials never enter model-visible context, audit payloads or command-line arguments.
+5. Runtime identity comes from a validated bearer token, not caller-supplied principal text.
+6. Authorization is evaluated server-side for every source access.
+7. Raw business payloads are not retained by default.
+8. Audit is append-only from the runtime role.
+9. Capability routing is based on observed endpoint behavior; version strings are evidence, not authority.
+10. Direct access to internal 1C DB tables is prohibited.
+11. Upstream/copyleft license constraints are enforced before source intake.
+12. ERP/Ferma adapters must preserve their own tenant/org/oracle boundaries.
+13. **SCOPE FREEZE:** implementation work must trace to an already frozen requirement/gate or explicit operator rebaseline.
+14. External evidence is untrusted read-only input with provenance; missing evidence is never guessed into PASS.
+15. Test-only seed/write credentials and code are isolated from the production read-only runtime.
+
+## 6. Functional requirements
+
+### FR-A Identity and access
+
+- Validate token signature, issuer, audience, expiry and required scopes.
+- Resolve subject, client and optional group claims.
+- Support subject and group grants.
+- Support immediate grant revocation without restart.
+- Deny disabled/expired sources and grants.
+
+### FR-B Source registry
+
+Each source has:
+- stable source ID;
+- project/kind;
+- display name;
+- endpoint reference;
+- secret references;
+- enabled/read-only state;
+- tags;
+- entity allow/deny policy;
+- optional platform hint;
+- fallback adapter configuration.
+
+No secret value is stored in the registry.
+
+### FR-C Capability discovery
+
+For a 1C source:
+- fetch and fingerprint metadata when available;
+- detect JSON/Atom behavior;
+- detect safe register/query features as needed;
+- record adapter profile and evidence;
+- classify as `SUPPORTED`, `SUPPORTED_WITH_FALLBACK` or `UNSUPPORTED`.
+
+### FR-D Data access
+
+Normalized read operations must include:
+- health;
+- capability discovery;
+- metadata search/describe;
+- bounded query/list;
+- entity by key;
+- count;
+- register virtual-table query;
+- pagination/truncation evidence.
+
+Native-query fallback is allowed only through an approved read-only adapter and constrained query
+contract.
+
+### FR-E Semantic accounting
+
+Semantic tools must be transport-independent. Initial target domains:
+- company snapshot;
+- sales/purchases;
+- cash/bank;
+- inventory;
+- receivables/payables and aging;
+- account turnover/balance;
+- document postings/trace;
+- VAT/tax summary where the configuration supports a verified mapping;
+- anomaly/reconciliation helpers.
+
+Mappings are per semantic profile, not universal hard-coded account numbers.
+
+#### FR-E SC08 duplicate-counterparty candidates (explicit operator rebaseline 2026-10-07)
+
+Exactly one read-only tool, `counterparty_duplicate_candidates` (concept
+`counterparty.duplicate_candidates`, permission `accounting.read`, no migration, no merge/write
+capability, no tax-id matching, never native reconciliation). Detection semantics are frozen in
+[SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md); this section only restates the acceptance
+obligations (same mutation cases as contract §12). Record: `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1.
+Each rule below MUST fail a test when broken independently:
+
+- case, whitespace, NFKC and punctuation/underscore variants of one name group together; different
+  names do not;
+- blank and punctuation-only names are excluded;
+- the same `Ref_Key` twice is `COUNTERPARTY_FACT_INVALID`;
+- two- and three-member groups are produced;
+- a catalog counterparty without company activity is not returned;
+- company two does not see company one&#x27;s pair;
+- null-counterparty activity rows are ignored;
+- activity truncation stops before the catalog read;
+- catalog truncation is INCONCLUSIVE with no partial FINDING;
+- shuffled input and duplicated activity rows give an identical result; `group_id` is stable;
+- `merge_count` is 0 in every branch;
+- no write verb reaches Fake1C or the sidecar;
+- no counterparty name appears in audit rows or the gateway log;
+- production/no-profile fails closed with zero upstream reads;
+- `accounting.read` denial is audited with zero upstream reads.
+
+### FR-F Audit
+
+Record at minimum:
+- event ID/time;
+- principal subject;
+- client ID;
+- tool/operation;
+- source/company;
+- outcome;
+- query fingerprint;
+- row count;
+- duration;
+- adapter profile;
+- policy/capability version or fingerprint where available;
+- error/deny code.
+
+Raw filters/payloads are excluded by default.
+
+### FR-G DAD rule/evidence engine
+
+The accepted DAD business-assurance layer must:
+
+- execute versioned, applicability-aware rules over validated semantic operations;
+- identify rule/profile/configuration/effective-date provenance;
+- support `PASS|FINDING|INCONCLUSIVE|EVIDENCE_REQUIRED|CAPABILITY_UNSUPPORTED|ERROR`;
+- never compile an unrestricted model-generated query into privileged 1C access;
+- retain human-review requirements for tax/payroll/legal conclusions.
+
+### FR-H External Evidence Plane
+
+For already accepted DAD scenarios, ingest approved read-only evidence such as invoices, bank
+statements, Z/terminal reports, customs/CCAC documents, filed tax forms/receipts and payroll source
+documents.
+
+Requirements:
+
+- explicit source/document fingerprint and provenance;
+- no model-supplied arbitrary URL fetch;
+- bounded parsing/normalization;
+- retention/minimization policy;
+- private/customer artifacts excluded from public Git/CI;
+- missing evidence -&gt; `EVIDENCE_REQUIRED` or `INCONCLUSIVE`.
+
+### FR-I Assurance/testbeds
+
+The implementation must preserve three evidence classes:
+
+- L1 Fake1C fast contract/security tests;
+- L2-A Ferma-controlled real-1C synthetic scenarios with independent oracle;
+- L2-B private real-reference 1C configuration/known-error/native-report regression;
+- L3 controlled target/pilot evidence.
+
+Evidence must state its level; L1/L2 cannot be relabelled L3.
+
+### FR-J Balance by analytics (operator rebaseline 2026-10-07)
+
+`accounting_balance_by_analytics(source_id, company_id, as_of)` returns balances of a profile-approved account set
+split by up to three analytics slots. The route (OData `Balance` or the COM bridge) is selected before execution from
+persisted capability evidence; any error of the selected route fails closed and never triggers the other route. Both
+routes return the same canonical rows with `route` provenance. Required tests: route selection (AVAILABLE, UNSUPPORTED
+with and without a binding, UNKNOWN), no runtime fallback, binding mismatch and company-not-in-binding denial, row
+outside the account set fails closed, bridge never accepts caller text. See ADR-0008.
+
+### FR-K Private disposable writer qualification (operator rebaseline 2026-10-22)
+
+Provide a separate private service to qualify S12/S13/S14 change lifecycles only on marked disposable
+1C clones, initially `818HA_p2diff` on the licensed Ivan lane. It must use the least-privilege
+`CT14Писатель` identity; support only create-draft, read-back, post and unpost; and stay bound to
+loopback/Tailscale. It is never registered on public/model-facing MCP and must refuse production,
+real-company, immutable-reference and unknown base identities.
+Its private ingress must authenticate the caller and enforce an explicit least-privilege ACL; the
+disposable qualification must show unauthorized callers are refused before admission or COM.
+
+The durable boundary must enforce globally non-reusable call IDs, stable idempotency, stale lifecycle
+and process-serving epochs, authoritative outcome lookup, exact S12 signed-evidence recovery, T16
+signer independence, and a complete quiescence barrier. PostgreSQL transactions are bounded and end
+before COM invocation. Any call that may have entered COM remains unresolved until independent
+evidence proves its outcome; timeout, restart or lease expiry never authorizes a retry. The database
+and physical COM contracts require separate disposable qualification. Admission stays disabled and
+readiness stays `NOT_READY` until both qualify. This requirement does not change production NFR-S3
+or authorize a public write route. See ADR-0009 and the S12/S13/S14 phase-two contracts.
+
+## 7. Non-functional requirements
+
+### Security
+
+- HTTPS externally and for production 1C endpoints unless an approved private adapter terminates the
+  transport safely.
+- DNS-rebinding/SSRF protections.
+- no redirect following to arbitrary hosts;
+- least-privilege DB roles;
+- secret provider boundary;
+- dependency/license audit;
+- non-root containers;
+- bounded request/response sizes and query complexity.
+
+### Reliability
+
+- database and Redis readiness checks;
+- one unhealthy 1C source must not make the whole gateway globally unavailable;
+- safe retry only for idempotent reads and retryable status classes;
+- request cancellation/timeouts;
+- source-specific circuit breaking in the data-plane implementation.
+
+### Capacity target
+
+Design target, not yet a measured guarantee:
+- &gt;=150 concurrently registered/active client companies for an operator use case;
+- horizontal gateway replicas sharing PostgreSQL/Redis;
+- bounded per-source and per-principal concurrency;
+- no unbounded fan-out across all companies in a single request.
+
+Load-test evidence is required before production GO.
+
+### Privacy/data minimization
+
+- no production credentials in logs;
+- no raw accounting data in audit by default;
+- optional redaction/anonymization before model return where policy requires;
+- no production customer data in public CI/test fixtures.
+
+## 8. Canonical request lifecycle
+
+1. MCP request arrives over HTTPS.
+2. OAuth token is validated.
+3. Principal/client/groups are established.
+4. Tool arguments are schema-validated.
+5. Source/company is resolved from server-side registry.
+6. ACL and policy are evaluated.
+7. Rate/query/fan-out budget is checked.
+8. Capability router selects an approved adapter.
+9. Secret reference is resolved server-side.
+10. Adapter performs bounded read.
+11. Response is normalized with provenance/truncation metadata.
+12. Audit event is appended.
+13. Model receives only the permitted normalized result.
+
+## 9. Primary transport decisions
+
+- Modern OData: reuse `@1c-odata/client` / `@1c-odata/metadata` behavior from the pinned MIT upstream.
+- Accounting register semantics: reuse/read-port approved logic/tests from `aprovodka`.
+- Local/unpublished/native-query 8.3: reuse isolated `mcp-rsv-data` bridge/extension behavior.
+- 8.2.13+: optional isolated GPL service; never copy GPL source into core.
+- 7.7: no MVP commitment; reference-only until a real requirement exists.
+
+See adapter census/intake documents.
+
+## 10. Release acceptance summary
+
+Production GO requires all DoD gates, including:
+- security and CI green;
+- live capability evidence;
+- multi-company ACL evidence;
+- accounting reconciliation on real 1C;
+- load/limit evidence;
+- operational runbook and rollback;
+- current documentation and provenance.
+
+Implementation completeness without accounting and operational evidence is **not production GO**.
+
+The active scope freeze is not released merely because current code is green. The complete committed
+scope defined in `SCOPE_FREEZE_BASELINE_2026-10-06.md` must reach its declared acceptance level
+before new product scope is admitted.
+</pre></main></body></html>
