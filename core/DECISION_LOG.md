@@ -1942,3 +1942,11 @@ agent-owned stale-lock recovery procedure; no operator action or data deletion
 is required. The five-case isolated qualification passed at prior source0c74e47;
 its initial failures were fixture defects, not rewritten as source passes.
 The role will verify the new partial-exit behavior after this source commit.
+
+## 2026-11-17 — Final audit-tool qualification and preserved integration boundary
+
+The functional-test-reviewer ran the named eight-case isolated contract suite on source284f2dd: Ran 8 tests in 7.936s, OK, exit0. Four routed reviewers have no remaining audit-tool BLOCKER/MAJOR; capture timing limits are explicit. Completed run manifests now accompany the 2150-file/104-ref inventory, 3461 document and 2770 code/support versions. This commit includes only audit outputs/tool tests and plan bookkeeping; pre-existing application changes remain outside this commit. Actual integration, product fixes and qualification remain the next implementation phase, not an inferred audit acceptance.
+
+## 2026-11-17 — Reject unsafe stale-lock deletion recovery
+
+A fresh reliability review identified a check-then-unlink race between two recovery processes and a newly started collector. The earlier zero-major statement is superseded for this recovery protocol. Replace PID-file exclusivity with a stable kernel-backed nonblocking guard shared by both collectors; never unlink the guard file. A stale PID marker becomes informational and is overwritten only by a process holding the kernel lock. This is local audit tooling only. Requalify the named tests after this change.

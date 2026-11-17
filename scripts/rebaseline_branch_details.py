@@ -1,9 +1,13 @@
 """Read-only patch-equivalence and worktree-state evidence. Never deletes files."""
 import json
 import hashlib
-import os
 import subprocess
 from pathlib import Path
+
+try:
+    from scripts.rebaseline_lock import exclusive_guard
+except ModuleNotFoundError:
+    from rebaseline_lock import exclusive_guard
 
 
 def run(args, cwd=None):
@@ -72,17 +76,17 @@ def collect(out):
 def main():
     out = Path("docs/rebaseline/2026-11-17")
     out.mkdir(parents=True, exist_ok=True)
-    lock = out / ".inventory.lock"
-    with lock.open("x", encoding="ascii") as stream:
-        stream.write(str(os.getpid()))
-    try:
-        write_json(out / "DETAILS_RUN.json", {"status": "IN_PROGRESS"})
-        complete = collect(out)
-    except BaseException as exc:
-        write_json(out / "DETAILS_RUN.json", {"status": "FAILED", "error_type": type(exc).__name__})
-        raise
-    finally:
-        lock.unlink()
+    with exclusive_guard(out):
+        marker = out / ".inventory.lock"
+        marker.write_text("details", encoding="ascii")
+        try:
+            write_json(out / "DETAILS_RUN.json", {"status": "IN_PROGRESS"})
+            complete = collect(out)
+        except BaseException as exc:
+            write_json(out / "DETAILS_RUN.json", {"status": "FAILED", "error_type": type(exc).__name__})
+            raise
+        finally:
+            marker.unlink(missing_ok=True)
     return 0 if complete else 2
 
 

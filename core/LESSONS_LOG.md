@@ -561,3 +561,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: the first audit collector omitted non-Markdown spec versions and had no all-artifact run completion proof; the comparison tool re-resolved a mutable baseline. Independent routed reviewers caught these defects. Rule: freeze SHA inputs, include requirement/acceptance formats, distinguish unknown Git results, and publish hash-bound completion state before consumers accept a multi-file evidence set.
 
 - 2026-11-17 SHORTCOMING: an explicit PARTIAL manifest still came with CLI exit0, and a reviewer overstated the exit behavior. Rule: verify success claims at the entrypoint; incomplete evidence must have both noncomplete metadata and a nonzero CLI exit so shell callers cannot mistake it for complete collection. Preserve fixture failures with their actual scope.
+
+- 2026-11-17 SUCCESS: isolated real-Git fixtures and failure injection qualified audit tooling without executing product suites or changing project refs. Rule: preserve exact source hashes, completion manifests and capture limits; never extend an audit-tool pass to dirty application code.
+
+- 2026-11-17 SHORTCOMING: PID/time/file-identity checks do not make a later unlink atomic. Concurrent recovery can remove a new owner lock. Rule: use a stable OS-backed guard rather than manual stale-lock deletion; hard process termination must release exclusion without an agent deleting another process marker.

@@ -1,2 +1,4 @@
 .inventory.lock
 *.tmp
+
+.inventory.guard

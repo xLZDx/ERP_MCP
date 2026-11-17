@@ -7,11 +7,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    from scripts.rebaseline_lock import exclusive_guard
+except ModuleNotFoundError:
+    from rebaseline_lock import exclusive_guard
 
 
 def git(*args: str) -> str:
@@ -113,18 +117,18 @@ def main():
     root = Path(git("rev-parse", "--show-toplevel").strip())
     out = root / "docs/rebaseline/2026-11-17"
     out.mkdir(parents=True, exist_ok=True)
-    lock = out / ".inventory.lock"
-    with lock.open("x", encoding="ascii") as stream:
-        stream.write(str(os.getpid()))
     run_id = str(uuid.uuid4())
-    try:
-        write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "IN_PROGRESS"})
-        complete = collect(root, run_id)
-    except BaseException as exc:
-        write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "FAILED", "error_type": type(exc).__name__})
-        raise
-    finally:
-        lock.unlink()
+    with exclusive_guard(out):
+        marker = out / ".inventory.lock"
+        marker.write_text(str(run_id), encoding="ascii")
+        try:
+            write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "IN_PROGRESS"})
+            complete = collect(root, run_id)
+        except BaseException as exc:
+            write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "FAILED", "error_type": type(exc).__name__})
+            raise
+        finally:
+            marker.unlink(missing_ok=True)
     return 0 if complete else 2
 
 
