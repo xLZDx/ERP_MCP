@@ -2173,3 +2173,7 @@ All seven disposable PostgreSQL scenarios passed at 40d4547; the invocation-owne
 ## 2026-11-18 - Keep unbound promotion history private
 
 Two routed reviewers confirmed that the synthetic SQL classified old acceptance events before proving their company. Legacy events lack durable company provenance; the current source company does not establish historical ownership. Both new SQL entry points now give the same generic refusal as an unknown unregistered request. NO_COMMIT requires a registered, currently authorized company request. The modern receipt path checks request authorization before recovery details and binds the fingerprint to the referenced eligibility record. The correction is fixture-only.
+
+## 2026-11-18 - Close S4 on the reviewed PR
+
+GitHub reports PR #60 MERGED at fe0d771f911cdfffab0be593624b31fab0818d5a with no pending auto-merge. Its approved head is d4efd2cd661c1aef4563ccf5bce2a78b06702df6, GPT-PM request 2c684538-d7fe-48a7-b01d-079472836141, correlated reply f5f347d8-9edc-5f2f-a8ff-510e45a6ee2f. Close S4 with four bounded task acceptances. Keep real provider, authenticated runtime integration, real network failure recovery, and canonical product verification separate in the backlog. No deployment, release promotion, production migration or 1C operation took place.

@@ -658,3 +658,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: the S4 transaction scenarios isolate the actual PostgreSQL commit and recovery behavior from 1C and runtime provider integration. Layer: disposable E2E. Rule: preserve the precise source head and label-scope cleanup evidence with the named result.
 
 - 2026-11-18 FAILURE: the initial S4 recovery SQL disclosed the existence of a historical acceptance before establishing exact company authorization. Layer: routed database and failure-path review. Rule: treat status and existence as scoped data and make unbound history indistinguishable from an unknown request.
+
+- 2026-11-18 SUCCESS: a fresh designated end-to-end run attached the eight-case disposable SQL result to the reviewed head, and GitHub merged only that head. Layer: verification and delivery. Rule: retain exact approval and merge identities, and separate synthetic integration evidence from product acceptance.

@@ -1862,3 +1862,7 @@ Codex owns source remediation; operator remains accountable.
 ## S4 R2-US-016 - Durable promotion qualification
 
 The bounded offline verifier has no qualified immutable artifact provider or production caller. Select a provider with authenticated content and no independently revocable artifact versions, then record the exact tenant/source/company binding and test its lifecycle. Provider owner is unassigned. Internal work remains in R2-US-016: durable eligibility/revocation coordination, atomic acceptance fingerprint persistence and recovery read-back. Keep TC046-TC048 open until the selected scope has evidence. Stored historical acceptance rows do not provide the new replay fingerprint.
+
+### S4 post-acceptance qualification
+
+PR #60 closed the bounded engineering work. Open separately: qualify an immutable-artifact provider and revocation authority; integrate the authorized production runtime with the transactional adapter; exercise lost-response recovery under a real network interruption; execute the canonical TC046-TC048 product cases under the required product gates. The synthetic fixture is not a deployable migration. Post-commit read-back after eligibility revocation is source-inspected, without a dedicated execution receipt. No human provider owner is assigned.

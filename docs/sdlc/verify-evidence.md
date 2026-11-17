@@ -896,3 +896,7 @@ The assigned functional-test-reviewer ran the named service-content module on HE
 ```
 
 Result: 14 passed in 0.64s. Valid scoped bytes reach one write; malformed, inaccessible, missing, or mismatched content, incomplete configuration, and replay without a durable fingerprint prevent a new write. The test double is synthetic and does not qualify a provider. Git reported no change to the fingerprint module/test after 54a5c83 or to the disposable SQL, shared database harness and E2E test after 40d4547 through 03f31ad. These results remain separate commands and do not imply one combined run or production readiness.
+
+## 2026-11-18 - Final S4 exact-head acceptance
+
+At d4efd2cd661c1aef4563ccf5bce2a78b06702df6 the focused PostgreSQL command above ran twice: eight passed in 71.61s and, through a fresh designated e2e-runner, eight passed in 64.32s. Both used invocation-owned loopback resources and closed without cleanup errors. Fingerprint and content source/test inputs were unchanged since their respective named runs (36 and 14 passed). The routed review found one confirmed authorization defect, corrected before this head; the ledger accepted verification and fix review. GPT-PM approved bounded S4 closure at that head (request 2c684538-d7fe-48a7-b01d-079472836141, reply f5f347d8-9edc-5f2f-a8ff-510e45a6ee2f). PR #60 merged exactly that head as fe0d771f911cdfffab0be593624b31fab0818d5a. No full suite, CI, product or production verification was run.
