@@ -101,10 +101,12 @@ def collect(root, run_id):
     write_json(output.parent / "DOCUMENT_VERSIONS.json", list(docs.values()))
     write_json(output.parent / "CODE_VERSIONS.json", list(code.values()))
     names = ("FILE_INVENTORY.json", "BRANCH_INVENTORY.json", "DOCUMENT_VERSIONS.json", "CODE_VERSIONS.json")
+    complete = all(b["ancestry_exit"] in (0, 1) for b in branches)
     write_json(output.parent / "INVENTORY_RUN.json", {"run_id": run_id,
-        "status": "COMPLETE" if all(b["ancestry_exit"] in (0, 1) for b in branches) else "PARTIAL",
+        "status": "COMPLETE" if complete else "PARTIAL",
         "baseline": baseline, "files": {name: hashlib.sha256((output.parent / name).read_bytes()).hexdigest() for name in names}})
     print(f"Classified {len(branches)} branches, {len(docs)} document versions and {len(code)} code/config/test versions across all refs")
+    return complete
 
 
 def main():
@@ -117,13 +119,14 @@ def main():
     run_id = str(uuid.uuid4())
     try:
         write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "IN_PROGRESS"})
-        collect(root, run_id)
+        complete = collect(root, run_id)
     except BaseException as exc:
         write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "FAILED", "error_type": type(exc).__name__})
         raise
     finally:
         lock.unlink()
+    return 0 if complete else 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

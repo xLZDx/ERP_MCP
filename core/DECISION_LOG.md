@@ -1930,3 +1930,15 @@ own completion manifest; unknown/error counts remain null. These are audit
 infrastructure fixes only. A named isolated functional test is being authored
 by the designated role; no whole suite, CI, production operation or branch
 cleanup was run.
+
+
+## 2026-11-17 — Align audit CLI exit status with partial evidence
+
+Source inspection of a review claim showed PARTIAL manifests were explicit but
+main() still returned ordinary success. Both CLI entrypoints now return exit2
+for partial results and exit0 only for complete results, preserving the partial
+manifest and null counts. Failures still publish FAILED and raise. Added the
+agent-owned stale-lock recovery procedure; no operator action or data deletion
+is required. The five-case isolated qualification passed at prior source0c74e47;
+its initial failures were fixture defects, not rewritten as source passes.
+The role will verify the new partial-exit behavior after this source commit.

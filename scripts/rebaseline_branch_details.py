@@ -66,6 +66,7 @@ def collect(out):
     write_json(out / "DETAILS_RUN.json", {"run_id": manifest["run_id"], "baseline": baseline,
         "status": "COMPLETE" if complete else "PARTIAL",
         "files": {name: hashlib.sha256((out / name).read_bytes()).hexdigest() for name in names}})
+    return complete
 
 
 def main():
@@ -76,13 +77,14 @@ def main():
         stream.write(str(os.getpid()))
     try:
         write_json(out / "DETAILS_RUN.json", {"status": "IN_PROGRESS"})
-        collect(out)
+        complete = collect(out)
     except BaseException as exc:
         write_json(out / "DETAILS_RUN.json", {"status": "FAILED", "error_type": type(exc).__name__})
         raise
     finally:
         lock.unlink()
+    return 0 if complete else 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
