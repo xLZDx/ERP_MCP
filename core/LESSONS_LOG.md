@@ -595,3 +595,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: filename presence hid lost redaction and mismatched dependency pins. Rule: compare historical predicates, pinned values and caller/provider configuration together; neither an existing file nor a commit ancestor establishes preserved behavior.
 
 - 2026-11-17 FAILURE: disposable SQL tests caught030 depending on unregistered legacy patches028/029. Root cause: renumbering assumed filename and registry identity were identical. Rule: inspect actual record_migration calls; preserve historical patches and require their schema without fabricating registration rows. Keep negative missing-patch and fresh-chain cases.
+
+- 2026-11-17 FAILURE: fresh-chain tests caught CREATE used for two already-published function signatures in030. Rule: classify new overloads separately from body replacements and execute a real disposable migration chain before accepting an append-only source port.

@@ -2145,7 +2145,7 @@ BEGIN
  RETURN change_ledger.private_writer_lookup_barrier_v1(b.barrier_id);
 END $fn$;
 
-CREATE FUNCTION change_ledger.approve_registry_change_v1(
+CREATE OR REPLACE FUNCTION change_ledger.approve_registry_change_v1(
  t text,c text,p_change_id uuid,p_digest text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $fn$
 DECLARE who text; plan change_ledger.registry_changes%ROWTYPE; rc change_ledger.registry_changes%ROWTYPE;
@@ -2425,7 +2425,7 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'PERMIT_MISSING'; END IF;
 END $fn$;
 
-CREATE FUNCTION change_ledger.register_target_v1(
+CREATE OR REPLACE FUNCTION change_ledger.register_target_v1(
  t text,c text,p_base text,p_org text,p_class text,p_status text,p_permission_expires_at timestamptz
 ) RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $fn$
 DECLARE who text; n jsonb; lf change_ledger.lifecycle_fences%ROWTYPE;
