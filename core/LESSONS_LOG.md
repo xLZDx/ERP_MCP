@@ -630,3 +630,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: the rebaseline restored S0 criterion evidence and the second story disposition but left the first story at its pre-adjudication status. Layer: project-plan reconciliation. Rule: search retained refs for whole-story dispositions and verify retained evidence hashes before scheduling already accepted work.
 
 - 2026-11-17 SHORTCOMING: historical S1 acceptance was reconciled into the project overlay while the local sprint remained open. Layer: ledger reconciliation. Rule: compare documented sprint closure to native sprint state, preserve historical reviews, and do not mark current execution as passed when the approved blobs or environment differ.
+
+- 2026-11-17 SUCCESS: reconciled consecutive S2 and S3 historical sprint dispositions from all ten recorded task decisions. Layer: plan and ledger consistency. Rule: synchronize consecutive fully accepted historical sprints and stop status promotion at the first unresolved criterion.
