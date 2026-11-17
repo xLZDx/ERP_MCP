@@ -2145,3 +2145,7 @@ The manually selected testbed SQL adds model modes, scoped eligibility and appen
 ## 2026-11-18 - Implement the synthetic S4 promotion transaction
 
 Keep both SQL fixtures outside the normal migration directory and restrict them to an explicitly opted-in s4_disposable_* database. The new transaction source joins synthetic actor bindings, an immutable owner-registered request, verification eligibility and the target revision before its scoped compare-and-swap. The same transaction inserts the event and v1 fingerprint. Authorized recovery checks the result after the source lock at READ COMMITTED and refuses conflicting or historical use without disclosing receipt detail. This is source-only until the named disposable tests are run.
+
+## 2026-11-18 - Pin the S4 fingerprint acceptance cases
+
+The named offline test module fixes two independently derived v1 digests and their byte-level frames, checks that each field changes the digest, and rejects noncanonical identifiers, NUL, invalid UTF-8, oversized fields, invalid operations and BIGINT boundaries. Execution is deferred to the designated test owner on the committed test source.
