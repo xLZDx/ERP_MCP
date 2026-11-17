@@ -2207,4 +2207,8 @@ The source implements R2-US-022 for a synthetic port only. Authority-issued perm
 ## 2026-11-18 - Pin the S5 named offline acceptance inputs
 
 Pin the two named S5 test modules after the bounded source was written. The manual intake tests exercise scope, bytes, retry, concurrent publication and permit loss before publication. The synthetic executor tests exercise trusted permit and recipe binding, wrong identity and modal refusal, stale output, exact replay, exclusive leases and reconciliation. Assign the named executions to their designated roles and retain any failure evidence. These files do not establish native UI/product qualification.
+
+## 2026-11-18 - Distinguish pre-dispatch refusal from an uncertain capture
+
+The first S5 executor run at dcbc263 reached the missing-initial-selector case and returned UNKNOWN despite the adapter never receiving a dispatch. Record the attempt REFUSED and release the exact resource lease when an admission guard fails before the first dispatch. After dispatch starts, uncertain results still retain the lease pending idle reconciliation. Preserve the named prior failure and rerun after this correction.
 </pre></main></body></html>

@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from enum import StrEnum
 from types import MappingProxyType
@@ -541,13 +541,20 @@ class SyntheticCaptureExecutor:
             self._attempts[attempt_id] = attempt
             self._active_attempt = attempt_id
             observed = initial
+            dispatch_started = False
             try:
                 for operation in recipe.operations:
                     if (not self._publication_authorized(permit, recipe, digest)
                             or not self._observed(observed, scope, session_id=initial.session_id)
                             or observed.state != operation.allowed_state
                             or operation.selector not in observed.available_selectors):
+                        if not dispatch_started:
+                            self._attempts[attempt_id] = replace(attempt, state=ExecutorState.REFUSED)
+                            self._active_attempt = None
+                            self._release_port(attempt_id)
+                            return ExecutorResult(ExecutorState.REFUSED, "CAPTURE_REFUSED", attempt_id, digest)
                         return self._refuse_locked(attempt, "CAPTURE_REFUSED")
+                    dispatch_started = True
                     observed = self._port.dispatch(attempt_id, recipe, operation)
                     if (not self._observed(observed, scope, session_id=initial.session_id)
                             or observed.state != operation.resulting_state):

@@ -676,4 +676,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: an early executor draft used Python object identity for its lease and observed before acquisition. Layer: source integration. Rule: lock declared shared session/output identities before the first state observation and bind the final artifact to both.
 
 - 2026-11-18 SUCCESS: the S5 acceptance inputs check observable dispatch and receipt effects, including lease collisions across distinct synthetic ports. Layer: acceptance test design. Rule: verify the resource identity and published outcome, not only the type of object used in the fixture.
+
+- 2026-11-18 FAILURE: the executor applied the unknown-outcome handler before any action was sent. Layer: E2E state-machine acceptance. Rule: distinguish a proved no-dispatch refusal from an uncertain attempted effect; retain exclusive ownership only when required for recovery.
 </pre></main></body></html>
