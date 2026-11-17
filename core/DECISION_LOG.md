@@ -1954,3 +1954,7 @@ A fresh reliability review identified a check-then-unlink race between two recov
 ## 2026-11-17 — Preserve Windows guard contention failure and fix forward
 
 The designated functional reviewer ran the 11-case named audit file on b357eea: exit1, one ERROR in live process contention. Windows refuses a pre-lock read of byte0 while another process holds its range lock. Remove all guard-content initialization: operating-system range locking does not require reading or writing the guarded byte. Retain the real concurrent-process and hard-kill cases, and rerun after the source commit. No failure is relabeled as a pass.
+
+## 2026-11-17 — Publish start status before informational marker
+
+Final reliability review requested IN_PROGRESS publication before marker creation and inclusion of marker errors in FAILED handling. Both collector entrypoints now perform that order under the OS guard. This closes the marker-before-invalidation interruption window. The previous 11-test pass remains tied to source19bc599; rerun the named file after this two-line ordering delta.

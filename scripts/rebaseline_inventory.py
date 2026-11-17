@@ -120,9 +120,9 @@ def main():
     run_id = str(uuid.uuid4())
     with exclusive_guard(out):
         marker = out / ".inventory.lock"
-        marker.write_text(str(run_id), encoding="ascii")
         try:
             write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "IN_PROGRESS"})
+            marker.write_text(str(run_id), encoding="ascii")
             complete = collect(root, run_id)
         except BaseException as exc:
             write_json(out / "INVENTORY_RUN.json", {"run_id": run_id, "status": "FAILED", "error_type": type(exc).__name__})

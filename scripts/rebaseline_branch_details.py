@@ -78,9 +78,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     with exclusive_guard(out):
         marker = out / ".inventory.lock"
-        marker.write_text("details", encoding="ascii")
         try:
             write_json(out / "DETAILS_RUN.json", {"status": "IN_PROGRESS"})
+            marker.write_text("details", encoding="ascii")
             complete = collect(out)
         except BaseException as exc:
             write_json(out / "DETAILS_RUN.json", {"status": "FAILED", "error_type": type(exc).__name__})

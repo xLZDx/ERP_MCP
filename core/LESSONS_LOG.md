@@ -567,3 +567,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: PID/time/file-identity checks do not make a later unlink atomic. Concurrent recovery can remove a new owner lock. Rule: use a stable OS-backed guard rather than manual stale-lock deletion; hard process termination must release exclusion without an agent deleting another process marker.
 
 - 2026-11-17 FAILURE: real Windows two-process test exposed a read-before-lock PermissionError invisible to ordinary in-process tests. Rule: permanent OS guard acquisition must not inspect locked byte contents; qualify actual contention and owner termination on the target OS.
+
+- 2026-11-17 SHORTCOMING: a marker identifying a new attempt preceded manifest invalidation. Rule: publish IN_PROGRESS first under exclusion, and include all subsequent run-metadata writes in explicit FAILED handling.
