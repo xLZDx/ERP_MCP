@@ -2183,4 +2183,8 @@ GitHub reports PR #60 MERGED at fe0d771f911cdfffab0be593624b31fab0818d5a with no
 ## 2026-11-18 - Start the bounded S5 native capture continuation
 
 After bounded S4 closure, the ledger selects R2-US-021 before R2-US-022. The historical S5 plan deferred both while it added the permit, operation boundary, vault and parser. The retained code does not implement an original-artifact intake, company-scoped baseline association or UI selector state machine. The design review corrected three risks: unsupported XLSX/MXL in the reference vault, missing company/database authority on baseline reads, and caller-asserted completeness. The reviewed candidate keeps the first implementation offline and retains native receipt and storage qualification as separate product evidence. S4 closeout commit f12742b changed documentation and generated report copies only; no application, SQL, test or script paths changed.
+
+## 2026-11-18 - Define S5 publication and permit authority
+
+Phase 5 review e02f18ab-fa4c-41fd-96d2-9b212654a6b2, correlated reply ee7e04eb-9a52-5583-b209-7a0b396452d0, returned REVISE for two major design gaps: publication identity and independent permit authority. The revised draft binds an authorized request ID to immutable bytes/scope/claims, serializes receipt publication and distinguishes an orphan from a successful baseline. It also binds an authority-issued permit to trusted recipe context, exact operation set, validity and current revocation, and restricts each attempt to an exclusive session/output lease. Pure offline comparison was accepted as an independent implementation slice. No native capture or durable product verification was executed.
 </pre></main></body></html>

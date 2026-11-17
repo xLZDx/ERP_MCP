@@ -662,3 +662,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: a fresh designated end-to-end run attached the eight-case disposable SQL result to the reviewed head, and GitHub merged only that head. Layer: verification and delivery. Rule: retain exact approval and merge identities, and separate synthetic integration evidence from product acceptance.
 
 - 2026-11-18 SHORTCOMING: the initial S5 design treated the vault media allow-list, tenant/source ACL, and caller completion flag as stronger than their implementation. Layer: architecture review. Rule: inspect accepted primitives for actual representations and authorization dimensions, and keep claimed completeness separate from evidence.
+
+- 2026-11-18 SHORTCOMING: S5 initially required exact retry and valid capture permits without assigning a stable request key or an independent issuing authority. Layer: GPT-PM design review. Rule: specify exact publication identity and who can issue, attest and revoke admission before implementing capture.
