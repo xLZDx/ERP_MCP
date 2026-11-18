@@ -177,14 +177,19 @@ class InMemoryGovernedLedger:
     def mark_unknown(self, attempt: DispatchAttempt, *, invocation_count: int = 1) -> GovernedWriteSnapshot:
         with self._lock:
             current = self._required(attempt)
-            if current.state is GovernedWriteState.VERIFIED:
+            if current.state not in {GovernedWriteState.DISPATCHED, GovernedWriteState.APPLY_UNKNOWN}:
+                return current
+            key = self._key(attempt)
+            base = self._base(attempt)
+            held = self._base_holds.get(base)
+            if held is not None and held != key:
                 return current
             updated = GovernedWriteSnapshot(
                 attempt, GovernedWriteState.APPLY_UNKNOWN, current.receipt, current.completion,
                 current.outcome, True, max(current.invocation_count, invocation_count),
             )
-            self._records[self._key(attempt)] = updated
-            self._base_holds[self._base(attempt)] = self._key(attempt)
+            self._records[key] = updated
+            self._base_holds[base] = key
             return updated
 
     def accept_writer_result(

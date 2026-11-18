@@ -2460,3 +2460,7 @@ The governed simulation now stores the change identity and approved digest on th
 
 The governed simulation retains consumed call identity and holds the live clone under its write lock when the call outcome becomes unknown. New calls are refused before their identity is consumed. Prior call classification and reads remain available. A definite pre-write refusal leaves the clone available. The separate physical call ownership and completion proof is in the backlog. Named verification is NOT_RUN pending S14 source assembly.
 
+## 2026-11-18 - Preserve the base hold owner during offline recovery
+
+An unknown notification for an attempt applies only while its dispatch is unresolved. A delayed callback after proven pre-invocation handback, a recorded applied result, or verification preserves the resolved snapshot. Keep a newer attempt's base hold intact. The licensed read-back qualification and the discrepancy between offline and PostgreSQL triage thresholds are tracked separately in the backlog. Named verification is NOT_RUN pending S14 source assembly.
+

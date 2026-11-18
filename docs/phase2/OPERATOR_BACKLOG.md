@@ -1915,3 +1915,9 @@ Verify that the selected CT14-qualified licensed channel records the change iden
 
 Qualify compare-and-write under one 1C lock on the selected licensed test clone. Bind each invocation to the host, worker process, and 1C session, and observe call completion independently of a caller timeout. Keep the base held while execution is possible. A timeout alone provides no termination evidence. The governed TEST hold models this decision locally. The qualified channel owner is unassigned in the current plan.
 
+## S14-04 operational read-back and triage evidence
+
+On the qualified 1C clone, exercise response loss and prove reader health, the settle interval, completeness of the observation, and completion of the original call. Include an edited marker and an unhealthy reader as negative controls. The qualified channel owner is unassigned in the current plan.
+
+Resolve the triage timing discrepancy before operational acceptance. The offline T12 transition and its named test require both five attempts and fifteen minutes. The PostgreSQL sweep can escalate on either threshold, and the frozen transition table summarizes the condition as exhausted attempts/window. Establish a single reviewed rule and cover both single-threshold cases without weakening the hold or absence-proof rules.
+

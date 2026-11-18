@@ -810,3 +810,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: Consuming one simulation call identity leaves another adapter free to attempt a write on the same clone. Rule: hold the clone while the first outcome is unresolved and keep replay classification and read-only inspection available.
 
+- 2026-11-18 SHORTCOMING: A delayed unknown notification after proven handback can replace the current base hold owner in the offline ledger. Rule: recheck both the dispatch state and hold ownership inside the same lock before changing either.
+

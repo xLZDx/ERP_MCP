@@ -66,3 +66,9 @@ When preparing the named tests, use distinct change IDs for distinct proposals a
 
 When a governed clone write crosses the mutation call boundary and its outcome becomes unknown, preserve consumed call identity and latch a base-wide write hold while still owning the clone lock. Refuse otherwise valid new writes through any adapter on that live clone before consuming another call identity. Retain exact call replay/conflict classification and keep read-only inspection available. A definite simulated pre-write refusal does not create a hold. The TEST adapter has no authority to clear an unresolved hold and never forces termination or turns a timeout into finished-call proof. Separate failure-injection cases use separate fixture instances. No operational deadline, worker-process lifecycle, or 1C-session proof follows from a simulated failure.
 
+## S14-04 delayed notifications in offline outcome recovery
+
+The separate governed-write simulation records an unknown outcome only while the dispatch remains unresolved. A delayed notification after a proven pre-invocation handback, a recorded applied result, or verification preserves the existing snapshot. In particular, a delayed notification for a handed-back attempt cannot take the base hold from a newer attempt.
+
+Named verification should hand back an attempt with valid no-invocation evidence, dispatch a second attempt on the same base, then deliver the old unknown notification and verify that a third attempt still encounters the second attempt's hold. Exercise delayed notifications after an applied result and after verification, as well as a genuinely unresolved interruption that retains its hold. Use the existing offline contracts for these scenarios.
+
