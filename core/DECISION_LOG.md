@@ -2275,3 +2275,7 @@ The first S10 capture run found one stale inherited expectation. The scheduler e
 ### 2026-11-18 - Verify S10 manifest assembly after capture acceptance checks
 
 The capture module rerun passed 52 cases at 2124b5b. Proceed to the existing R2-US-048 manifest validator and CLI fixtures, which use a local bare Git repository and a fake GitHub response. Preserve the release builder's NO-GO ceiling and independent acceptance roles. Store native canary and product release evidence in the backlog until actual runtime proofs exist.
+
+### 2026-11-18 - Restore the retained capture epoch guard
+
+The routed review found that the main capture loop no longer verifies the live scope epoch after leasing and before submitting a connector call, although the historical integration merge 900a3d0 did. Its snapshot completion check also runs after local baseline updates. Restore the pre-dispatch guard and require a current epoch before publishing a successful observation. Test refusal independently before dispatch and after an in-flight epoch change. Keep actual scope authority, production and deployment outside this change.
