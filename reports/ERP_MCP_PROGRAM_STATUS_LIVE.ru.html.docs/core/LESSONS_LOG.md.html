@@ -872,4 +872,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: The test identity provider validated a cached session without rereading identity and issued replacements without validating predecessors. Rule: enforce current eligibility on both validation and serialized rotation.
 
+- 2026-11-18 SUCCESS: A barrier-driven concurrent rotation test verified exactly one successor for one predecessor. Rule: keep concurrency evidence separate from sequential revocation and from real credential-provider qualification.
+
 </pre></main></body></html>

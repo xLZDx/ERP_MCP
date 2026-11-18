@@ -2570,3 +2570,5 @@ The corrected same six named transport nodes at `24f4eb78` passed in 0.74s, exit
 
 The isolated identity provider checked the stored session lifetime on validation without rechecking the current registry. The rotation path also revoked the supplied ID and issued a replacement without validating the old session. Require a currently eligible session and serialize successor issuance with revocation so one old session can produce at most one successor.
 
+At exact `15536d0c`, the assigned tester ran five named nodes for successful and concurrent rotation, expiry, registry revocation/epoch/unavailability and the page revocation regression. Seven parameterized cases passed in 1.23s, exit 0. The existing gateway SecretProvider resolves values by reference but does not expose an authenticated credential generation to S16. Preserve that value-access boundary and define credential-generation proof and its binding to derived sessions as a separate acceptance requirement.
+
