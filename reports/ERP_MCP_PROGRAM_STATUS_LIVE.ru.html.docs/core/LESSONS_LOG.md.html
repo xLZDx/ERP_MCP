@@ -792,4 +792,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Added targeted checks for the registry bridge boundary using the same migration closure as the integration candidate. Rule: assert the effective entry privileges separately from the actual scoped registry and observation outcomes.
 
+
+- 2026-11-18 SHORTCOMING: The first target observation fixture attempted to claim a proposal before approval. Rule: seed the exact preceding state using the shared helper so the test reaches its intended boundary.
+
 </pre></main></body></html>

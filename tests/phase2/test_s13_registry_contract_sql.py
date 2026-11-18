@@ -173,7 +173,7 @@ async def test_legacy_observe_target_bridge_rejects_substituted_fingerprint_then
     ledger: L,
 ) -> None:
     """The entitled writer cannot bind its claim to a different registered target."""
-    change_id = await ledger.propose(request_id="s13-observe-bridge-fingerprint")
+    change_id = await ledger.approved(request_id="s13-observe-bridge-fingerprint")
     token = await ledger.claimed(change_id, observe=False)
     token_id = token["token_id"]
     before_events = await ledger.conn.fetchval(
