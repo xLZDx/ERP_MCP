@@ -850,3 +850,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: Historical S16 page results did not exercise the strict Boolean independence guard despite running nearby successful paths. Rule: use the exact malformed registry return value as a negative control and assert that nonce issuance is not reached.
 
+- 2026-11-18 SUCCESS: The named S16 regression verified refusal and preserved state for an integer registry response, and accepted exact true through the same approval page fixture. Rule: pair a fail-closed check with its positive control at the same boundary.
+

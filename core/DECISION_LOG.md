@@ -2530,3 +2530,5 @@ At exact `22dea9b04990aca8174718dd1a1ddbf73781bdb4`, nine selected comparison no
 
 Use FIN-S2.2 as bounded approval-page evidence and FIN-S2.1 as its core dependency. The retained service already refuses an independence attestation unless the registry returns exact Boolean true. Earlier named receipts did not exercise the truthy non-Boolean case. Add that case at the approval page boundary before counting the guard as verified. Keep separate open criteria for browser, session, and deployment acceptance.
 
+At exact head `8f8fb9e4558eab4a6ab49f3fefc4fc918abcae39`, the designated functional-test-reviewer ran only `tests/phase2/test_s16_approval_page.py::test_preview_rejects_truthy_integer_independence_before_issuing_nonce` through the repository virtual environment. Result: 1 passed in 0.33s, exit 0. The negative case leaves the stored receipt and nonce counter unchanged and the positive case reaches the real preview handler. This is a synthetic receipt for one criterion.
+
