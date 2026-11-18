@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 
 import pytest
 
@@ -184,8 +185,18 @@ def baseline(snap_a=None, snap_b=None, id_a=ID_A, id_b=ID_B):
 
 
 class FakeLaneReader:
-    def __init__(self, lanes, fail_on=None, error=None, identities=None, identity_error=None):
-        self.lanes = lanes
+    def __init__(self, lanes, fail_on=None, error=None, identities=None, identity_error=None,
+                 snapshot_sources=None):
+        # Snapshot provenance is captured from the fixture's data source at construction time.
+        # It is deliberately independent from source_identity(), which models the reader's
+        # preflight/post-read alias lookup and can change during a test.
+        actual_sources = {"A": ID_A, "B": ID_B} if snapshot_sources is None else snapshot_sources
+        self.lanes = {
+            lane: (replace(snapshot, source_identity=actual_sources.get(lane))
+                   if type(snapshot) is LaneSnapshot and snapshot.source_identity is None
+                   and actual_sources.get(lane) is not None else snapshot)
+            for lane, snapshot in lanes.items()
+        }
         self.fail_on = fail_on
         self.error = error or RuntimeError("lane down")
         self.identities = {"A": ID_A, "B": ID_B} if identities is None else identities
@@ -421,8 +432,35 @@ def test_two_distinct_identities_with_matching_provenance_match_and_carry_no_rea
     reader = good_reader()
     result = via(reader)
     assert result.status is S.MATCH and result.reason == ""
+    assert reader.lanes["A"].source_identity == ID_A
+    assert reader.lanes["B"].source_identity == ID_B
     assert reader.identity_calls == ["A", "B", "A", "B"]
     assert reader.calls == ["A", "B"]
+
+
+def test_snapshot_from_foreign_source_is_inconclusive_and_hides_values():
+    secret = DiffItem("document", "FOREIGN-SECRET")
+    reader = good_reader(snapshot_sources={"A": ID_A, "B": ID_B})
+    reader.lanes["B"] = replace(snap(*EFFECT, secret), source_identity="foreign-gateway")
+
+    result = via(reader, show_values=True)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "SNAPSHOT_IDENTITY_MISMATCH"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
+    assert "FOREIGN-SECRET" not in repr(result)
+
+
+def test_snapshot_without_source_provenance_is_inconclusive():
+    reader = good_reader(snapshot_sources={"A": ID_A, "B": None})
+
+    result = via(reader, show_values=True)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "SNAPSHOT_IDENTITY_UNKNOWN"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
 
 
 @pytest.mark.parametrize("show_values", ["true", 1], ids=["truthy_string", "truthy_int"])

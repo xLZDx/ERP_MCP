@@ -108,7 +108,7 @@ to CREATE_DRAFT; how document version is read back (UNKNOWN, A14).
 ### Epic E15-2 Independent versioned oracle (V2-S15-02)
 
 Assertions:
-1. Each verification result carries the version of the typing table actually supplied to the verifier, including unsupported, inconclusive, and mismatch results. The default table retains `s15-oracle-1`; alternate reviewed tables supply an explicit version.
+1. Each verification result identifies the typing table used, including unsupported, inconclusive, and mismatch results. The exact default keeps `s15-oracle-1`. Alternate tables carry the supplied release label with a SHA-256 digest of the rules, so reusing the default label with different rules cannot claim the default version.
 2. An import-graph check shows that verifier and oracle modules do not import preview or normalization modules (plan S15).
 3. The oracle's total rule takes the includes-VAT flag and the approved `vat_amount` as inputs; with the flag false the expected total is amount plus
    VAT (20 + 1.82 = 21.82), with true it equals the amount (A5).
@@ -124,7 +124,7 @@ Assertions:
 1. Comparison runs through the test-lane read-only MCP; its result is labelled as a machine-read agreement, never a native 1C PASS.
 2. Expected differences are compared as multisets (document ref, N movement lines, balance delta); an extra or a missing item is red (E1).
 3. An unrelated baseline difference neither masks an expected effect nor imitates one (E43).
-4. Incomplete data yields INCONCLUSIVE; amounts and names are hidden unless `show_values` is the Boolean true. Check lane bindings before and after reading both snapshots and refuse detectable source changes or a failed identity check. This offline check cannot prove atomic capture or detect a temporary switch that reverts before rechecking; a qualified reader must bind the snapshot data to its authenticated source.
+4. Incomplete data yields INCONCLUSIVE; amounts and names are hidden unless `show_values` is the Boolean true. Check lane bindings before and after both reads, and require each reader snapshot to carry the identity of the source that supplied the data. Missing or mismatched snapshot bindings are inconclusive even when both endpoint identity checks agree. Authenticated source binding remains an obligation of the concrete reader.
 Open questions: which lanes are A and B (UNKNOWN); how the baseline is re-captured after clone re-creation (section 3).
 
 ### Epic E15-4 Bidirectional ledger<->1C check, R-c (V2-S15-04)

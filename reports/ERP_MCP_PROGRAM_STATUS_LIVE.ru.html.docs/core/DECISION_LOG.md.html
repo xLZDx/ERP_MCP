@@ -2514,4 +2514,10 @@ At `e9a791cafccf2b7fb8c00423acc89e6a48bbe0bb`, the designated tester ran eight s
 
 The retained negative-control set already checks the undistorted baseline and exact required canonical controls. Refresh named offline evidence without replacing working source or repeating historical broad suite runs. Native register distortions require qualified read-back and remain in the backlog.
 
+## 2026-11-18 - Bind S15 comparison snapshots across a source switchback
+
+The Python review on `cf2ea8a` identified that a source can switch during a read and revert before the final identity probe. Require each reader snapshot to carry the identity of the source that supplied its data. Compare this identity with the baseline-bound pair. Native source authentication is still an adapter obligation. The five named S15-05 nodes produced 41 passing offline cases on `cf2ea8a`.
+
+The silent-failure review independently confirmed the snapshot gap and found that a caller could claim the canonical oracle version with changed rules. Preserve the canonical version for the exact default table and qualify every alternate release label with a deterministic rules digest. Keep the result bound to the selected table on early exits.
+
 </pre></main></body></html>

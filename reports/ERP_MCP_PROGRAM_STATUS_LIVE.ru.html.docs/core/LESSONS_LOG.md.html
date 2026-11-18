@@ -838,4 +838,8 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The existing negative controls tie named field and movement discrepancies to an undistorted positive baseline. Rule: verify the retained controls by name and preserve their synthetic evidence boundary.
 
+- 2026-11-18 SHORTCOMING: Rechecking lane identities before and after the read missed a source that switched and reverted during one call. The Python reviewer found the counterexample. Rule: bind provenance to the returned snapshot and validate it before admitting data to a comparison.
+
+- 2026-11-18 SHORTCOMING: The first oracle change still let different rules claim an existing release label. The silent-failure reviewer found the collision. Rule: derive alternate result identities from immutable rules as well as the supplied label.
+
 </pre></main></body></html>
