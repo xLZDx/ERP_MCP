@@ -740,3 +740,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: The restored disposable evidence scenario provisions and removes its own fixture permissions. Rule: scope any passing result to synthetic verifier behavior and record deployed permissions separately.
 
 - 2026-11-18 SUCCESS: Reformatted recent S12 and S13 lessons after the post-commit importer reported an unparsed entry. Rule: use the dated list format with an explicit Rule field for every new lesson.
+
+- 2026-11-18 SUCCESS: Retained three missing bridge test files from the preserved S13 branch. Rule: extract absent paths without overwriting worktree content and record exactly which migrations their fixtures apply.
+
