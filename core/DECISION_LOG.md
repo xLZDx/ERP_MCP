@@ -2251,3 +2251,7 @@ PR #63 merged exact GPT-PM-approved head f831457971f9af8c1186d4ec1c90e6f4259affc
 ### 2026-11-18 - Prepare the remaining S9 bounded acceptance
 
 S8 bounded closure was restored after PR #63. The current S9 work joins earlier bounded acceptance of R2-US-043 and R2-US-044 with exact-current verification of R2-US-045 followed by R2-US-046. Preserve the existing offline E3 and E4 design. Review the inherited migrations/rollback and restore/export/retention paths before changing code, and retain prior evidence without substituting its test counts for exact-current proof. PR #49 is merged on its original integration branch.
+
+### 2026-11-18 - Preserve separate S9 recovery verification
+
+The 352 named release compatibility tests passed at d748a3d. Advance in order to R2-US-046 for synthetic restore verification, export safety and decision-only retention. Keep runtime execution and its prerequisites in the backlog. No product source, migrations or live data changed.

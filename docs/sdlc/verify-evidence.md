@@ -924,3 +924,7 @@ The e2e-runner ran D:/Repo/ERP_MCP/.venv/Scripts/python.exe -m pytest -q --confc
 ## 2026-11-18 - S8 source ownership regression retained on main
 
 At f831457971f9af8c1186d4ec1c90e6f4259affc4 the e2e-runner ran the named test_timeline_view.py and test_s8_gpt_fix_views.py modules from the clean S8 worktree with scratch source and root imports. Result: 235 passed in 2.02s, exit 0. The routed reviewer found no actionable issue. GPT-PM authorized the test-only restoration and bounded closure 3/3 (request 741aeebe-638c-477f-9817-485ef7569bbf, reply 2d72fba9-1d4e-53ff-945a-0d06feb8f6f5). PR #63 merged that head as 8a12aa207d81462411d25580e21abc9568d10b7d. Live source, UI acceptance and G5 were NOT_RUN.
+
+## 2026-11-18 - S9 retained release compatibility modules
+
+At d748a3d72bf454d9c3305801a74b5797588d9e3f the e2e-runner ran test_release_migration.py, test_release_rollback.py and test_release_sql_guard.py in one named invocation with PYTHONPATH set to the S9 scratch source and root. Result: 352 passed in 1.36s. The SQL guard reads the retained migration statements as text. No migration or rollback was applied.

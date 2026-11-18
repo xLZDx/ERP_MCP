@@ -696,3 +696,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: Recovered the historical S8 regression from its integration merge and proved it on the exact current candidate. Rule: link the originating merge and the retest receipt when recording retention on main.
 
 - 2026-11-18 SUCCESS: Reconciled the historical S9 PR state with GitHub before starting the remaining stories. Rule: use the current hosting state and exact retained commit lineage when a plan snapshot still calls a historical PR open.
+
+- 2026-11-18 SUCCESS: The ordered S9 release checks passed on the retained code with no application change. Rule: start with exact-current behavioral evidence when a proven implementation exists and preserve a separate receipt for the next story.
