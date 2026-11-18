@@ -714,3 +714,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: A second inherited test referenced the old post-run epoch behavior without allowing the new admission read first. Rule: inspect every injected authority read in affected fixtures and preserve the intended failure point when introducing an earlier guard.
 
 - 2026-11-18 SUCCESS: The S10 fresh review recovered the pre-dispatch epoch guard missing after integration and added a separate post-call result acceptance gate. Rule: distinguish admission, fenced completion and local publication, and require synthetic tests for each affected refusal branch before accepting a retained integration.
+
+- 2026-11-18 SUCCESS: Kept follow-on provider admission separate from the active engineering sequence. Rule: require a concrete pinned provider and approved corpus before claiming that the generic connector SDK qualifies an integration.

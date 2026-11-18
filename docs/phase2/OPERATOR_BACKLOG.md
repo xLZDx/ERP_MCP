@@ -1882,3 +1882,7 @@ The S9 decision modules do not execute migrations, rollback, backup restore, exp
 ## S10 product canary and release acceptance
 
 The bounded code supports a synthetic development/test capture and an evidence manifest that preserves NO-GO. For a live canary, qualify the exact R2 entrypoint, source and company, report and comparison profile, accountable operator and rollback owner, permitted window and budgets, and the scope-bound kill switch before issuing separate source-specific authorization. Collect actual capture/comparison and independent user, administrator and production acceptance evidence. The release owner then reviews the exact candidate manifest and unresolved predecessor gates. None of those live actions were performed by the bounded continuation. Roles are required by the product process; no individuals are assigned in this backlog entry.
+
+## R2-US-047 additional data provider follow-on
+
+Resume when a concrete additional Personal Data Control Center provider and its permitted data corpus are identified. Pin an immutable upstream revision with license and digest evidence, then verify the existing connector SDK's scoped result and provenance contract against that revision (TC139). Refuse any expansion to a personal corpus outside the approved scope (TC140). Invalidate qualification and rerun the mapped tests when the pin changes (TC141). The owner of the provider/corpus decision is unassigned. No additional provider is installed or admitted, and the frozen release scope is unaffected.

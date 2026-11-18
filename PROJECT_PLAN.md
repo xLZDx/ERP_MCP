@@ -57,7 +57,7 @@ The audit/preparation sprint completed locally in its bounded scope. Its PM appr
 | S8 | Review workbench | CLOSED_BOUNDED_SPRINT (3/3 tasks accepted and integration-resident; G5 UAT NOT_RUN separately) | R2-US-039–041 are accepted in bounded offline scope; PR #48 merged at 5672c9c for the US040 source-ownership correction. The S8 plan records real G5 user/admin UAT and evidence-revocation/current-applicability as NOT_RUN/NOT_PASSED; these remain separate operational evidence, not task blockers under the current operator workflow. No real UI/runtime/product acceptance is claimed. PR #63 restored the omitted TC120 regression on main; exact f831457 passed 235 named synthetic timeline/view tests and merged as 8a12aa2. |
 | S9 | Operations and recovery | CLOSED_BOUNDED_SPRINT (4/4) | PR #64 merged exact approved 2531847 as dfb0205. Retained compatibility, rollback, restore, export and retention contracts complete the bounded sprint. PR #49 historically merged the first two stories on the integration branch. Operational qualification and G6-pre remain open in the backlog. |
 | S10 | Release handoff | CLOSED_BOUNDED_SPRINT (2/2; release NO-GO) | PR #65 merged approved 1ba0cf3 as 37239c0. Bounded development/test capture and manifest assembly are accepted. Native canary, exact signed product release evidence, distinct user/admin/production UAT, release-owner acceptance and G6/G7 remain in the backlog. |
-| FOLLOW_ON | Follow-on | UNCONFIRMED | Follow-on. |
+| FOLLOW_ON | Follow-on | BLOCKED_EXTERNAL (deferred follow-on) | Deferred follow-on. No additional PDCC provider, immutable upstream revision or approved source/corpus scope is identified in the accepted scope. Existing SDK provenance is reusable; provider qualification and admission remain unverified. |
 | S11 | Foundations, contracts and feasibility | DONE_SPRINT_LEVEL | PR #57 merged at 7c1f69c and the S11 exit record is complete; this remains distinct from later S12/S13 gate status. |
 | S12 | Change model and policy | IN_PROGRESS (7/7 bounded task acceptances; PR #54 open) | Individual bounded records are accepted; the sprint and G8 remain in progress, not formally closed. |
 | S13 | Ledger and audit anchor | IN_PROGRESS (S13-01/02 bounded accepted; S13-03 partial; S13-04/05 not started) | PR #58 remains open/unmerged. S13-03 accepted slices do not constitute full task or formal S13 acceptance. |
@@ -202,7 +202,7 @@ Goal: Follow-on.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| R2-US-047 | Owner enables additional PDCC providers | REQ04,03,27; TC139 adapter contract qualification; TC140 personal corpus expansion denied; TC141 pinned upgrade triggers retesting | NOT_STARTED | Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof | Codex | R2-US-002, R2-US-041 |  |
+| R2-US-047 | Owner enables additional PDCC providers | REQ04,03,27; TC139 adapter contract qualification; TC140 personal corpus expansion denied; TC141 pinned upgrade triggers retesting | BLOCKED_EXTERNAL | Deferred follow-on. No additional PDCC provider, immutable upstream revision or approved source/corpus scope is identified in the accepted scope. Existing SDK provenance is reusable; provider qualification and admission remain unverified. | Unassigned | R2-US-002, R2-US-041 |  |
 
 ## Sprint S11 - Foundations, contracts and feasibility
 Goal: Foundations, contracts and feasibility. Sprint is DONE in the gate manifest; its child task IDs are not enumerated in the report.
