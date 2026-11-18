@@ -72,3 +72,8 @@ The three SQL changes unique to the preserved branch's migration 027 are already
 
 The coordinator tests now preserve the current database identity checks and retain malformed result, valid completion, and terminal replay assertions from 65c4086. The replay path returns the stored terminal call without another evidence preparation, gate call or terminal write. These are synthetic cases pending sprint verification.
 
+
+### Terminal outcome coverage on the integration line
+
+The historical terminal replay and repair-handoff scenarios now have an invocation-owned test fixture using migrations 001 through 030, including the unregistered 028 and 029 patches in order. This exercises the migration that actually supplies the no-entry terminalization fix on the integration line. Existing legacy bridge tests still use the 027 fixture; keep their reported scope distinct. The new fixture has not been executed and does not cover migrations 031 and later.
+

@@ -743,3 +743,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Retained three missing bridge test files from the preserved S13 branch. Rule: extract absent paths without overwriting worktree content and record exactly which migrations their fixtures apply.
 
+
+- 2026-11-18 SUCCESS: Retained terminal outcome scenarios with a fixture matching the integration migration that implements the tested rule. Rule: place new migration prerequisites in the scoped fixture and preserve the other scenarios' historical baseline.
+

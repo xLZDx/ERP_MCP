@@ -2351,3 +2351,8 @@ The S13 evidence test commit succeeded, but the post-commit importer reported an
 
 Recover historical test inputs for anchor-gap cosign, witness cosign and signed evidence. They use the owned disposable fixture that applies migrations through 027. Historical results and current acceptance remain separate.
 
+
+## 2026-11-18 - Retain terminal outcome scenarios against migration 030
+
+Recover the historical completion, ownership refusal, pre-write terminal replay and repair-handoff scenarios. Use an owned disposable fixture and apply the prerequisite legacy patches before migration 030, matching the existing integration migration order. Keep fixture readiness and operational readiness separate. Tests and migrations were NOT_RUN.
+
