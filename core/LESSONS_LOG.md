@@ -899,3 +899,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: When a sprint is bounded-closed with one intentionally deferred external task, close the native sprint state while preserving the deferred task and its evidence. The task remains visible in the report; it is not silently counted as accepted.
 
 - 2026-11-18 SHORTCOMING: The report selected the first native sprint still marked open, so it presented historical S4 instead of the unique reconciled `IN_PROGRESS` sprint S16. Rule: reports must preserve native harness state as a separate layer and choose current work from the reconciled project status when historical rows remain open.
+
+- 2026-11-18 SHORTCOMING: S16 approval/session and private-network statuses combined verified fake-backed behavior with absent adapters. Rule: accept only the bounded contract actually exercised; keep cookie/IdP/database integration and writer-target egress behind their explicit adapter dependencies, and do not call listener-origin checks writer-route proof.

@@ -2622,4 +2622,10 @@ The S16-01 code commit subject initially placed `Task: S16-01` on the same line 
 
 Historical native harness sprint rows can remain open even when the source plan and Git reconciliation mark them `CLOSED_BOUNDED_SPRINT`; after FIN was closed, the report therefore selected S4 as active ahead of S16. Preserve exact current-branch matching, then prefer the unique sprint with reconciled project status `IN_PROGRESS` or `ACTIVE`; fall back to the legacy native selector only when that project status is absent or ambiguous. This changes report display selection only and does not rewrite historical harness task evidence.
 
+## 2026-11-18 — Separate bounded S16 evidence from deferred adapters
+
+Accept S16-01 only for its verified TEST-backed approval core/page contract at exact test HEAD `8ef18c9cfefe5046c4ec4a0fdc7f2fa69dea66b0`; record HTTP login/session-cookie issuance, real IdP qualification and database-backed atomic audit in the operator backlog. Keep S16-04 partial: its inbound ASGI checks are synthetic evidence, while its outbound target-routing criteria cannot be implemented against a real writer within this sprint because S16 §2/§5 forbids gateway/listener binding and the S14 `OneCWritePort` is `NotWired`. Record that restriction as PROHIBITED in the task ledger and keep the implementation/DNS pinning/redirect/proxy checks in the future private-writer backlog. No writer, listener, 1C call or production behavior is enabled.
+
+Resolve S16 design questions Q2 and Q7 to their documented strict defaults: expose no S16 change tools through a public/tunnel listener (including read-only `status` and `verify`); use loopback by default and permit only explicitly configured private ranges. The existing app factory remains inert and starts no listener.
+
 </pre></main></body></html>

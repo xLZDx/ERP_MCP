@@ -275,7 +275,7 @@ Assertions:
     undeclared arguments are refused before partial registration. Full binding to the gateway's high-level MCPServer is not established by this task;
     it requires a separate low-level integration design that preserves authenticated context. The focused adapter contract passed 15 tests on
     2026-11-15; this is synthetic adapter evidence, not gateway/runtime acceptance.
-Open: output shape and field names of each tool (design step); whether `status` and `verify` are read-only for annotation purposes (Q2).
+Resolved for S16 on 2026-11-18: the immutable tool manifest fixes tool schemas, and all five change tools—including read-only `status` and `verify`—remain private-only. No public/tunnel change-tool exposure is implemented or claimed.
 
 ### Epic E16-4 Private-network exposure (V2-S16-04: private-network-only writes, proxy/redirect/SSRF check)
 
@@ -296,7 +296,7 @@ Assertions:
    refused; the same request with a valid credential but a foreign Origin/Referer on an approval POST is refused.
 8. A `CHAT_WRITE` principal with missing/empty identity fields, invalid epoch/MFA types, a non-TEST lane, or malformed/non-TEST scope is refused
    before the downstream MCP tool app is called.
-Open: whether `status`/`verify` may be exposed on the public tunnel (Q2); default private network definition (loopback only vs RFC 1918 ranges, Q7).
+Resolved for this sprint on 2026-11-18: no S16 change tool is exposed on a public tunnel; the default allowed network is loopback, with additional private ranges only when explicitly configured in the private listener object. The listener factory still does not bind or start a network listener.
 
 ### Epic E16-5 Recorded tool-call replay (V2-S16-05: ChatGPT and Claude transcripts replayed; real runs NOT_RUN)
 
@@ -423,12 +423,12 @@ the observable value that would differ if the guard were off.
 | # | Question | Recommended default |
 |---|---|---|
 | Q1 | Which scenario list governs: PLAN_V2 exit (E1, E2, E4, E5, E17, E29, E32, E39) or map (E39, E29, E5, E4, E16, E14, E30, E32)? | Union of both, with E2 DEFERRED and the 1C-side parts of E1/E17 NOT_RUN. |
-| Q2 | Are `status` and `verify` write tools for exposure purposes (D3), and are they annotated read-only? | All five change tools are private-network-only; `status`/`verify` are read-only in behavior but not exposed publicly in this sprint. |
+| Q2 | Are `status` and `verify` write tools for exposure purposes (D3), and are they annotated read-only? | RESOLVED 2026-11-18: all five change tools are private-network-only; `status`/`verify` are read-only in behavior but not exposed publicly in this sprint. |
 | Q3 | Concrete values: session lifetime, nonce lifetime, CSP policy text, cookie attributes, amount threshold for second confirmation. | Choose the strictest practical values in the design step and keep them as named constants asserted by tests; the amount threshold stays a registry value, not hard-coded. |
 | Q4 | Is the page pure server-rendered HTML (no scripts)? | Yes: no inline or external scripts, `script-src 'none'`, which also simplifies CSP and a11y review. |
 | Q5 | Where do principal/target registries and nonce state persist? | In-memory fakes in S16; persistence decided after S13 is accepted. |
 | Q6 | Reuse `admin_session.py`/`workbench_session.py` for approver sessions? | Do not share a store; reuse only patterns. Approver sessions use a separate store and cookie scope. |
-| Q7 | Definition of "private network": loopback only, or RFC 1918/ULA ranges? | Loopback and explicitly configured private ranges; default configuration is loopback only, as in `private_ingress.py`. |
+| Q7 | Definition of "private network": loopback only, or RFC 1918/ULA ranges? | RESOLVED 2026-11-18: loopback by default; allow only explicitly configured private ranges, as in `private_ingress.py`. |
 | Q8 | Is any recorded real-client transcript available? | No: ship hand-authored shape fixtures labelled "not observed"; real runs NOT_RUN. |
 | Q9 | New package name and location? | `src/erp_mcp_s16/`, mirroring `src/erp_mcp_s15/`; no import from the writer. |
 | Q10 | Is the S15 verifier accepted enough to be the `verify` backend? | Use it only through VerifyPort with a fake; claim nothing about real verification. |
