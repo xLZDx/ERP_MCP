@@ -2500,3 +2500,9 @@ The exact `decc8bc43ee2c4b6a5f05f8925a0bf5cec1e210c` committed selection ran nin
 
 The A-to-B comparator had a before-read source check, and its details switch used general truthiness. Recheck the source pair after both reads and refuse detectable remapping or unavailable identity. Show mismatch values only for Boolean true. Native snapshot provenance remains in the backlog.
 
+The designated functional tester ran 18 named comparisons at `c33adc59e3d878b251deb33bc6c94cd2ba58a05f`; all passed in 0.56s. Coverage included incomplete reads, population difference counts, redaction, and the before/after identity checks.
+
+## 2026-11-18 - Require bounded reconciliation freshness for writes
+
+The enabled write gate must see a finite positive freshness window and an age inside it. Non-finite ages can bypass a guard phrased as only less-than or greater-than. Require positive evidence that the age is in the valid interval and fail closed if the clock is unavailable. The disabled writer retains its read-only behavior.
+

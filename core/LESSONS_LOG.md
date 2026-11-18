@@ -832,3 +832,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: The A-to-B SIM read accepted a before-read identity without checking for a later remap, and a truthy non-Boolean value could disclose details. Rule: recheck source identity after reads and require explicit Boolean true to reveal values.
 
+- 2026-11-18 SHORTCOMING: The write gate expressed staleness as two comparisons that both evaluate false for NaN. Rule: require a valid age inside a finite freshness window before admitting an enabled writer.
+

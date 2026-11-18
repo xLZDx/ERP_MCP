@@ -134,7 +134,7 @@ Assertions:
 2. 1C->ledger: a document without a marker, and an edit that left the marker unchanged but changed the content hash, are each detected (E12, E43).
 3. The check runs at each of three triggers: startup, after a restore, and periodically; a test per trigger asserts that a run occurs (the interval is
    an open question).
-4. Skew after restore (ledger older or newer than 1C; a valid but old chain) leaves applies blocked until the check is clean (E25).
+4. Skew after restore (ledger older or newer than 1C; a valid but old chain) leaves applies blocked until the check is clean (E25). An enabled writer still needs a finite positive freshness window and a valid age within that window. An unavailable or invalid clock cannot authorize an apply.
 5. A document found after an `outcome_unknown=True` result is classified by marker lookup with no resend (A11).
 6. The "applies blocked" gate is inert while the writer is disabled: with the writer disabled, a dirty reconciliation does not change the behavior of
    any existing path (test: dirty state with writer disabled -> no new refusal on non-write paths).

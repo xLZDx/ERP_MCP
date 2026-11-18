@@ -19,6 +19,7 @@ marker-index-only reader cannot see an unmarked out-of-band document and is INCO
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from collections import Counter
@@ -332,7 +333,7 @@ class ApplyGate:
 
     def __init__(self, writer_enabled: Callable[[], bool], max_age_seconds: float,
                  clock: Callable[[], float] = time.monotonic) -> None:
-        if not max_age_seconds > 0:
+        if not math.isfinite(max_age_seconds) or max_age_seconds <= 0:
             raise ValueError("GATE_MAX_AGE_INVALID")
         self._writer_enabled = writer_enabled
         self._max_age = max_age_seconds
@@ -394,8 +395,11 @@ class ApplyGate:
         with self._lock:
             if self._blocked or self._clean_at is None:
                 return True
-            age = self._clock() - self._clean_at
-            return age < 0 or age > self._max_age  # stale (or non-monotonic) CLEAN is blocked
+            try:
+                age = self._clock() - self._clean_at
+                return not math.isfinite(age) or age < 0 or age > self._max_age
+            except Exception:  # noqa: BLE001 - a broken clock must not open the write gate
+                return True
 
     def ensure_apply_allowed(self) -> None:
         if self.applies_blocked():
