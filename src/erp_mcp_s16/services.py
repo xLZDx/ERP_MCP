@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Literal, Mapping
+from typing import Literal
 from uuid import UUID, uuid4
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
@@ -21,7 +21,8 @@ from business_ai_gateway.phase2.change.types import BudgetCheck, CallerClass, Ve
 
 from .contracts import (
     ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionBinding, DecisionPage,
-    DomainReceipt, NonceSource, PreviewSnapshot, ProposalPort, Result, TargetRecord,
+    DomainReceipt, FROZEN_V2_PROPOSAL_KINDS, NonceSource, PreviewSnapshot,
+    ProposalPort, Result, TargetRecord,
     canonical_preview_bytes,
 )
 from .core import S16Core, _as_utc, _valid_approver_session
@@ -63,20 +64,20 @@ class ChangeService:
         self.nonce_source = nonce_source
         self.clock = clock
 
-    def propose(self, requester: AuthenticatedPrincipal, raw_request: Mapping[str, object], *,
+    def propose(self, requester: AuthenticatedPrincipal, raw_request: dict[str, object], *,
                 now: datetime | None = None) -> Result[PreviewSnapshot]:
+        if type(raw_request) is not dict:
+            return Result.refused(ErrorCode.SCHEMA_INVALID)
+        request_id = raw_request.get("request_id")
+        kind_text = raw_request.get("kind")
+        if (type(request_id) is not str or type(kind_text) is not str
+                or kind_text not in FROZEN_V2_PROPOSAL_KINDS):
+            return Result.refused(ErrorCode.SCHEMA_INVALID)
         timestamp = _now(self.clock, now)
         try:
             auth_error = self.core.validate_current_requester(requester, timestamp)
             if auth_error is not None:
                 return Result.refused(auth_error)
-            if not isinstance(raw_request, Mapping):
-                return Result.refused(ErrorCode.SCHEMA_INVALID)
-            request_id = raw_request.get("request_id")
-            kind_text = raw_request.get("kind")
-            if (type(request_id) is not str or type(kind_text) is not str
-                    or kind_text not in ChangeKind.__members__):
-                return Result.refused(ErrorCode.SCHEMA_INVALID)
             target = self.core.targets.current(requester.scope)
             principal_record = self.core.principals.current(requester.principal_id)
             if target is None or principal_record is None:

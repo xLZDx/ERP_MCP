@@ -200,3 +200,7 @@ running, but a synchronous connector call already running in a worker thread is 
 force-cancelled. These safeguards do not establish cross-process/COM production behavior, a live
 kill switch, product acceptance of S10 stories, production canary success, UAT, or release-owner
 approval. Those remain separate acceptance gates.
+
+## 2026-11-18 retained engineering closeout
+
+PR #65 merged exact approved 1ba0cf3 as 37239c0. The two engineering tasks are CLOSED_BOUNDED_SPRINT. The release remains NO-GO. Native capture, independent user/admin/production acceptance, current signed release evidence, release-owner decision and G6/G7 are tracked separately in OPERATOR_BACKLOG.md. The 56 capture and 31 manifest/CLI cases were separate synthetic, exact-head runs. Scope is checked before dispatch and again before accepting an observation, with fenced scheduler completion. That is not a continuous connector-side authorization guarantee.

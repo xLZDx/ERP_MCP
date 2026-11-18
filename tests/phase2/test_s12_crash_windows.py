@@ -259,6 +259,18 @@ def test_s12_parse_refusal_does_not_echo_sensitive_request_content(field, value)
     assert value not in repr(result)
 
 
+@pytest.mark.parametrize("lane", [None, "PROD"])
+def test_s12_proposal_parser_rejects_missing_or_non_test_lane(lane):
+    result = ch.parse_proposal(h.raw_create(), h.ctx(lane=lane))
+    refused(result, "SCHEMA_INVALID")
+
+
+def test_s12_proposal_parser_rejects_uninitialized_missing_lane_without_raising():
+    missing_lane = object.__new__(h.ProposalContext)
+    result = ch.parse_proposal(h.raw_create(), missing_lane)
+    refused(result, "SCHEMA_INVALID")
+
+
 def test_s12_identity_evidence_is_test_lane_registry_backed_and_has_no_real_sink():
     from tests.phase2.s16_helpers import build_env
 

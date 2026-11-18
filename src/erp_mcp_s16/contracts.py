@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Generic, Literal, Mapping, Protocol, TypeVar
+from typing import Final, Generic, Literal, Mapping, Protocol, TypeVar
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode
@@ -14,6 +14,12 @@ from business_ai_gateway.phase2.change.types import ChangeRecord
 from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationResult
 
 T = TypeVar("T")
+
+# Frozen v2.0 admission vocabulary for the governed S16 proposal facade.
+# Kept separate from ChangeKind so legacy parser callers retain their vocabulary.
+FROZEN_V2_PROPOSAL_KINDS: Final[frozenset[str]] = frozenset(
+    {"CREATE_DRAFT", "POST", "UNPOST"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -293,7 +299,7 @@ class BeginApplyEvidencePort(Protocol):
 
 
 class ProposalPort(Protocol):
-    def build(self, requester: AuthenticatedPrincipal, raw_request: Mapping[str, object], *,
+    def build(self, requester: AuthenticatedPrincipal, raw_request: dict[str, object], *,
               now: datetime, expires_at: datetime, preview_digest: str,
               change_id: str) -> tuple[ChangeProposal, TargetRecord] | ErrorCode: ...
     def rollback(self, requester: AuthenticatedPrincipal, receipt: DomainReceipt, *,

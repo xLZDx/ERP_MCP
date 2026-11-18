@@ -948,3 +948,15 @@ The e2e-runner executed the same three named capture modules at 2124b5bd6fee9d50
 ## 2026-11-18 - First S10 post-review scope guard regression
 
 Capture group at aa6b98e5f07dba9c34996993cc6015ee9e42b364: 55 passed, 1 failed in 5.85s. The additional inherited post-connector epoch test still expected CAPTURED and configured a failing port before dispatch. Update its fixture to reach the post-call guard and retain the existing CURSOR_LOST requirement when the later epoch read fails. The named manifest group was not run in this round because the capture group failed. Retain the first outcome separately from the next exact-head attempt.
+
+## 2026-11-18 - Final S10 bounded acceptance
+
+At 1ba0cf3b27bc763767e6fa15e19f242264044f2a the e2e-runner ran test_capture_loop.py, test_capture_runtime.py and test_capture_runtime_e2e.py together: 56 passed in 8.11s, exit 0. Separately test_s10_release_manifest.py and test_s10_release_manifest_cli_e2e.py: 31 passed in 83.69s, exit 0. Both ran with the .venv interpreter, --confcutdir=tests/phase2, checkout root/source on PYTHONPATH at D:/Repo/ERP_MCP. Review found one lost capture epoch guard, repaired and confirmed on the final head by code and Python fix reviews. Reliability review was limited to supplied source facts after direct read was refused. GPT-PM final APPROVE request 8ecf92f6-1283-4dd3-885e-58cc685364ef and reply af70aa60-eafd-5853-ae15-907f9e94c8ee authorized exact merge and 2/2 bounded engineering closeout. PR #65 merged as 37239c04ed1c573c9afd8181f6cb83fd186ad14c. Native production canary, product release artifact and independent UAT were NOT_RUN.
+
+## 2026-11-18 - S12-01 retained proposal admission verification
+
+At b2fbca488f0ecfd0d4e3cdc2929c1e45aadfc8f5, the e2e-runner executed the four named proposal, change, approval-digest and simulation modules. Result: 590 passed, 21 skipped, 2 failed in 6.90s, exit 1. The two failures were retained state-transition fixture expectations: T9 described an incompletely bound reply as clean success, and T16 allowed the prior approver as recovery witness. The S12-01 commit changes neither the reducer nor those fixture inputs. On the same clean HEAD, the named S16 proposal boundary, approval digest, simulation and four specific canonical parser/digest nodes returned 54 passed, 21 skipped in 1.04s, exit 0. The 21 disposable database cases were NOT_RUN because no test database DSN was configured for this invocation. No live/gated work was performed. The scoped probe confirms S12-01's offline contract only; it does not clear the two original failures.
+
+## 2026-11-18 - S12-02 retained taxonomy verification
+
+Named test_change_offline.py on clean 9a33cc086d2a212bf6e5d13e02ee5f031436eb94 returned 542 passed in 5.67s, exit 0, with checkout root/source on PYTHONPATH and the repository .venv interpreter. The two original T9/T16 assertion differences are corrected without changing their retained reducer guards. The run contains pure model fixtures, not durable evidence or writer execution.

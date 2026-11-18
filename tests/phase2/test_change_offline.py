@@ -1200,8 +1200,19 @@ def test_t9_callers_generation_and_state():
     ok(step(dispatched(), Event.CALL_UNKNOWN, caller=CallerClass.RECOVERY_WORKER))
     refused(step(dispatched(), Event.CALL_UNKNOWN, caller=CallerClass.REQUESTER), "NOT_ENTITLED", "T9")
     refused(step(dispatched(), Event.CALL_UNKNOWN, generation=0), "TICKET_SUPERSEDED", "T9")
-    # a clean success is never recorded as T9
-    refused(step(dispatched(), Event.CALL_UNKNOWN, signed=True, call_id_matches=True, result_returned=True),
+    # A returned reply without bound evidence stays T9 and keeps call ownership on hold.
+    d = dispatched()
+    incomplete = good(Event.CALL_SUCCESS, d, signed=True, call_id_matches=True, result_returned=True,
+                      receipt_bound=False, result_evidence_bound=False, evidence_persisted=False)
+    assert ch.classify_completion(incomplete) is Event.CALL_UNKNOWN
+    held = apply_transition(d, Event.CALL_UNKNOWN, incomplete)
+    r = ok(held, "T9")
+    assert (r.execution, r.call_ownership) == (Execution.APPLY_UNKNOWN, CallOwnership.POSSIBLY_EXECUTING)
+    assert EffectKind.OPEN_HOLD_CALL_OWNERSHIP in held.effects
+
+    # A fully bound success is never recorded as T9.
+    refused(step(d, Event.CALL_UNKNOWN, signed=True, call_id_matches=True, result_returned=True,
+                 stage=None, receipt_bound=True, result_evidence_bound=True, evidence_persisted=True),
             "SCHEMA_INVALID", "T9")
     for state in (applying(), applying(Dispatch.PERMITTED), claimed()):
         assert type(step(state, Event.CALL_UNKNOWN)) is Refusal
@@ -1453,7 +1464,11 @@ def test_t16_same_person_twice_and_requester_as_operator_are_refused_and_the_app
     refused(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=REQUESTER), "APPROVER_NOT_INDEPENDENT", "T16")
     # the operator who approved the change may co-sign only with an independent witness (S12-M05)
     ok(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER))
-    ok(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=APPROVER))
+    ok(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER, witness_person_id="p-wit"))
+    refused(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=APPROVER),
+            "APPROVER_NOT_INDEPENDENT", "T16")
+    refused(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=REQUESTER),
+            "APPROVER_NOT_INDEPENDENT", "T16")
     refused(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER, witness_person_id=APPROVER),
             "APPROVER_NOT_INDEPENDENT", "T16")
 
