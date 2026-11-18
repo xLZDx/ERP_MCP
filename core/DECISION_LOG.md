@@ -2243,3 +2243,7 @@ PR #62 merged exact GPT-PM-approved head 9591e781505d75769e80f182e90972972f9f9fb
 ### 2026-11-18 - Restore the S8 source ownership regression on main
 
 Historical PR #48 merged bb6ef080 to the integration branch as 5672c9c. The integrated timeline implementation retains the same independent source ownership check, but the accepted mislabeled event-feed regression and its positive fixture binding are absent on main. Restore those two test hunks without changing product code. Reverify the named timeline and view modules to establish that consolidation preserved TC120, then retain the historical bounded scope; live source ownership and user acceptance still require separate qualification.
+
+### 2026-11-18 - Record restored S8 bounded closure
+
+PR #63 merged exact GPT-PM-approved head f831457971f9af8c1186d4ec1c90e6f4259affc4 into main as 8a12aa207d81462411d25580e21abc9568d10b7d. Review request 741aeebe-638c-477f-9817-485ef7569bbf and reply 2d72fba9-1d4e-53ff-945a-0d06feb8f6f5 authorize reestablishing bounded 3/3 closure. The 235 named cases verify the restored regression in current main; retain historic engineering decisions and separate live qualification.
