@@ -1,7 +1,7 @@
 """Review-only view model for authenticated document intake previews."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from .aliases import AliasScope
@@ -32,11 +32,11 @@ class IntakeMateriality(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class IntakeReviewField:
-    value: str
-    provenance: SourceProvenance
+    value: str = field(repr=False)
+    provenance: SourceProvenance = field(repr=False)
     materiality: IntakeMateriality = IntakeMateriality.UNCLASSIFIED
     review_required: bool = True
-    entity_resolution: IntakeEntityResolution | None = None
+    entity_resolution: IntakeEntityResolution | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
