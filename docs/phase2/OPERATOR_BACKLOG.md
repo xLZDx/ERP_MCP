@@ -1929,3 +1929,7 @@ On the qualified 1C clone, execute separate approved create, post, and unpost ch
 
 Reuse the measured narrow role on clone `818HA_p2diff` as the reference. The October 12 record covers 53 objects and the October 27 follow-up covers 57 after four catalog read grants in `c4ab1ea`. Before enabling the selected writer, bind its actual account and clone identity, compare effective rights with the measured role, and repeat receipt admission and denied payment/delete controls on that account. The earlier clone measurements do not establish the identity or inherited grants of the selected channel. The qualified channel owner is unassigned in the current plan.
 
+## S14-07 configured identity-provider evidence
+
+Verify that the selected identity provider issues dedicated private-writer tokens and that its read clients use configured read audiences. Exercise both actual listeners against normal, mixed, and wrong-audience tokens and record denial before any 1C call. The authorized deployed identity-provider binding is not in the current evidence.
+

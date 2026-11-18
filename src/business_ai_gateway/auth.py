@@ -8,6 +8,9 @@ from mcp.server.auth.provider import AccessToken, TokenVerifier
 
 from .settings import Settings
 
+PRIVATE_WRITER_AUDIENCE = "urn:erp-mcp:private-writer"
+PRIVATE_WRITER_SCOPE = "erp_mcp:private_writer"
+
 
 class JWTTokenVerifier(TokenVerifier):
     def __init__(
@@ -17,11 +20,17 @@ class JWTTokenVerifier(TokenVerifier):
         audience: str | None = None,
         required_scope: str | None = None,
         resource: str | None = None,
+        private_writer: bool = False,
     ):
         if not settings.oauth_jwks_url:
             raise ValueError("oauth_jwks_url required")
         self.settings = settings
         self.audience = settings.oauth_audience_list if audience is None else audience
+        if type(private_writer) is not bool:
+            raise ValueError("private_writer must be a bool")
+        if private_writer and audience != PRIVATE_WRITER_AUDIENCE:
+            raise ValueError("private writer audience required")
+        self._private_writer_verifier = private_writer
         self.required_scope = settings.oauth_required_scope if required_scope is None else required_scope
         self.resource = settings.public_mcp_url if resource is None else resource
         if not self.audience:
@@ -69,6 +78,22 @@ class JWTTokenVerifier(TokenVerifier):
 
         subject = claims.get("sub")
         if not isinstance(subject, str) or not subject.strip():
+            return None
+        token_audience = claims.get("aud")
+        if isinstance(token_audience, str):
+            includes_private_writer = token_audience == PRIVATE_WRITER_AUDIENCE
+            private_writer_only = includes_private_writer
+        elif isinstance(token_audience, list) and all(isinstance(value, str) for value in token_audience):
+            includes_private_writer = PRIVATE_WRITER_AUDIENCE in token_audience
+            private_writer_only = (
+                len(token_audience) == 1 and token_audience[0] == PRIVATE_WRITER_AUDIENCE
+            )
+        else:
+            return None
+        if self._private_writer_verifier:
+            if not private_writer_only:
+                return None
+        elif includes_private_writer:
             return None
         scopes = self._scopes(claims)
         if self.required_scope not in scopes:

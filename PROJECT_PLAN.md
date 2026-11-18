@@ -61,7 +61,7 @@ The audit/preparation sprint completed locally in its bounded scope. Its PM appr
 | S11 | Foundations, contracts and feasibility | DONE_SPRINT_LEVEL | PR #57 merged at 7c1f69c and the S11 exit record is complete; this remains distinct from later S12/S13 gate status. |
 | S12 | Change model and policy | CLOSED_BOUNDED_SPRINT (7/7) | PR #54 merged at fcffaee after approval of a70c03d. Operational G8 remains separate. |
 | S13 | Ledger and audit anchor | CLOSED_BOUNDED_SPRINT (5/5) | PR #58 merged at 1f0192d after exact-head approval of 6dc18f0. Operational provider, writer and coordinated recovery prerequisites remain in the backlog. |
-| S14 | 1C write port | IN_PROGRESS (S14-06 clone role evidence) | Enforce the approved offline TEST port contracts; qualified COM and operational acceptance remain in the backlog. |
+| S14 | 1C write port | IN_PROGRESS (S14-07 audience isolation) | Enforce the TEST port contracts and the read/write token boundary. Operational acceptance remains in the backlog. |
 | S15 | Verification and reconciliation | GIT_ACTIVITY_NOT_CLOSED | Verification and reconciliation. |
 | S16 | Independent approval and MCP | GIT_ACTIVITY_NOT_CLOSED | Independent approval and MCP. |
 | S17 | Document intake and workbench | QUEUED | Document intake and workbench. |
@@ -242,7 +242,7 @@ Goal: 1C write port.
 | S14-04 | unknown-outcome resolution | unknown-outcome resolution; detailed criteria are in the sprint plan/test-design record. | PARTIAL | Offline recovery preserves resolved attempts and their base hold ownership across delayed unknown notifications. Named verification is NOT_RUN pending source assembly. Licensed read-back and triage policy reconciliation are tracked in the backlog. | Codex | S12, S13 |  |
 | S14-05 | draft/post/unpost | draft/post/unpost; detailed criteria are in the sprint plan/test-design record. | PARTIAL | Governed TEST approval identity is bound to one operation, target, version and digest. Named verification is NOT_RUN pending source assembly. Licensed register read-back is tracked in the backlog. | Codex | S12, S13 |  |
 | S14-06 | least-privilege role | least-privilege role; detailed criteria are in the sprint plan/test-design record. | PARTIAL | 818HA_p2diff has recorded effective rights for the 57-object role at c4ab1ea. The current role blob matches that revision. Current operational account and target binding are in the backlog. | Codex | S12, S13 | c4ab1ea |
-| S14-07 | token separation | token separation; detailed criteria are in the sprint plan/test-design record. | PARTIAL | Static rebaseline: simulated dispatch/private-writer candidate exists (e9d93ff); operational COM and per-story qualification remain unproven. See docs/rebaseline/2026-11-17/TASK_EVIDENCE_AUDIT.md. | Codex | S12, S13 |  |
+| S14-07 | token separation | token separation; detailed criteria are in the sprint plan/test-design record. | PARTIAL | Source rejects mixed private-writer audiences on both boundaries. Named verification and identity-provider deployment evidence are pending. | Codex | S12, S13 |  |
 
 ## Sprint S15 - Verification and reconciliation
 Goal: Verification and reconciliation.

@@ -2474,4 +2474,8 @@ The governed clone retains the operation, target, expected version, and approved
 
 The role file at HEAD has Git blob `2aff3915002ffb43a5e07ffaeae4d731c3af4c65`, the same blob as `c4ab1ea`. Its four new true grants are reads for Organizations, Counterparties, Currencies and Nomenclature. The 57-object result in `CHANGE_RECORD_381.md` belongs to the measured narrow account on `818HA_p2diff` and follows the earlier 53-object snapshot. Preserve both measurements and qualify the actual channel and account before enabling the writer. Fresh live verification is NOT_RUN.
 
+## 2026-11-18 - Enforce distinct read and private-writer token audiences
+
+Implement invariant I1 at token verification. The read and administrative verifiers reject any token containing the private-writer audience. The private writer requires that audience alone, both in the shared verifier and at the injected-verifier boundary. Preserve configured additional read audiences. Verify normal read and writer tokens, mixed audience in both directions, and read scope at the writer boundary. Deployment evidence remains in the backlog.
+
 </pre></main></body></html>
