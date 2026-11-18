@@ -964,3 +964,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: Report generation before commit records the parent HEAD. Rule: regenerate the standard live report after source changes are committed when its snapshot must include the new commit, and keep report totals separate from acceptance evidence.
 
 - 2026-11-18 SHORTCOMING: ZIP EOCD's ordinary entry count is not the allocation bound used by `zipfile`; its central-directory byte size controls how many entry objects are materialized. Rule: count central-directory records from the bounded byte range before invoking `ZipFile`, and keep ZIP64 fallback limits explicit. Add a crafted underreported-count regression criterion; do not claim parser acceptance until the named test runs.
+
+- 2026-11-18 SUCCESS: Report generation before a source commit records its parent HEAD. Rule: record verified implementation/review facts in the plan, reconcile project status, then regenerate the standard report after the source commit; never upgrade acceptance while named tests remain NOT_RUN.

@@ -284,6 +284,8 @@ S17-05 status clarification (2026-11-18): implementation commits are `d5223044` 
 
 S17-05 authorization follow-up (2026-11-18): commit `98fc9109` replaces the cached source-role check in ledger-scope resolution with a fresh lookup of active Admin role bindings. Both list/detail routes resolve scope again after the PostgreSQL read, so a role revoked mid-read fails closed together with the existing exact-company grant and mapping rechecks. The dedicated mid-read role-revocation case is documented in `docs/sdlc/test-plan.md`; it remains NOT_RUN, and S17-05 stays IN_PROGRESS pending its complete acceptance stage.
 
+S17-01 implementation follow-up (2026-11-18): commit `16ea7275` preflights ordinary ZIP central-directory records before `zipfile` materializes `ZipInfo` objects, preventing an underreported EOCD entry count from hiding a larger `size_cd` allocation. The test plan now includes undercounted-directory and sentinel-field cases and preserves the explicit ZIP64 fallback. Independent code-reviewer and security-reviewer reviews found no remaining issue in this diff. Named parser tests remain NOT_RUN, so S17-01 stays IN_REVIEW and S17 acceptance is unchanged.
+
 ## Sprint S18 - Reliability and security
 Goal: Reliability and security.
 
