@@ -2702,3 +2702,7 @@ Add two bounded Admin API preview routes under the existing OIDC/session and CSR
 
 Commit `adf5d2dd` revealed that this machine's installed pre-commit plan-to-ledger sync could remove `project_reconciliation` from non-genuine imported task rows, causing the report to fall back to stale harness `verified` states. Update the non-blocking local hook (`.harness-tools/githooks/pre-commit`, ignored by Git) to run the supported document/Git reconciliation after ledger sync and before report generation. This changes only the ignored machine-local hook/ledger projection and generated report; it does not create test, review, or acceptance evidence. Exact result: 91/111 bounded accepted, 1/111 in review, 2 externally blocked, 6 in progress/partial, 11 not started.
 
+## 2026-11-18 — Expose missing S17 entity-directory wiring
+
+The authenticated S17 preview API has no persistent company-scoped entity-directory provider. Return a fixed `NOT_CONFIGURED` marker and show a fixed browser explanation so a raw label cannot be mistaken for a resolved entity. Do not inject the offline in-memory resolver or synthesize directory matches; keep fields review-required and proposal/apply disabled. Persistent directory composition and the interactive change-list/retry/rollback-proposal flow remain open; named tests stay `NOT_RUN` until S17 code is complete.
+

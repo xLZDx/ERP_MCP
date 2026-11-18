@@ -152,6 +152,12 @@ def _intake_result(result: ExtractionResult) -> dict[str, Any]:
         "code": result.code,
         "source_sha256": result.source_sha256,
         "source_format": result.source_format.value,
+        # The preview routes do not currently receive a persistent,
+        # company-scoped entity directory. Never imply that raw labels matched.
+        "entity_directory": {
+            "state": "NOT_CONFIGURED",
+            "code": "ENTITY_DIRECTORY_NOT_CONFIGURED",
+        },
         "fields": [
             {
                 "value": value.text,

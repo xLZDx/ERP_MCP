@@ -937,3 +937,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: An offline intake facade is not an authenticated application feature. Rule: bridge it only through the existing session/CSRF boundary and the live exact-company allow/deny policy; submit bytes without filenames, recheck access before disclosure, and keep the preview unable to create proposals or call 1C.
 - 2026-11-18 SHORTCOMING: A pre-commit plan-to-ledger rebuild can remove document/Git reconciliation metadata from imported non-genuine tasks and make legacy `verified` states appear as current review work. Rule: regenerate the project reconciliation projection after ledger sync and before rendering the live report; do not rewrite harness test/review evidence.
 
+
+- 2026-11-18 SUCCESS: An authenticated preview without a configured entity directory must expose that limitation at both API and UI boundaries. Rule: return a fixed NOT_CONFIGURED marker, never infer a match or fabricate suggestions, and keep preview values review-required.
