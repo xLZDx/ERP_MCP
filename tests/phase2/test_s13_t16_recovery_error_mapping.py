@@ -33,11 +33,16 @@ def _preparation(change_id: str) -> T16ResolutionPreparation:
 
 
 class _Writer:
-    def __init__(self, preparation, *, database_identity=None, identity_error=None):
+    def __init__(self, preparation, snapshot=None, *, database_identity=None,
+                 identity_error=None):
         self._preparation = preparation
         self._database_identity = database_identity or DatabaseTargetIdentity(123, 16384)
         self._identity_error = identity_error
+        self._snapshot = snapshot
+        self.lookup_calls = 0
+        self.prepare_calls = 0
         self.terminal_calls = []
+        self.begin_com_entry_calls = 0
 
     async def database_target_identity(self):
         if self._identity_error:
@@ -45,14 +50,25 @@ class _Writer:
         return self._database_identity
 
     async def lookup(self, *_args):
-        return None
+        self.lookup_calls += 1
+        return self._snapshot
 
     async def prepare_t16_resolution(self, *_args, **_kwargs):
+        self.prepare_calls += 1
         return self._preparation
 
     async def record_recovered_terminal(self, *_args):
         self.terminal_calls.append(_args)
-        return None
+        terminal = CallSnapshot(
+            self._preparation.identity,
+            AdmissionState.TERMINAL_WITH_EVIDENCE,
+            self._preparation.dispatch_cas_id,
+        )
+        self._snapshot = terminal
+        return terminal
+
+    async def begin_com_entry(self, *_args):
+        self.begin_com_entry_calls += 1
 
 
 class _Gate:
@@ -191,9 +207,14 @@ def _invalidate_resolution_result(result, case):
 )
 def test_malformed_checkpoint_response_keeps_private_call_unresolved(case):
     preparation = _preparation(str(uuid4()))
+    unresolved = CallSnapshot(
+        preparation.identity,
+        AdmissionState.POSSIBLY_EXECUTING,
+        preparation.dispatch_cas_id,
+    )
     result = _invalidate_resolution_result(_valid_resolution_result(), case)
     gate = _Gate(result=result)
-    writer = _Writer(preparation)
+    writer = _Writer(preparation, unresolved)
 
     with pytest.raises(T16RecoveryError) as raised:
         _run(_coordinator(preparation, gate, writer=writer))
@@ -202,7 +223,59 @@ def test_malformed_checkpoint_response_keeps_private_call_unresolved(case):
         "T16_CHECKPOINT_RESULT_INVALID", True,
     )
     assert gate.calls == 1
+    assert writer.lookup_calls == 1
+    assert writer.prepare_calls == 1
     assert writer.terminal_calls == []
+    assert writer.begin_com_entry_calls == 0
+    assert writer._snapshot is unresolved
+    assert writer._snapshot.state is AdmissionState.POSSIBLY_EXECUTING
+
+
+def test_a_valid_checkpoint_hold_result_reaches_terminal_writer_once():
+    preparation = _preparation(str(uuid4()))
+    unresolved = CallSnapshot(
+        preparation.identity,
+        AdmissionState.POSSIBLY_EXECUTING,
+        preparation.dispatch_cas_id,
+    )
+    writer = _Writer(preparation, unresolved)
+    gate = _Gate(result=_valid_resolution_result())
+
+    result = _run(_coordinator(preparation, gate, writer=writer))
+
+    assert (result.resolution_event_id, result.resolution_event_seq, result.checkpoint_seq) == (
+        UUID("22222222-2222-4222-8222-222222222222"), 7, 8,
+    )
+    assert result.call.state is AdmissionState.TERMINAL_WITH_EVIDENCE
+    assert gate.calls == 1
+    assert writer.lookup_calls == 1
+    assert writer.prepare_calls == 1
+    assert len(writer.terminal_calls) == 1
+    assert writer.begin_com_entry_calls == 0
+    assert writer._snapshot.state is AdmissionState.TERMINAL_WITH_EVIDENCE
+
+
+def test_an_existing_terminal_snapshot_replays_without_repeating_t16_work():
+    preparation = _preparation(str(uuid4()))
+    terminal = CallSnapshot(
+        preparation.identity,
+        AdmissionState.TERMINAL_WITH_EVIDENCE,
+        preparation.dispatch_cas_id,
+    )
+    writer = _Writer(preparation, terminal)
+    gate = _Gate(result=_valid_resolution_result())
+
+    result = _run(_coordinator(preparation, gate, writer=writer))
+
+    assert (result.resolution_event_id, result.resolution_event_seq, result.checkpoint_seq) == (
+        None, None, None,
+    )
+    assert result.call is terminal
+    assert writer.lookup_calls == 1
+    assert writer.prepare_calls == 0
+    assert gate.calls == 0
+    assert writer.terminal_calls == []
+    assert writer.begin_com_entry_calls == 0
 
 
 def test_mismatched_database_binding_stops_before_gate():

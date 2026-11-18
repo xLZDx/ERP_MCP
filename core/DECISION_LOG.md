@@ -2307,3 +2307,137 @@ S12-01's isolated admission and canonicalization checks passed (54 passed, 21 di
 ### 2026-11-18 - Integrate the historical S12 PR without losing retained main behavior
 
 The named S12-02 module passed 542 cases at 9a33cc0. Source and fixture comparison identified which remaining bounded contracts were byte-identical to PR #54 and which crash-window tests were unique to each lineage. Locally merge 2629aa2 while keeping the tested main transition and helper definitions, frozen-governed versus legacy parser boundary, and corrected T9/T16 fixtures. Take the historical CT10 Appendix C, keep current crash-window coverage and recover the missing historical parser refusal cases. This keeps PR #54 ancestry and makes a normal approved update possible without force push.
+
+## 2026-11-18 - S12 bounded closure
+
+Close S12 in its bounded offline synthetic TEST scope after PR #54 merged at fcffaeefd634f61ec367a2bdda82e2098c597453. GPT-PM approved head a70c03da6f53808703989fe697520cb8c4940b66, request 5bbe2284-e198-48d6-a6f0-e591bf139182, reply ed3d0fae-53b5-58d2-b577-2e3bd59ad356. Preserve both integration histories and leave operational G8 separate.
+
+## 2026-11-18 - Carry accepted S13-01 test coverage onto current main
+
+Restore the exact test file from e3c98f2 (PR #58) on the S13 consolidation branch. Its parent and current main were identical for that path, so no current test changes were displaced. The historical disposable PostgreSQL result covers migrations 001-018 and its selected scenarios. Compare the current effective privileges, scope isolation and restore coverage when qualifying the complete sprint candidate. Keep later S13-02 tests and the checkpoint and writer changes separate until their ordered reconciliation. No business records, database migrations or runtime settings were changed.
+
+
+## 2026-11-18 - Carry accepted S13-02 transactional test coverage onto current main
+
+Restore the accepted claim test delta from 9d3cb5f on top of the byte-identical S13-01 test file. The retained scenarios cover concurrent claims and transactional rollback in disposable PostgreSQL. Qualification of a physical 1C writer and an ambiguous remote effect still requires separate evidence. This commit changes test coverage and leaves database code, data and services untouched. The named tests await sprint-level execution.
+
+
+
+## 2026-11-18 - Reconcile the retained S13 checkpoint evidence
+
+Keep the main branch's post-consolidation checkpoint and restore coverage as the baseline. PR #58 remains open at 9bd6d38 and the preserved follow-up branch at 65c4086 contains that head. Do not replace main's migration 027 or test files with the preserved branch wholesale. The operator selected the dev-only service; external provider and custody proof are a separate operational gap. Treat current-head S13 acceptance as pending.
+
+## 2026-11-18 - Restore recovery checkpoint read-back refusal coverage
+
+Retain the exact test additions from 82f7620 for a missing, mismatched or failed provider read-back after a recovery checkpoint append. On the current coordinator path, registration of the checkpoint and release of the stop-effects holds follow exact provider read-back and signature verification. The retained cases assert that none of those failures records a checkpoint or releases a hold. The tests use an in-memory provider and ledger double. Execution is pending sprint verification; the change does not alter a runtime setting or enable physical dispatch.
+
+
+## 2026-11-18 - Retain the migration 030 versions of the private-writer routines
+
+Compared preserved 65c4086 migration 027 function bodies with current migration 030. Keep migration 030's role-scope conflict target, lifecycle epoch binding and terminalization lock plan. The latter two retain the branch behavior and add a separate lifecycle read after acquiring the row lock. Rewriting migration 027 would duplicate those fixes and would change historical migration bytes.
+
+
+## 2026-11-18 - Retain the disposable recovery-evidence verifier scenario
+
+Restore the standalone verifier and resolver tests from 1083e7e. The four modules under test are unchanged from that revision, and the shared scenario seed is retained. The tests grant specific loader permissions inside their invocation-owned disposable database for verification of signed synthetic evidence. Their fixture grants are not evidence of deployed database grants or operational trust. Test execution remains pending sprint verification.
+
+
+## 2026-11-18 - Normalize lesson records after post-commit import
+
+The S13 evidence test commit succeeded, but the post-commit importer reported an unparsed lesson. Convert the recent entries to the established dated list and Rule format so the importer can read them. No product or test code changes.
+
+
+## 2026-11-18 - Preserve S13 recovery evidence bridge scenarios
+
+Recover historical test inputs for anchor-gap cosign, witness cosign and signed evidence. They use the owned disposable fixture that applies migrations through 027. Historical results and current acceptance remain separate.
+
+
+## 2026-11-18 - Retain terminal outcome scenarios against migration 030
+
+Recover the historical completion, ownership refusal, pre-write terminal replay and repair-handoff scenarios. Use an owned disposable fixture and apply the prerequisite legacy patches before migration 030, matching the existing integration migration order. Keep fixture readiness and operational readiness separate. Tests and migrations were NOT_RUN.
+
+
+## 2026-11-18 - Retain scoped grant replay and rollback scenarios
+
+Recover the scoped budget-revoke scenarios from 5655a2c on the byte-equivalent migration 027 routine. Retain the exact role-scope conflict scenario from f93b6aa in the fixture that applies through 039, including the explicit conflict target from migration 030. The scoped grant tests check transaction and replay behavior. The role-scope test checks that repeating the same tuple yields one row. Both are pending execution on disposable PostgreSQL.
+
+
+## 2026-11-18 - Integrate S13 pull request history into the local candidate
+
+Merge the exact PR 58 source head 9bd6d3840437a811db4f3f8ad7e12619e102c57b into the sprint continuation. Retain the current source versions: anchor client behavior is unchanged, checkpoint replay verifies the retained signature, and the lifecycle retains the more complete diagnostic base preflight and receipt validation. Keep the earlier package under dev_anchor_service_s13 to avoid shadowing the separate dev_anchor_service.py entry point. Keep the current restore, suffix, HTTP preflight and refusal scenarios, and retain historical dev-service contract and review records in the design, acceptance map and merged commit history. No product behavior changed in this merge. Exact-head tests and review remain pending.
+
+
+## 2026-11-18 - Submit the bounded S13 sequence for documentation review
+
+Request an independent decision on the local acceptance order so that missing external trust and physical-writer proof do not silently close an operational gate or block independent disposable checks. Keep the current ordered dependency until a genuine verdict supersedes it. This proposal contains no runtime code or test-result changes.
+
+
+## 2026-11-18 - Accept the bounded S13 documentation sequence
+
+Record PMG-20261118-9c7b097d and its correlated reply: ordered S13-04 and S13-05 disposable work may follow bounded S13-03 acceptance even while external production qualification remains open. Update the plan and operational backlog accordingly. The generated receipt displays the historical FIN sprint identifier; the actual correlated verdict identifies ERP_MCP, S13, and the exact reviewed documentation head. Treat the verdict only as a decision on this S13 documentation sequence, never as a FIN or S13 code approval.
+
+
+## 2026-11-18 - Enforce separate development checkpoint and authority keys
+
+The approved S13-03 design requires distinct signing material, but the split-authority service accepted checkpoint registration without comparing the authority pins. Enforce byte-level separation before registration and reject conflicting persisted registrations on replay. Reject conflicting CLI config before provider or database I/O. Existing stores with such registrations now fail closed on restart and require distinct material in a separate dev store. Preserve their original event history. This change does not enable readiness or affect production composition.
+
+
+## 2026-11-18 - Add signal for development key-role refusal
+
+Add named synthetic cases for both authority key roles at checkpoint registration and diagnostic configuration. Registration refusal must leave the SQLite event count unchanged; the diagnostic case must return the configuration refusal before entering preflight. The tests remain NOT_RUN under the sprint-stage restriction.
+
+
+## 2026-11-18 - Resolve the S13 source and test scheduling dependency
+
+The first exact-head test handoff returned NOT_RUN because the operator's rule defers test execution until all sprint stories are coded. Request a source-assembly scheduling amendment to the approved S13 sequence. Keep the existing acceptance order and all operational prerequisites. The proposal does not authorize any tests before source completion.
+
+
+## 2026-11-18 - Apply S13 source assembly ordering approval
+
+Record the documentation-only verdict PMG-20261118-f4c5bcee. The retained S13-03 source and dev role-separation fix are assembled for the bounded verification stage. Move to S13-04 source assembly and preserve S13-03 acceptance as pending. Leave runtime recovery grants and operational prerequisites unchanged.
+
+
+## 2026-11-18 - Retain target registry source and withhold adapter cutover
+
+S13-04 source assembly retained scoped registration, observed fingerprint/class matching, and scoped epoch fences. The operator-accessible SQL bridges are the disposable acceptance surface, while direct versioned registry routines remain ungranted. Do not make candidate register_target or bump_epoch fall back to an old wrapper before the complete bridge family is qualified. Proceed to ordered S13-05 source assembly. No execution evidence was collected.
+
+
+## 2026-11-18 - Complete assembly of the bounded S13 recovery source
+
+Reject oversized base recovery manifests before allocation or parsing. Require exact string base and state fields at the diagnostic boundary. Preserve the migration 036 runtime privilege restrictions. Correct the S13-04 plan status to PARTIAL, which the plan parser recognizes, and record the deferred adapter cutover separately. Tests were not run during source assembly.
+
+
+## 2026-11-18 - Add an owned-cluster mode for retained ledger tests
+
+Keep the default test fixture behavior and add a per-module disposable opt-in alongside the existing cluster opt-in. Reject an inherited external test DSN in that mode and create a separate database for each case inside an invocation-owned cluster. This allows the remaining local ledger cases to exercise the legacy contract without using a pre-existing PostgreSQL instance. The already completed four owned S13 cases are recorded as partial exact-head evidence.
+
+
+## 2026-11-18 - Record exact-head S13 ledger and checkpoint results
+
+The designated test agents ran the approved named S13-01, S13-02 and S13-03 scenarios on 024d5fb after bounded source assembly. They reported passing exit codes, including the older restored-page refusal and hold/replay checks. Keep these scope-limited receipts as verification evidence for the upcoming routed review. No operational gate or code acceptance was adjudicated.
+
+
+## 2026-11-18 - Record S13 scope and recovery verification and cover base recovery entry
+
+Record the named S13-04 and S13-05 results from clean 5049369. Add owner-only recovery entry qualification on the owned 001–039 chain: runtime EXECUTE remains denied, owner begin binds the manifest, retry increments epoch, and overlapping or oversized scopes leave both fence tables unchanged. The added SQL cases are pending execution.
+
+
+## 2026-11-18 - Exercise the retained registry entry boundary
+
+Add named disposable cases against the chain through 039 for preserved registry wrapper grants, direct v1 denial, exact target registration, and rejected mismatched fingerprint observation. Keep operator and writer identities scoped to the fixture. Include the explicit text parameter cast used by the migration 036 catalog lookup. The new cases have not been run.
+
+
+## 2026-11-18 - Seed an approved claim for the target observation scenario
+
+Use the shared approval helper before claiming the synthetic record. This places the fixture at the target observation boundary so a refusal cannot be mistaken for an earlier approval failure.
+
+
+## 2026-11-18 - Record the full-chain S13 registry and recovery scenarios
+
+The designated test runner reported seven named cases passing at a0079e1 against an owned disposable database through 039. The receipts include the S13-04 bridge privilege boundary and target binding, and the S13-05 owner-only migration 036 case, monotonic restart epoch and unchanged refusal snapshots. Submit the bounded source and test receipts for independent review. Leave the complete bridge race matrix, adapter cutover and operational qualification open.
+
+
+## 2026-11-18 - Record independent review of bounded S13 source and tests
+
+The four routed reviewers found no BLOCKER or MAJOR on fc25b8f. Preserve the code review's MINOR historic replay coverage gap in the backlog. The designated runner's additional seven retained SQL scenarios passed with exit 0. Document the limited acceptance boundary and request exact-head adjudication only within that scope.
+

@@ -117,6 +117,33 @@ async def test_operator_list_and_status_follow_live_ledger_transitions(ledger: L
     assert token["generation"] == 1
 
 
+async def test_s13_add_role_scope_exact_conflict_is_idempotent(ledger: L) -> None:
+    """The same role/scope tuple is inserted once and may be replayed safely."""
+    conn = ledger.conn
+    role = "business_ai_private_writer"
+    tenant = "s13-role-scope-test-tenant"
+    company = "s13-role-scope-test-company"
+    before = await conn.fetchval(
+        "SELECT count(*) FROM change_ledger.role_scope "
+        "WHERE role_name=$1 AND tenant_id=$2 AND company_id=$3",
+        role,
+        tenant,
+        company,
+    )
+    assert before == 0, "the throwaway fixture must start without this role/scope tuple"
+
+    await conn.execute("SELECT change_ledger.add_role_scope($1,$2,$3)", role, tenant, company)
+    await conn.execute("SELECT change_ledger.add_role_scope($1,$2,$3)", role, tenant, company)
+
+    assert await conn.fetchval(
+        "SELECT count(*) FROM change_ledger.role_scope "
+        "WHERE role_name=$1 AND tenant_id=$2 AND company_id=$3",
+        role,
+        tenant,
+        company,
+    ) == before + 1
+
+
 async def test_operator_status_and_list_do_not_reveal_another_company_record(ledger: L):
     foreign = await ledger.propose(requester="clt_zed", request_id="s13-foreign-scope",
                                    t="T2", c="C2", base="base-t2")

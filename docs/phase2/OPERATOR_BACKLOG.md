@@ -1886,3 +1886,18 @@ The bounded code supports a synthetic development/test capture and an evidence m
 ## R2-US-047 additional data provider follow-on
 
 Resume when a concrete additional Personal Data Control Center provider and its permitted data corpus are identified. Pin an immutable upstream revision with license and digest evidence, then verify the existing connector SDK's scoped result and provenance contract against that revision (TC139). Refuse any expansion to a personal corpus outside the approved scope (TC140). Invalidate qualification and rerun the mapped tests when the pin changes (TC141). The owner of the provider/corpus decision is unassigned. No additional provider is installed or admitted, and the frozen release scope is unaffected.
+
+## S13-03 operational checkpoint and physical-writer qualification
+
+Deferred from the bounded S13 sequence by documentation approval PMG-20261118-9c7b097d. Resume operational acceptance with a named actual checkpoint provider, an authenticated freshness and retention proof, a pinned trust root, evidence of signer custody and revocation, and a shared physical-writer fence qualified on an authorized 1C clone. Capture each result against the exact provider, signer and writer revision. No individuals are assigned for provider ownership or operational qualification. These dependencies keep the operational gate open; proceed with the approved disposable engineering sequence independently.
+
+
+## S13-04 registry adapter cutover
+
+The existing S13 operator adapter selects directly ungranted versioned registration and epoch routines. Migration 027 preserves scoped SQL bridges with the historical caller ACL, and migration 030 retains the target-registration lock plan. Resume the adapter cutover after S13-REGISTRY-LEGACY-BRIDGE-01 verifies the whole bridge family on the disposable migration chain. The eventual routing must refuse absent or incompatible migration state and leave direct versioned execution ungranted. No runtime activation or production privilege change is authorized by local source assembly.
+
+
+## S13-03 development key-role replay regression
+
+The scoped code review of fc25b8f identified one MINOR coverage gap. Registration and client pin configuration refuse a checkpoint signer colliding with either receipt authority, and startup checks retained key registrations. Add a focused legacy fixture proving startup refuses an otherwise valid historical role collision. This is test coverage work; no current functional defect was established.
+

@@ -104,12 +104,16 @@ class BaseRecoverySnapshot:
         expected = {"base_fingerprint", "state", "epoch", "manifest_digest", "scope_count",
                     "scope_manifest"}
         if (type(result) is not dict or set(result) != expected
-                or result.get("base_fingerprint") != base_fingerprint
-                or result.get("state") != "RECOVERING"):
+                or type(base_fingerprint) is not str
+                or type(result.get("base_fingerprint")) is not str
+                or result["base_fingerprint"] != base_fingerprint
+                or type(result.get("state")) is not str
+                or result["state"] != "RECOVERING"):
             raise ValueError("BASE_RECOVERY_SNAPSHOT_INVALID")
         raw_manifest = result.get("scope_manifest")
         if (type(result.get("scope_count")) is not int
                 or type(raw_manifest) is not list
+                or not 1 <= result["scope_count"] <= 64
                 or result["scope_count"] != len(raw_manifest)):
             raise ValueError("BASE_RECOVERY_SNAPSHOT_INVALID")
         scopes: list[Scope] = []

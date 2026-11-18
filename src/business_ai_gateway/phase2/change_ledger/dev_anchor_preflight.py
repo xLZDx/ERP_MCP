@@ -132,7 +132,10 @@ def _load_config() -> _Config:
     if (not service_id.strip() or not latest_authority_id.strip()
             or not key_authority_id.strip() or not tenant_id.strip() or not company_id.strip()
             or latest_authority_id == key_authority_id
-            or latest_public_key == key_authority_public_key):
+            or latest_public_key == key_authority_public_key
+            or any(authority_key == checkpoint_key
+                   for authority_key in (latest_public_key, key_authority_public_key)
+                   for checkpoint_key in checkpoint_public_keys.values())):
         raise _ConfigurationError("PREFLIGHT_CONFIGURATION_INVALID")
 
     return _Config(

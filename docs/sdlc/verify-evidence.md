@@ -960,3 +960,131 @@ At b2fbca488f0ecfd0d4e3cdc2929c1e45aadfc8f5, the e2e-runner executed the four na
 ## 2026-11-18 - S12-02 retained taxonomy verification
 
 Named test_change_offline.py on clean 9a33cc086d2a212bf6e5d13e02ee5f031436eb94 returned 542 passed in 5.67s, exit 0, with checkout root/source on PYTHONPATH and the repository .venv interpreter. The two original T9/T16 assertion differences are corrected without changing their retained reducer guards. The run contains pure model fixtures, not durable evidence or writer execution.
+
+## 2026-11-18 - S12 bounded closure
+
+On a70c03da6f53808703989fe697520cb8c4940b66 the named proposal, change, simulation, review-resolution and literal-oracle files reported 742 passed. The named kill-switch, crash-window and CT14 files reported 61 passed and 43 subtests passed. Code, Python and silent-failure reviews reported no actionable findings. Live 1C, deployment, external identity and disposable database tests were NOT_RUN in the final verification.
+
+## S13 verification stage disposition
+
+On eafe7ac496d255ae5ac144e3da9cf31adaec72dc the assigned e2e-runner inspected the clean tree and live ledger. S13-01/02 targeted PostgreSQL scenarios were NOT_RUN because S13-03 was partial and S13-04/05 had not reached source assembly. No PostgreSQL fixture was started. This is a stage restriction, not evidence of a database failure. The follow-up S13-03 development key separation change also remains NOT_RUN pending the named sprint verification.
+
+
+## 2026-11-18 - S13-01 and S13-02 selected disposable verification
+
+Clean head: 19101a258472c17d137b2ee16dec7c2b052c0968. The assigned e2e-runner removed any inherited ERP_PHASE2_TEST_DSN from the test process and set ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1. Named commands below use only their invocation-owned cluster fixtures.
+
+    .\.venv\Scripts\python.exe -m pytest -q -s tests/phase2/test_s13_inflight_status.py::test_s13_add_role_scope_exact_conflict_is_idempotent tests/phase2/test_s13_inflight_status.py::test_operator_status_and_list_do_not_reveal_another_company_record
+
+Result: 2 passed in 14.92s. The fixture applies through 039; scope isolation and exact scope-role replay only.
+
+    .\.venv\Scripts\python.exe -m pytest -q -s tests/phase2/test_s13_adapter_claim_release_bridge_e2e.py::test_s13_flag_on_adapter_uses_narrow_claim_and_release_bridges tests/phase2/test_s13_global_id_contention_e2e.py::test_s13_uf54_cross_scope_global_change_id_waits_before_rows
+
+Result: 2 passed in 14.76s. Claim/release routing and cross-scope global-ID contention only. Ownership label verified for r2-s13-dump-aa9a0a5ba2bc-a; the exact container was absent after teardown. No unrelated containers were touched. Pytest reported both invocations passing; the numeric shell exit code was not captured separately. Direct runtime DML refusal, hash-chain integrity and same-target transaction rollback remain NOT_RUN at this head.
+
+
+## 2026-11-18 - Ordered S13-01 through S13-03 named verification after source assembly
+
+Clean head: 024d5fbd28ff660f83bedb0be7172ffcb8e62557. The designated e2e-runners invoked .venv/Scripts/python.exe -m pytest -q -s with the following explicit node IDs. Before each PostgreSQL group the agent confirmed ERP_PHASE2_TEST_DSN absent and enabled the invocation-owned fixture. The retained ledger module additionally required ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1 and ERP_PHASE2_REQUIRE_PG=1.
+
+S13-01, tests/phase2/test_change_ledger_sql.py:
+
+- test_runtime_roles_have_no_effective_table_or_column_dml_through_inheritance
+- test_event_log_is_append_only_even_for_the_owner_path
+- test_hash_chain_verifies_and_every_tamper_is_detected
+
+Result: 3 passed in 24.57s; exit 0. Owned fixture performed cleanup on exit.
+
+S13-02, tests/phase2/test_change_ledger_sql.py:
+
+- test_concurrent_same_target_claim_waits_for_commit_then_refuses_second_claim
+- test_claim_rolls_back_state_reservation_and_all_locks_on_transaction_failure
+- test_unknown_outcome_keeps_lock_lease_reservation_and_opens_call_ownership_hold
+
+Result: 3 passed in 18.08s; exit 0. Owned fixture performed cleanup on exit.
+
+S13-03, local signature, refusal and idempotency:
+
+- tests/phase2/test_s13_dev_anchor_service_v2.py::test_register_key_rejects_authority_signer_without_appending_event
+- tests/phase2/test_s13_dev_anchor_preflight_e2e.py::test_cli_rejects_authority_key_in_checkpoint_registry_before_io
+- tests/phase2/test_s13_checkpoint_runtime_authority.py::test_t16_readback_failure_after_sink_write_keeps_database_holds_open
+- tests/phase2/test_s13_t16_recovery_error_mapping.py::test_an_existing_terminal_snapshot_replays_without_repeating_t16_work
+
+Result: 8 passed in 4.22s; exit 0.
+
+S13-03, owned PostgreSQL and development anchor:
+
+- tests/phase2/test_s13_checkpoint_restore_e2e.py::test_restore_behind_external_anchor_fails_closed
+- tests/phase2/test_s13_dev_anchor_preflight_e2e.py::test_cli_signed_checkpoint_preflight_is_read_only_and_never_ready
+- tests/phase2/test_s13_completion_outcome_e2e.py::test_s13_completion_outcome_pre_write_no_effect_finalizer
+
+Result: 3 passed in 43.78s; exit 0. Restore fixture reported "CLEANUP: owned PostgreSQL container and 1 volume(s) absent". Three cases retain their own documented migration chains. No existing databases or operational services were used. This evidence verifies the listed behavior only. Independently adjudicated task acceptance, S13-04/05 qualification, production custody, provider retention and physical writer qualification remain open.
+
+
+## 2026-11-18 - S13-04 and S13-05 named verification
+
+Clean head: 5049369def1a754d59cdba2aa9791114419d1ec3. Designated e2e-runners invoked .venv/Scripts/python.exe -m pytest -q -s with these named nodes. ERP_PHASE2_TEST_DSN was absent. Database cases enabled the standard invocation-owned cluster flag and, for test_change_ledger_sql.py, the dedicated owned mode and ERP_PHASE2_REQUIRE_PG.
+
+S13-04:
+
+- tests/phase2/test_s13_universal_fence_matrix.py::test_s13_uf54_bump_epoch_waits_before_epoch_row_and_event_effects
+- tests/phase2/test_s13_universal_fence_matrix.py::test_s13_uf54_declare_target_class_waits_before_record_and_event_effects
+
+Result: 2 passed in 10.85s; exit 0.
+
+- tests/phase2/test_s13_completion_outcome_e2e.py::test_s13_completion_outcome_target_lock_owner_mismatch_refuses_without_delta
+
+Result: 1 passed in 11.09s; exit 0. The database fixtures completed normal teardown. Full registry bridge family and operational writer qualification remain open.
+
+S13-05:
+
+- tests/phase2/test_s13_base_recovery_preflight.py::test_snapshot_is_canonical_and_bounded_at_64_scopes
+- tests/phase2/test_s13_base_recovery_preflight.py::test_preflight_is_concurrency_bounded_manifest_ordered_and_never_ready
+- tests/phase2/test_s13_base_recovery_preflight.py::test_caller_cancellation_cancels_only_active_bounded_reads
+- tests/phase2/test_s13_base_recovery_preflight.py::test_deadline_preserves_completed_reads_and_marks_pending_as_timed_out
+
+Result: 4 passed in 0.31s; exit 0.
+
+- tests/phase2/test_change_ledger_sql.py::test_recover_sweep_releases_expired_claim_reservation_and_expired_permit
+
+Result: 1 passed in 9.15s; exit 0. The owned fixture checks its ownership label before teardown. No standalone container inventory was taken. These five cases verify the diagnostic and legacy sweep behavior. The migration 036 entry itself was not exercised by these S13-05 runs. No operational recovery or authorized 1C clone was used.
+
+
+## 2026-11-18 - S13-04 and S13-05 additional full-chain SQL cases
+
+Clean head a0079e1e53f94543914cf68188f304ea551090dd. The designated e2e-runner invoked .venv/Scripts/python.exe -m pytest -q -s on the explicit node IDs below, after checking ERP_PHASE2_TEST_DSN absent. ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1, ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1, and ERP_PHASE2_REQUIRE_PG=1. The owned fixture applied the integration chain through 039.
+
+S13-04, tests/phase2/test_s13_registry_contract_sql.py:
+
+- test_legacy_registry_grants_remain_and_v1_routes_are_not_callable_by_runtime_roles
+- test_legacy_register_target_bridge_records_synthetic_target_as_calling_operator
+- test_legacy_observe_target_bridge_rejects_substituted_fingerprint_then_binds_exact_target
+
+Result: 3 passed in 22.04s; exit 0. This verifies the effective grants for the ten legacy/v1 pairs, one entitled registration, and observed fingerprint binding. The complete bridge race matrix and runtime adapter cutover remain open.
+
+S13-05, tests/phase2/test_s13_base_recovery_begin_sql.py:
+
+- test_begin_base_recovery_is_unavailable_to_runtime_roles
+- test_owner_begin_returns_exact_manifest_and_retry_advances_epoch
+- test_overlapping_base_begin_refuses_without_changing_fence_rows
+- test_begin_rejects_65_scope_manifest_before_fence_changes
+
+Result: 4 passed in 27.80s; exit 0. This proves the owner-only migration 036 boundary, exact single-scope manifest and monotonic repeat, and rejection of overlap and over-limit plans without fence changes. Normal owned fixture teardown completed. Live 1C skew, shared physical-writer fencing, active recovery orchestration and operational admission remain NOT_RUN. Post-run HEAD matched and the worktree was clean.
+
+
+## 2026-11-18 - Retained recovery scenarios and independent S13 review
+
+On clean fc25b8f8128117318e9161c7b9e14805e657aa27, the designated e2e-runner invoked .venv/Scripts/python.exe -m pytest -q -s with the following node IDs, requiring owned disposable PostgreSQL and an absent inherited DSN:
+
+- tests/phase2/test_s13_anchor_gap_cosign_legacy_bridge_e2e.py::test_anchor_gap_cosign_exact_retry_changed_evidence_and_distinct_witness
+- tests/phase2/test_s13_witness_cosign_legacy_bridge_e2e.py::test_s13_witness_cosign_exact_retry_after_consumption_and_distinct_session
+- tests/phase2/test_s13_record_evidence_legacy_bridge_e2e.py::test_s13_record_evidence_exact_natural_replay_and_changed_tuple_no_delta
+- tests/phase2/test_s13_budget_revoke_scoped_replay_e2e.py::test_s13_budget_revoke_outer_rollback_is_atomic
+- tests/phase2/test_s13_t16_evidence_verifier_e2e.py::test_s13_t16_evidence_verifier_checks_five_signed_envelopes
+- tests/phase2/test_s13_t16_evidence_verifier_e2e.py::test_s13_t16_resolver_loads_and_verifies_five_signed_envelopes
+- tests/phase2/test_s13_completion_outcome_e2e.py::test_s13_completion_outcome_repair_pre_write_hands_target_lock_back_to_parent
+
+Result: 7 passed in 48.89s; exit 0. Fixture teardown reported no error. No unrelated container inspection, live 1C, or existing database was used. Exact HEAD remained clean.
+
+The independent reviewers chosen for the sprint diff were code-reviewer, silent-failure-hunter, python-reviewer, and database-reviewer. They reviewed fc25b8f statically. No BLOCKER or MAJOR was reported. The code reviewer reported one MINOR: current tests cover role-collision refusal at registration and CLI configuration, while historic replay rejection has source evidence only. Track the focused replay regression in the backlog. Database review independently inspected the test fixture and SQL scope but did not run the migrations or tests. The reviewed source remains diagnostic/TEST only; the complete registry race matrix, adapter cutover, operational trust, physical-writer fencing and live recovery remain open.
+
