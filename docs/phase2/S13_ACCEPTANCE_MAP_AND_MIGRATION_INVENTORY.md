@@ -64,3 +64,11 @@ PR #54 has merged and PR #58 is open against main at 9bd6d3840437a811db4f3f8ad7e
 S13-03 has two dev implementations in the consolidated tree. The PR package now lives under dev_anchor_service_s13, while dev_anchor_service.py has its own executable entry and named tests. Keep the latter's restart, key revocation and replay assertions. The open PR has a restore-skew scenario; main has a later variant. Compare both scenarios and preserve their assertions without replacing newer source. The preserved branch at 65c4086 descends from 9bd6d38 and contains additional checkpoint, writer and recovery evidence. Its migration 027 and current main differ, so compare candidate SQL changes and fixture compatibility by story before integrating. No branch or test result proves a qualified external provider, writer admission, custody or a durable READY transition.
 
 The dev-only anchor decision is already made. Any production-provider selection, key custody and shared physical-writer qualification remain separate backlog dependencies. No service was started for this reconciliation.
+
+### Migration lineage
+
+The three SQL changes unique to the preserved branch's migration 027 are already implemented in migration 030 on the integration line. The role-scope conflict target is identical. The begin-apply epoch binding and recovered no-entry terminal transition retain the branch behavior and add a fresh READ COMMITTED lifecycle read after the row lock. Keep migration 027 immutable and qualify the final chain through 030 and later migrations. A database stopped at 027 has not acquired these fixes. This conclusion is from SQL body comparison; migration execution was NOT_RUN.
+
+
+The coordinator tests now preserve the current database identity checks and retain malformed result, valid completion, and terminal replay assertions from 65c4086. The replay path returns the stored terminal call without another evidence preparation, gate call or terminal write. These are synthetic cases pending sprint verification.
+

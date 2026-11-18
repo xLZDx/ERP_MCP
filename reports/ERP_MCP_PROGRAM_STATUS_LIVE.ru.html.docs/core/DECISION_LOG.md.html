@@ -2333,4 +2333,9 @@ Keep the main branch&#x27;s post-consolidation checkpoint and restore coverage a
 
 Retain the exact test additions from 82f7620 for a missing, mismatched or failed provider read-back after a recovery checkpoint append. On the current coordinator path, registration of the checkpoint and release of the stop-effects holds follow exact provider read-back and signature verification. The retained cases assert that none of those failures records a checkpoint or releases a hold. The tests use an in-memory provider and ledger double. Execution is pending sprint verification; the change does not alter a runtime setting or enable physical dispatch.
 
+
+## 2026-11-18 - Retain the migration 030 versions of the private-writer routines
+
+Compared preserved 65c4086 migration 027 function bodies with current migration 030. Keep migration 030&#x27;s role-scope conflict target, lifecycle epoch binding and terminalization lock plan. The latter two retain the branch behavior and add a separate lifecycle read after acquiring the row lock. Rewriting migration 027 would duplicate those fixes and would change historical migration bytes.
+
 </pre></main></body></html>
