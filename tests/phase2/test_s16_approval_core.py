@@ -2,6 +2,8 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import timedelta
+from hashlib import sha256
+import secrets
 from threading import Barrier
 
 import pytest
@@ -10,9 +12,33 @@ from business_ai_gateway.phase2.change.errors import ErrorCode
 from business_ai_gateway.phase2.change.killswitch import KillMode, SwitchReading
 from business_ai_gateway.phase2.change.proposal import approval_canonical_text, digest_of_canonical_text
 from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
-from erp_mcp_s16.contracts import ClaimToken, PrincipalRole, TokenClass, canonical_preview_bytes
+from erp_mcp_s16.contracts import (
+    ClaimToken, DecisionAuditOutcome, PrincipalRole, TokenClass, canonical_preview_bytes,
+)
 from erp_mcp_s16.fakes import FakeBeginApplyEvidencePort, InMemoryChangeStore
-from tests.phase2.s16_helpers import NOW, approve, build_env, positive_begin_apply_evidence, propose
+from tests.phase2.s16_helpers import (
+    NOW, approve as _approve, build_env, positive_begin_apply_evidence, propose,
+)
+
+
+def approve(env, *args, **kwargs):
+    """Keep unrelated approval-flow tests on the explicit TEST IdP contract."""
+    submit_decision = env.approval_service.submit_decision
+
+    def submit_with_test_reauthentication(approver, session, decision_ref, decision, *call_args, **call_kwargs):
+        if decision == "APPROVE":
+            session = env.idp.reauthenticate(
+                session, decision_ref, call_kwargs["now"], credential=env.test_credential,
+            )
+            assert session is not None
+            env.session = session
+        return submit_decision(approver, session, decision_ref, decision, *call_args, **call_kwargs)
+
+    env.approval_service.submit_decision = submit_with_test_reauthentication
+    try:
+        return _approve(env, *args, **kwargs)
+    finally:
+        env.approval_service.submit_decision = submit_decision
 
 
 def test_server_issued_preview_bytes_match_digest_and_valid_human_approval_is_one_use():
@@ -23,6 +49,15 @@ def test_server_issued_preview_bytes_match_digest_and_valid_human_approval_is_on
     assert hashlib.sha256(page.canonical_preview_bytes).hexdigest() == page.preview_digest == snap.preview_digest
     saved = env.store.get(snap.change_id)
     assert saved.approval is not None and saved.approval.decision == "APPROVE"
+    success_audit = env.store.decision_audit
+    assert len(success_audit) == 1
+    assert success_audit[0].outcome is DecisionAuditOutcome.APPROVE
+    assert success_audit[0].error_code is None
+    assert success_audit[0].correlation_digest == saved.approval.decision_ref_digest
+    audit_repr = repr(success_audit)
+    for secret in (page.decision_ref, page.csrf_token, env.session.session_id,
+                   env.session.csrf_secret):
+        assert secret not in audit_repr
     assert page.lifecycle_status == "VALIDATED"
     assert page.authorization_status == "NONE"
     assert page.snapshot_version == snap.version
@@ -35,6 +70,128 @@ def test_server_issued_preview_bytes_match_digest_and_valid_human_approval_is_on
         now=NOW + timedelta(seconds=2))
     assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
     assert env.store.get(snap.change_id).approval == saved.approval
+    refusal_audit = env.store.decision_audit
+    assert len(refusal_audit) == 2
+    assert refusal_audit[0] == success_audit[0]
+    assert refusal_audit[1].outcome is DecisionAuditOutcome.REFUSED
+    assert refusal_audit[1].error_code is ErrorCode.APPROVAL_NONCE_INVALID
+    audit_repr = repr(refusal_audit)
+    for secret in (page.decision_ref, page.csrf_token, env.session.session_id,
+                   env.session.csrf_secret):
+        assert secret not in audit_repr
+
+
+@pytest.mark.parametrize("proof_kind", ["missing", "stale", "future", "cross_decision"])
+def test_approve_requires_fresh_reauthentication_bound_to_exact_decision_without_consuming_ref(proof_kind):
+    env = build_env()
+    snap = propose(env, request_id=f"approval-reauth-{proof_kind}")
+    page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
+    assert page.error is None
+    decision_ref = page.value.decision_ref
+    now = NOW + timedelta(seconds=1)
+    if proof_kind == "missing":
+        proof_session = env.session
+    elif proof_kind == "stale":
+        proof_session = replace(
+            env.session,
+            reauthenticated_at=now - timedelta(minutes=5, seconds=1),
+            reauthentication_digest=sha256(decision_ref.encode("ascii")).hexdigest(),
+        )
+    elif proof_kind == "future":
+        proof_session = replace(
+            env.session,
+            reauthenticated_at=now + timedelta(seconds=1),
+            reauthentication_digest=sha256(decision_ref.encode("ascii")).hexdigest(),
+        )
+    else:
+        proof_session = env.idp.reauthenticate(
+            env.session, "another-valid-decision-reference-0001", now,
+            credential=env.test_credential,
+        )
+        assert proof_session is not None
+        env.session = proof_session
+
+    before = env.store.get(snap.change_id)
+    refused = env.core.decide(
+        env.approver, proof_session, decision_ref, "APPROVE",
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token=page.value.csrf_token, now=now,
+    )
+
+    assert refused.error is ErrorCode.NOT_ENTITLED
+    assert refused.value is None
+    assert env.store.get(snap.change_id) == before
+    assert before.approval is None
+    assert len(env.store.decision_audit) == 1
+    refusal = env.store.decision_audit[0]
+    assert refusal.outcome is DecisionAuditOutcome.REFUSED
+    assert refusal.error_code is ErrorCode.NOT_ENTITLED
+    assert refusal.correlation_digest == sha256(decision_ref.encode("ascii")).hexdigest()
+    assert decision_ref not in repr(env.store.decision_audit)
+
+    fresh_session = env.idp.reauthenticate(
+        env.session, decision_ref, now + timedelta(seconds=1), credential=env.test_credential,
+    )
+    assert fresh_session is not None
+    accepted = env.core.decide(
+        env.approver, fresh_session, decision_ref, "APPROVE",
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token=page.value.csrf_token, now=now + timedelta(seconds=1),
+    )
+    assert accepted.error is None
+    assert env.store.get(snap.change_id).approval.decision == "APPROVE"
+    assert env.apply_port.calls == 0
+
+
+def test_reject_does_not_require_action_bound_reauthentication():
+    env = build_env()
+    snap = propose(env, request_id="approval-reject-without-reauth")
+    page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
+    assert page.error is None
+
+    rejected = env.core.decide(
+        env.approver, env.session, page.value.decision_ref, "REJECT",
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token=page.value.csrf_token, now=NOW + timedelta(seconds=1),
+    )
+
+    assert rejected.error is None
+    receipt = env.store.get(snap.change_id)
+    assert receipt.approval is not None and receipt.approval.decision == "REJECT"
+    assert receipt.s12_record.authorization.value == "NONE"
+    assert receipt.s12_record.lifecycle.value == "REJECTED"
+    assert env.store.decision_audit[-1].outcome is DecisionAuditOutcome.REJECT
+    assert env.apply_port.calls == 0
+
+
+def test_refusal_audit_append_failure_fails_closed_without_authorizing_decision():
+    class RefusalAuditUnavailableStore(InMemoryChangeStore):
+        def append_decision_refusal(self, _audit_event):
+            raise OSError("refusal audit unavailable")
+
+    store = RefusalAuditUnavailableStore()
+    env = build_env(permissive=True, store=store)
+    snap = propose(env)
+    page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
+    assert page.error is None
+    proof_session = env.idp.reauthenticate(
+        env.session, page.value.decision_ref, NOW + timedelta(seconds=1),
+        credential=env.test_credential,
+    )
+    assert proof_session is not None
+
+    result = env.core.decide(
+        env.approver, proof_session, page.value.decision_ref, "APPROVE",
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token="wrong-csrf", now=NOW + timedelta(seconds=1),
+    )
+
+    persisted = store.get(snap.change_id)
+    assert result.error is ErrorCode.AUDIT_UNAVAILABLE
+    assert result.value is None
+    assert persisted.approval is None
+    assert store.decision_audit == ()
+    assert env.apply_port.calls == 0
 
 
 def test_approver_alias_for_requester_person_is_refused_before_any_apply_call():
@@ -42,8 +199,13 @@ def test_approver_alias_for_requester_person_is_refused_before_any_apply_call():
     snap = propose(env)
     opened = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
     assert opened.error is None
+    proof_session = env.idp.reauthenticate(
+        env.session, opened.value.decision_ref, NOW + timedelta(seconds=1),
+        credential=env.test_credential,
+    )
+    assert proof_session is not None
     env.principals.alias_person(env.approver.principal_id, env.requester.person_id)
-    result = env.core.decide(env.approver, env.session, opened.value.decision_ref, "APPROVE",
+    result = env.core.decide(env.approver, proof_session, opened.value.decision_ref, "APPROVE",
         origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
         confirmation_text="", csrf_token=opened.value.csrf_token, now=NOW + timedelta(seconds=1))
     assert result.error is ErrorCode.APPROVER_NOT_INDEPENDENT
@@ -80,8 +242,13 @@ def test_decision_readback_failure_is_refused_then_persisted_approval_recovers_w
         origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
         confirmation_text="", csrf_token=page.value.csrf_token, now=NOW + timedelta(seconds=1),
     )
+    proof_session = env.idp.reauthenticate(
+        env.session, page.value.decision_ref, decision_args["now"],
+        credential=env.test_credential,
+    )
+    assert proof_session is not None
 
-    refused = env.core.decide(env.approver, env.session, page.value.decision_ref,
+    refused = env.core.decide(env.approver, proof_session, page.value.decision_ref,
                               "APPROVE", **decision_args)
 
     assert refused.error is ErrorCode.AUDIT_UNAVAILABLE
@@ -90,8 +257,14 @@ def test_decision_readback_failure_is_refused_then_persisted_approval_recovers_w
     persisted = store.get(snap.change_id)
     assert persisted.approval is not None
     assert persisted.approval.decision == "APPROVE"
+    uncertain_audit = store.decision_audit
+    assert len(uncertain_audit) == 2
+    assert uncertain_audit[0].outcome is DecisionAuditOutcome.APPROVE
+    assert uncertain_audit[0].correlation_digest == persisted.approval.decision_ref_digest
+    assert uncertain_audit[1].outcome is DecisionAuditOutcome.ATTEMPT_UNCERTAIN
+    assert uncertain_audit[1].error_code is ErrorCode.AUDIT_UNAVAILABLE
 
-    replay = env.core.decide(env.approver, env.session, page.value.decision_ref,
+    replay = env.core.decide(env.approver, proof_session, page.value.decision_ref,
                              "APPROVE", **decision_args)
     applied = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
     status = env.core.status(env.requester, snap.change_id, now=NOW + timedelta(seconds=3))
@@ -102,6 +275,11 @@ def test_decision_readback_failure_is_refused_then_persisted_approval_recovers_w
     assert store.consume_calls == 1
     assert store.claim_count == 1
     assert env.apply_port.calls == 1
+    final_audit = store.decision_audit
+    assert len(final_audit) == 3
+    assert final_audit[:2] == uncertain_audit
+    assert final_audit[2].outcome is DecisionAuditOutcome.REFUSED
+    assert final_audit[2].error_code is ErrorCode.APPROVAL_NONCE_INVALID
 
 
 def test_ambiguous_decision_consume_recovers_from_exact_persisted_readback():
@@ -136,11 +314,24 @@ def test_ambiguous_decision_consume_recovers_from_exact_persisted_readback():
         origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
         confirmation_text="", csrf_token=page.value.csrf_token, now=NOW + timedelta(seconds=1),
     )
+    proof_session = env.idp.reauthenticate(
+        env.session, page.value.decision_ref, decision_args["now"],
+        credential=env.test_credential,
+    )
+    assert proof_session is not None
 
-    decision = env.core.decide(env.approver, env.session, page.value.decision_ref,
+    decision = env.core.decide(env.approver, proof_session, page.value.decision_ref,
                                "APPROVE", **decision_args)
     persisted = store.get(snap.change_id)
-    replay = env.core.decide(env.approver, env.session, page.value.decision_ref,
+    committed_audit = store.decision_audit
+    assert len(committed_audit) == 1
+    assert committed_audit[0].outcome is DecisionAuditOutcome.APPROVE
+    assert committed_audit[0].correlation_digest == persisted.approval.decision_ref_digest
+    audit_repr = repr(committed_audit)
+    for secret in (page.value.decision_ref, page.value.csrf_token, env.session.session_id,
+                   env.session.csrf_secret):
+        assert secret not in audit_repr
+    replay = env.core.decide(env.approver, proof_session, page.value.decision_ref,
                              "APPROVE", **decision_args)
     status = env.core.status(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
     applied = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=3))
@@ -152,6 +343,11 @@ def test_ambiguous_decision_consume_recovers_from_exact_persisted_readback():
     assert status.value is not None and status.value.approval == decision.value
     assert applied.value is not None
     assert env.apply_port.calls == 1
+    final_audit = store.decision_audit
+    assert len(final_audit) == 2
+    assert final_audit[0] == committed_audit[0]
+    assert final_audit[1].outcome is DecisionAuditOutcome.REFUSED
+    assert final_audit[1].error_code is ErrorCode.APPROVAL_NONCE_INVALID
 
 
 @pytest.mark.parametrize("mutation,expected", [
@@ -224,14 +420,25 @@ def test_cross_session_decision_reference_and_exact_nonce_expiry_are_refused():
     snap = propose(env)
     page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
     assert page.error is None
-    second_session = env.idp.issue(env.approver, NOW + timedelta(seconds=1))
+    second_session = env.idp.issue(env.approver, NOW + timedelta(seconds=1),
+                                   credential=env.test_credential)
     assert second_session is not None
-    cross_session = env.approval_service.submit_decision(second_session.principal, second_session,
+    second_session_proof = env.idp.reauthenticate(
+        second_session, page.value.decision_ref, NOW + timedelta(seconds=2),
+        credential=env.test_credential,
+    )
+    assert second_session_proof is not None
+    cross_session = env.approval_service.submit_decision(second_session_proof.principal, second_session_proof,
         page.value.decision_ref, "APPROVE", confirmation_text="", csrf_token=page.value.csrf_token,
         origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/", now=NOW + timedelta(seconds=2))
     assert cross_session.error is ErrorCode.APPROVAL_NONCE_INVALID
-    exact_expiry = env.approval_service.submit_decision(env.approver, env.session, page.value.decision_ref,
+    expiry_proof = env.idp.reauthenticate(
+        env.session, page.value.decision_ref, page.value.expires_at,
+        credential=env.test_credential,
+    )
+    assert expiry_proof is not None
+    exact_expiry = env.approval_service.submit_decision(env.approver, expiry_proof, page.value.decision_ref,
         "APPROVE", confirmation_text="", csrf_token=page.value.csrf_token,
         origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/", now=page.value.expires_at)
@@ -244,10 +451,15 @@ def test_core_rejects_stored_canonical_preview_tampering_even_with_permissive_de
     snap = propose(env)
     page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
     assert page.error is None
+    proof_session = env.idp.reauthenticate(
+        env.session, page.value.decision_ref, NOW + timedelta(seconds=1),
+        credential=env.test_credential,
+    )
+    assert proof_session is not None
     stored = env.store.get(snap.change_id)
     env.store._receipts[snap.change_id] = replace(
         stored, snapshot=replace(stored.snapshot, canonical_preview_bytes=stored.snapshot.canonical_preview_bytes + b" "))
-    result = env.approval_service.submit_decision(env.approver, env.session, page.value.decision_ref,
+    result = env.approval_service.submit_decision(env.approver, proof_session, page.value.decision_ref,
         "APPROVE", confirmation_text="", csrf_token=page.value.csrf_token,
         origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/", now=NOW + timedelta(seconds=1))
@@ -277,6 +489,129 @@ def test_apply_exception_becomes_unknown_and_cannot_retry_the_apply_port():
 def test_approver_session_expires_at_the_fifteen_minute_boundary():
     env = build_env()
     assert env.idp.validate_session(env.session, NOW + timedelta(minutes=15)) is None
+    assert env.idp.rotate_session(env.session, NOW + timedelta(minutes=15)) is None
+
+
+def test_valid_approver_session_rotation_replaces_and_revokes_old_session():
+    env = build_env()
+
+    replacement = env.idp.rotate_session(env.session, NOW + timedelta(minutes=1))
+
+    assert replacement is not None
+    assert replacement.session_id != env.session.session_id
+    assert env.idp.validate_session(replacement, NOW + timedelta(minutes=1)) == replacement
+    assert env.idp.validate_session(env.session, NOW + timedelta(minutes=1)) is None
+    assert env.idp.rotate_session(env.session, NOW + timedelta(minutes=1)) is None
+
+
+def test_concurrent_rotation_of_one_approver_session_has_only_one_successor():
+    env = build_env()
+    start = Barrier(2)
+
+    def rotate_once():
+        start.wait()
+        return env.idp.rotate_session(env.session, NOW + timedelta(minutes=1))
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        replacements = list(workers.map(lambda _index: rotate_once(), range(2)))
+
+    successors = [replacement for replacement in replacements if replacement is not None]
+    assert len(successors) == 1
+    assert env.idp.validate_session(successors[0], NOW + timedelta(minutes=1)) == successors[0]
+    assert env.idp.validate_session(env.session, NOW + timedelta(minutes=1)) is None
+
+
+@pytest.mark.parametrize("registry_change", ["revoke", "epoch", "unavailable"])
+def test_registry_revocation_epoch_change_or_unavailability_invalidates_session(registry_change):
+    env = build_env()
+    if registry_change == "revoke":
+        env.principals.revoke(env.approver.principal_id)
+    elif registry_change == "epoch":
+        env.principals.bump_epoch(env.approver.principal_id)
+    else:
+        def unavailable(_principal_id):
+            raise OSError("principal registry unavailable")
+
+        env.principals.current = unavailable
+
+    assert env.idp.validate_session(env.session, NOW + timedelta(minutes=1)) is None
+    assert env.idp.rotate_session(env.session, NOW + timedelta(minutes=1)) is None
+
+
+def test_test_credential_authority_verifies_only_current_credential_and_hides_value(caplog):
+    env = build_env()
+    credential = secrets.token_urlsafe(32)
+    assert env.credential_authority.rotate(env.approver.principal_id, credential)
+
+    evidence = env.credential_authority.verify(env.approver.principal_id, credential)
+    rejected = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential="invalid-test-credential")
+    accepted = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential)
+
+    assert evidence is not None
+    assert evidence.principal_id == env.approver.principal_id
+    assert evidence.generation == 2
+    assert env.credential_authority.verify(env.approver.principal_id, "invalid-test-credential") is None
+    assert rejected is None
+    assert accepted is not None
+    assert accepted.credential_generation == evidence.generation
+    assert credential not in repr(evidence)
+    assert credential not in repr(accepted)
+    assert credential not in caplog.text
+
+
+def test_configured_test_credential_authority_refuses_login_without_credential():
+    env = build_env()
+
+    assert env.idp.issue(env.approver, NOW + timedelta(seconds=1)) is None
+
+
+def test_test_credential_rotation_rejects_old_credential_and_invalidates_derived_session():
+    env = build_env()
+    old_credential = secrets.token_urlsafe(32)
+    new_credential = secrets.token_urlsafe(32)
+    assert env.credential_authority.rotate(env.approver.principal_id, old_credential)
+    session = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=old_credential)
+    assert session is not None
+    assert session.credential_generation == 2
+
+    assert env.credential_authority.rotate(env.approver.principal_id, new_credential)
+
+    current = env.credential_authority.verify(env.approver.principal_id, new_credential)
+    assert current is not None and current.generation == 3
+    assert env.credential_authority.verify(env.approver.principal_id, old_credential) is None
+    assert env.idp.validate_session(session, NOW + timedelta(seconds=2)) is None
+
+
+def test_test_credential_revocation_rejects_credential_and_derived_session():
+    env = build_env()
+    credential = secrets.token_urlsafe(32)
+    assert env.credential_authority.rotate(env.approver.principal_id, credential)
+    session = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential)
+    assert session is not None
+
+    env.credential_authority.revoke(env.approver.principal_id)
+
+    assert env.credential_authority.verify(env.approver.principal_id, credential) is None
+    assert env.credential_authority.current_generation(env.approver.principal_id) is None
+    assert env.idp.validate_session(session, NOW + timedelta(seconds=2)) is None
+
+
+def test_test_credential_authority_unavailable_or_malformed_fails_closed(monkeypatch):
+    env = build_env()
+    credential = secrets.token_urlsafe(32)
+
+    def unavailable(*_args, **_kwargs):
+        raise OSError("credential authority unavailable")
+
+    monkeypatch.setattr(env.credential_authority, "verify", unavailable)
+    assert env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential) is None
+
+    monkeypatch.setattr(env.credential_authority, "verify", lambda *_args, **_kwargs: object())
+    assert env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential) is None
+
+    monkeypatch.setattr(env.credential_authority, "verify", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(env.credential_authority, "current_generation", unavailable)
+    assert env.idp.validate_session(env.session, NOW + timedelta(seconds=1)) is None
 
 
 def test_missing_begin_apply_reader_fails_closed_before_apply_port():
@@ -723,16 +1058,21 @@ def test_approval_nonce_consumption_readback_mismatch_fails_closed_and_cannot_re
     snap = propose(env)
     page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
     assert page.error is None
+    proof_session = env.idp.reauthenticate(
+        env.session, page.value.decision_ref, NOW + timedelta(seconds=1),
+        credential=env.test_credential,
+    )
+    assert proof_session is not None
 
     decision = env.approval_service.submit_decision(
-        env.approver, env.session, page.value.decision_ref, "APPROVE", confirmation_text="",
+        env.approver, proof_session, page.value.decision_ref, "APPROVE", confirmation_text="",
         csrf_token=page.value.csrf_token, origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/",
         now=NOW + timedelta(seconds=1),
     )
     persisted = store.get(snap.change_id)
     replay = env.approval_service.submit_decision(
-        env.approver, env.session, page.value.decision_ref, "APPROVE", confirmation_text="",
+        env.approver, proof_session, page.value.decision_ref, "APPROVE", confirmation_text="",
         csrf_token=page.value.csrf_token, origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/",
         now=NOW + timedelta(seconds=2),

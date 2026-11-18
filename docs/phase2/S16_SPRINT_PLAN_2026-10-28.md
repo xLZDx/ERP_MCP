@@ -199,21 +199,29 @@ Assertions:
    refused (E29, E39). Cookie scope is separate from any chat/admin cookie.
 8. Authorization is checked on every request: unauthorized preview retrieval (no session, wrong person, requester viewing own approval) is refused (E39).
 9. Session revocation takes effect on the next request (E39).
-10. Re-authentication is required to approve; posting and amounts above a threshold require a second confirmation (CT12). Threshold: Q3.
+10. Re-authentication is required to approve. Posting and amounts above the registered threshold require a second confirmation (CT12, Q3). Preview and decision use the same confirmation rule. Invalid thresholds and stale targets refuse preview before issuing a decision reference.
 11. Every approval or refusal appends an audit record; an invalid approval changes no authorization state (E39 invariant).
 12. Direct calls to the approval service with the author's token are refused by the service itself, not merely hidden from a tool list (E29, I4).
 13. Nonce and digest are issued by ApprovalService/ChangeService (5.3). Test: a page handler given a tampered nonce, digest or version cannot make
     the core accept it; the page cannot alter the digest.
 14. The preview shown is rendered from the same canonical bytes the digest covers. Test: the digest recomputed from the rendered source text equals
     the approved digest; a preview field differing from the canonical text is a defect caught by this test.
-15. The nonce is bound to the approver session and to the approver person: a nonce issued to session S1/person P1 is refused for S2 or P2
-    (`APPROVAL_NONCE_INVALID`).
+15. The nonce is bound to the approver session and person: a nonce issued to session S1/person P1 is refused for S2 or P2
+    (`APPROVAL_NONCE_INVALID`). The request's approval ticket must match the decision binding before any attempt to consume the reference.
 16. The preview page response carries `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 17. Every state-changing POST checks `Origin`/`Referer` against the approval origin; missing or foreign values are refused, in addition to the CSRF token.
 18. Nonce, CSRF token and session id never appear in logs, tool responses or audit records (audit carries digests, per spec section 4 item 5).
 19. Approval form receive is bounded by bytes and ASGI message count; an empty-chunk flood, malformed event or non-boolean `more_body` is refused
     before `submit_decision` is called.
 Open: whether the page is server-rendered HTML only or includes scripts (affects CSP); a11y requirements (Q3, Q4).
+
+### 2026-11-18 bounded approval-page evidence and remaining contracts
+
+The isolated page and core fixtures cover canonical rendered bytes, an independently recomputed displayed digest, script-text escaping, one-use references, cross-session and expiry denials, direct requester denial, revocation before the next preview and decision, cross-origin and CSRF refusal, and bounded body receive. The preview and decision share a confirmation rule. The implementation requires a fresh re-authentication proof whose SHA-256 digest binds the exact decision reference; the core accepts ages from zero through five minutes and refuses missing, stale, future or cross-decision proof before recording APPROVE. The TestIdP issues only synthetic proof after checking its TEST credential authority; REJECT is unchanged. At clean exact HEAD `8ef18c9cfefe5046c4ec4a0fdc7f2fa69dea66b0` (report/document-only commits after code/test commit `9ad472dc28f01af81fb332fa3252c7e4138800ad`), the assigned functional-test-reviewer ran the two named core/page modules: 89 passed in 1.06s, no skips or warnings; `ledger.py verify` recorded PASS. This evidence is synthetic only. End-to-end session cookie issuance and a real authenticated IdP/session adapter remain qualification items.
+
+For the decision audit, distinguish the atomic domain receipt from the audit event. The current change-store contract consumes the reference and nonce with the persisted decision. Extend that atomic operation to include the final-decision audit record before treating it as durable acceptance evidence. A rejected decision attempt needs an append-only refusal record with a safe reason code and a digest-based correlation, while leaving authorization and reference state intact. Neither audit record should serialize raw references, session identifiers, CSRF values or the entire domain receipt. Verify database failure and commit-with-lost-response outcomes against the same atomic decision and audit pair.
+
+For canonical decision POST requests refused before the core, record the refusal at the producing layer. Trust only a closed reason code and server-side time, with no request details. Keep calls that reached the core separate so a refusal or committed outcome produces its existing core audit record exactly once. Database-backed atomicity and an authenticated session adapter remain separate operational evidence.
 
 ### Epic E16-3 MCP tools (V2-S16-03: propose, status, apply, verify, rollback_propose; no approve; safe errors)
 
@@ -267,7 +275,7 @@ Assertions:
     undeclared arguments are refused before partial registration. Full binding to the gateway's high-level MCPServer is not established by this task;
     it requires a separate low-level integration design that preserves authenticated context. The focused adapter contract passed 15 tests on
     2026-11-15; this is synthetic adapter evidence, not gateway/runtime acceptance.
-Open: output shape and field names of each tool (design step); whether `status` and `verify` are read-only for annotation purposes (Q2).
+Resolved for S16 on 2026-11-18: the immutable tool manifest fixes tool schemas, and all five change tools—including read-only `status` and `verify`—remain private-only. No public/tunnel change-tool exposure is implemented or claimed.
 
 ### Epic E16-4 Private-network exposure (V2-S16-04: private-network-only writes, proxy/redirect/SSRF check)
 
@@ -288,7 +296,7 @@ Assertions:
    refused; the same request with a valid credential but a foreign Origin/Referer on an approval POST is refused.
 8. A `CHAT_WRITE` principal with missing/empty identity fields, invalid epoch/MFA types, a non-TEST lane, or malformed/non-TEST scope is refused
    before the downstream MCP tool app is called.
-Open: whether `status`/`verify` may be exposed on the public tunnel (Q2); default private network definition (loopback only vs RFC 1918 ranges, Q7).
+Resolved for this sprint on 2026-11-18: no S16 change tool is exposed on a public tunnel; the default allowed network is loopback, with additional private ranges only when explicitly configured in the private listener object. The listener factory still does not bind or start a network listener.
 
 ### Epic E16-5 Recorded tool-call replay (V2-S16-05: ChatGPT and Claude transcripts replayed; real runs NOT_RUN)
 
@@ -415,12 +423,12 @@ the observable value that would differ if the guard were off.
 | # | Question | Recommended default |
 |---|---|---|
 | Q1 | Which scenario list governs: PLAN_V2 exit (E1, E2, E4, E5, E17, E29, E32, E39) or map (E39, E29, E5, E4, E16, E14, E30, E32)? | Union of both, with E2 DEFERRED and the 1C-side parts of E1/E17 NOT_RUN. |
-| Q2 | Are `status` and `verify` write tools for exposure purposes (D3), and are they annotated read-only? | All five change tools are private-network-only; `status`/`verify` are read-only in behavior but not exposed publicly in this sprint. |
+| Q2 | Are `status` and `verify` write tools for exposure purposes (D3), and are they annotated read-only? | RESOLVED 2026-11-18: all five change tools are private-network-only; `status`/`verify` are read-only in behavior but not exposed publicly in this sprint. |
 | Q3 | Concrete values: session lifetime, nonce lifetime, CSP policy text, cookie attributes, amount threshold for second confirmation. | Choose the strictest practical values in the design step and keep them as named constants asserted by tests; the amount threshold stays a registry value, not hard-coded. |
 | Q4 | Is the page pure server-rendered HTML (no scripts)? | Yes: no inline or external scripts, `script-src 'none'`, which also simplifies CSP and a11y review. |
 | Q5 | Where do principal/target registries and nonce state persist? | In-memory fakes in S16; persistence decided after S13 is accepted. |
 | Q6 | Reuse `admin_session.py`/`workbench_session.py` for approver sessions? | Do not share a store; reuse only patterns. Approver sessions use a separate store and cookie scope. |
-| Q7 | Definition of "private network": loopback only, or RFC 1918/ULA ranges? | Loopback and explicitly configured private ranges; default configuration is loopback only, as in `private_ingress.py`. |
+| Q7 | Definition of "private network": loopback only, or RFC 1918/ULA ranges? | RESOLVED 2026-11-18: loopback by default; allow only explicitly configured private ranges, as in `private_ingress.py`. |
 | Q8 | Is any recorded real-client transcript available? | No: ship hand-authored shape fixtures labelled "not observed"; real runs NOT_RUN. |
 | Q9 | New package name and location? | `src/erp_mcp_s16/`, mirroring `src/erp_mcp_s15/`; no import from the writer. |
 | Q10 | Is the S15 verifier accepted enough to be the `verify` backend? | Use it only through VerifyPort with a fake; claim nothing about real verification. |

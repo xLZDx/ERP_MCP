@@ -2524,4 +2524,124 @@ The rules digest covers the ordered field path, scope, field type and reference 
 
 At `7364df754065541ad174c2c0a7701fd7dfa26463`, 17 named provenance regression cases passed in 0.57s. Re-review confirmed the oracle fix and exposed the analogous baseline gap: declared pair metadata could still conceal a foreign source snapshot. Require the actual baseline snapshot identities to match the declared and current pair before fetching new snapshots.
 
+## 2026-11-18 - Close bounded S15 engineering after PR 67 merge
+
+At exact `22dea9b04990aca8174718dd1a1ddbf73781bdb4`, nine selected comparison nodes expanded to 17 passing cases in 0.59s. The final independent review confirmed the baseline source finding was fixed. GPT-PM approved that head under request `388c322d-26e9-4af5-8884-1ceeca9d9fe0`, reply `c4d645e1-f54a-53bd-ab58-1c9f3a01b4e1`. PR 67 merged it into main at `bfd2661e5cf8e1c228ae3495486819e494ec837a` with no auto-merge request. The ledger closed five bounded tasks. Native 1C, authenticated source capture and live ledger integration remain unverified. The duplicate-control minor is in the backlog.
+
+## 2026-11-18 - Start S16 with the retained approval-page evidence
+
+Use FIN-S2.2 as bounded approval-page evidence and FIN-S2.1 as its core dependency. The retained service already refuses an independence attestation unless the registry returns exact Boolean true. Earlier named receipts did not exercise the truthy non-Boolean case. Add that case at the approval page boundary before counting the guard as verified. Keep separate open criteria for browser, session, and deployment acceptance.
+
+At exact head `8f8fb9e4558eab4a6ab49f3fefc4fc918abcae39`, the designated functional-test-reviewer ran only `tests/phase2/test_s16_approval_page.py::test_preview_rejects_truthy_integer_independence_before_issuing_nonce` through the repository virtual environment. Result: 1 passed in 0.33s, exit 0. The negative case leaves the stored receipt and nonce counter unchanged and the positive case reaches the real preview handler. This is a synthetic receipt for one criterion.
+
+## 2026-11-18 - Use the same S16 confirmation policy before preview and decision
+
+The preview must offer the same confirmation requirement the decision path enforces. Read the current target, validate its version and reject invalid amount thresholds before allocating a decision reference. Derive the rule in the approval core and use it at both boundaries. Keep the existing requirement for POST and amounts greater than the registered threshold.
+
+At exact `572546a6d5271edccb63a3069326e272f9f2b95e`, the named page and core selection reported 10 passed in 1.50s, exit 0. It covers invalid threshold types and values, equal and above-threshold cases, target changes, and the retained approval preview checks.
+
+## 2026-11-18 - Check rendered S16 preview bytes against the approval digest
+
+Read the canonical preview from the rendered page and compare its independently computed SHA-256 with the displayed digest and server snapshot digest. The existing escaped text assertion alone does not bind a specific rendered element to the digest. The separate fresh re-authentication criterion is in the backlog: the current principal stores an MFA flag and an expiry, while the session tracks age and activity rather than fresh action-bound proof.
+
+The offline page regression also obtains a real preview, revokes the approver in the injected registry and asserts that the next preview and the outstanding decision both refuse, without issuing another reference or changing the receipt.
+
+At exact `cc65e8e2c876665dfa9caf35044e1acd65957872`, the designated test owner ran the rendered-digest/approval/replay and revoked-approver page nodes: 2 passed in 0.87s. A separate named selection ran six nodes for cross-session reference and nonce expiry, stored preview tampering, session expiry, direct requester denial, origin/CSRF, and bounded request receive: 6 passed in 1.36s. Both exited 0. All fixtures use the isolated approval service; no authenticated browser or durable store integration is implied.
+
+## 2026-11-18 - Add a sanitized audit boundary for core approval decisions
+
+The current change store has one atomic decision/ref/nonce operation but no audit event, and the separate gateway audit sink does not share that transaction. Add a reduced event at the core boundary. Persist accepted decisions and the final audit record atomically in the store, and append refused core-call outcomes without changing the receipt. A caller may observe a refusal after an ambiguous store response even when the final decision committed. Keep that attempt outcome distinct from the committed event. HTTP rejections before a call to the core and durable adapter qualification remain outstanding.
+
+At exact `208dc2cedac3b0576fff65fec830c01820bbda40`, seven named tests passed in 0.82s, exit 0. They cover final and refused records, replay, an uncertain response after commit, recovery without a duplicate final record, storage refusal and retained page behavior.
+
+## 2026-11-18 - Validate the approval route before consuming its reference
+
+The HTTP handler used to compare the URL ticket with the returned receipt after the core finalized the decision. Pass the route ticket to the core and validate it against the stored decision binding before reading or writing the receipt. An inconsistent request must leave the original reference available to the correct route.
+
+At exact `8d67a2d7a06eb3834a14dd20154c631b9e588fe9`, the four named page scenarios passed in 0.83s, exit 0. The routed mismatch leaves both receipts unchanged and the same reference can be used exactly once on its correct route.
+
+## 2026-11-18 - Record refusals at the approval transport boundary
+
+For a recognized canonical decision POST, audit a rejected request that has not reached the approval service. Capture only a safe error code and time at this boundary. Cover service refusals before the core through the same operation. Keep core auditing responsible for decisions it handled, avoiding duplicate records across layers. An unavailable refusal sink produces the existing audit-unavailable response.
+
+The first named transport run at `c9fd8d35` reported 5 passed and one fixture failure. The valid-retry section attempted to extract regex groups from already-extracted strings. Use the values directly and rerun the same six nodes. Product source is unaffected by this fixture repair.
+
+The corrected same six named transport nodes at `24f4eb78` passed in 0.74s, exit 0. The source now has bounded offline evidence for one-time decisions, address binding, sanitized transport and core refusal records, and fail-closed audit unavailability. The unconfigured durable store, real cookies and fresh approval proof remain operational qualifications.
+
+## 2026-11-18 - Validate the in-memory approver session on access and rotation
+
+The isolated identity provider checked the stored session lifetime on validation without rechecking the current registry. The rotation path also revoked the supplied ID and issued a replacement without validating the old session. Require a currently eligible session and serialize successor issuance with revocation so one old session can produce at most one successor.
+
+At exact `15536d0c`, the assigned tester ran five named nodes for successful and concurrent rotation, expiry, registry revocation/epoch/unavailability and the page revocation regression. Seven parameterized cases passed in 1.23s, exit 0. The existing gateway SecretProvider resolves values by reference but does not expose an authenticated credential generation to S16. Preserve that value-access boundary and define credential-generation proof and its binding to derived sessions as a separate acceptance requirement.
+
+## 2026-11-18 - Reconcile the live program status from the current plan
+
+Refreshed the ledger&#x27;s project reconciliation against the current project plan, detailed task ledger, decision/lessons logs and all fetched local, remote and archive refs. The report had shown 42 tasks in review because it was using stale/unreconciled legacy harness `verified` states. The current plan and evidence register resolve those records as bounded-accepted or as other explicit project states; native harness test/review evidence remains unchanged. Updated the report renderer to derive the sprint-level closure note from current reconciled sprint records rather than an obsolete hard-coded count. No product/runtime acceptance or test evidence was added.
+
+## 2026-11-18 — Bind TEST approver sessions to credential generation
+
+Keep the configured S16 identity credential seam fail-closed: issuing a TEST approver session requires a credential accepted by the TEST-only authority; the session records only the authority&#x27;s positive generation, and validation checks that generation on every access. Rotation or revocation therefore invalidates sessions derived from the prior credential. The in-memory test authority stores a salted keyed digest, not credential values. Do not treat this fake as a production IdP or SecretProvider qualification; the existing operational backlog entry for the configured provider and owner remains open. Six assigned named functional cases passed at source HEAD `e6e5ececc4c4817a48538e5ed6156437098cf02f`; only the synthetic path was exercised.
+
+Classify S16-02 as `ACCEPTED_BOUNDED`: the synthetic contract is verified, while the configured production identity and secret providers remain an operational backlog item.
+
+## 2026-11-18 — Derive the S16 requester operation allowlist from policy
+
+The exact five-tool adapter had a fixed tool manifest but no executable mapping to the shared caller policy. Map each tool to its requester operations, derive the exposed union from `CALLER_MATRIX[REQUESTER]`, and fail module initialization if the mapping diverges or exposes `APPROVE`/`REJECT`. `verify` uses the scoped status read before S15 VerifyPort; `rollback_propose` creates a new admitted proposal. Nine assigned named cases passed on the dirty worktree based at `adbfe52a5bae46f911dc3ffc5df93b0ccb0d4d86`. This accepts only the isolated adapter contract; gateway and client behavior remain separate.
+
+## 2026-11-18 — Fail closed on unregistered S16 ingress paths
+
+The private S16 ASGI wrapper selected the tool app for every path that was not an approval path, so an unrelated or near-prefix path could reach the tool app. Return a fixed 404 refusal before authentication, route probing or dispatch unless the path matches the exact private tool or approval prefixes. This closes only the local route-dispatch gap; outbound 1C writer-target routing and actual gateway/listener composition remain separate backlog items. Regression tests are authored but NOT_RUN until all S16 story code is complete, following the project test timing rule.
+
+## 2026-11-18 — Make S16 replay identifiers injectable
+
+S16-05 requires identical fake-state responses when a recorded transcript is replayed. Proposal IDs, rollback IDs and transport correlation IDs were generated randomly, so the existing injected clock and nonce did not make responses deterministic. Add an `IdSource` seam with a secure random UUIDv4 default and a deterministic, thread-safe fake for tests; reject non-UUIDv4 or malformed injected values. This supports synthetic replay only and does not establish any real-client observation. Acceptance tests are authored but NOT_RUN until all S16 stories are coded.
+
+## 2026-11-18 — Record bounded S16-05 replay acceptance
+
+At HEAD `107a6f2174bfd1dbf8e29df6ffbcdd2ddf68b2f9`, the assigned functional reviewer passed the four named S16 modules (130 tests, one deprecation warning) and the assigned E2E runner passed `test_s16_replay.py` (4 tests). An initial E2E run found two test-only fixture unpacking errors; those were corrected and the named file passed on rerun. Mark S16-05 `ACCEPTED_BOUNDED` for hand-authored fake transcripts and the fake approval/apply/verify journey only. Keep real clients, deployed gateway, IdP handshake and runtime NOT_RUN. S16-04 remains partial because current route checks cover only the ASGI listener, not the registered 1C writer target.
+
+## 2026-11-18 — Commit the corrected S16-05 replay fixture
+
+The first S16-05 replay test draft unpacked `build_env()` as though it returned a pair, while it returns one `S16Environment`. Correct both setup sites to create `Server()` explicitly. The assigned E2E runner passed the corrected working-tree file, but that result must be repeated after the test-only correction is committed before it is recorded as exact-HEAD verification.
+
+## 2026-11-18 — Keep S16 ingress and writer egress as separate boundaries
+
+Architecture review of E16-4 found that `RouteProbePort` is called with the ASGI listener address, not an outbound 1C target. The S16 plan also explicitly keeps the apply port fake-only and forbids gateway/listener binding, while S14 `write_port.py` is still a `NotWired` skeleton. Finding: `MAJOR | S16_SPRINT_PLAN §5/§E16-4; src/erp_mcp_s16/ingress.py; src/business_ai_gateway/phase2/change_ledger/write_port.py | the current route check cannot prove writer-target SSRF or DNS-rebinding safety | an ASGI listener address is checked but an eventual writer connects elsewhere | do not add an unconsumed S16 target-probe port or claim S16 acceptance for egress | put source-registry selection, pinned DNS through connect, redirect/proxy refusal and route enumeration in the writer adapter when it is separately in scope; retain S16-04 as PARTIAL.` The read-only `OneCReadClient` is not reused as a writer. No listener, network, or 1C call was started.
+
+## 2026-11-18 — Bind S16-01 approval to fresh action re-authentication
+
+The approval page previously accepted an MFA-marked session without proving a fresh authentication for the exact approval action. Add an injected re-authentication port for APPROVE and a core-level, fail-closed proof check bound to the exact decision reference, with a maximum age of five minutes and rejection of missing, stale, future or cross-decision proof. The TEST IdP may issue synthetic proof only after validating its TEST credential authority; REJECT remains unchanged. This decision establishes only a local contract. Durable database audit, actual cookie issuance and real IdP/session-adapter qualification remain open. Two focused attempts caught Result-wrapper dereferences in the new REJECT test; after correction, the assigned reviewer passed both named files on clean code/test HEAD `9ad472dc` (89 passed in 1.34s). The local ledger initially treated generated `*.html.docs` copies as code, which made report commits stale the evidence. The classifier was corrected for these generated document copies; on clean exact HEAD `8ef18c9cfefe5046c4ec4a0fdc7f2fa69dea66b0`, the assigned reviewer reran the files (89 passed in 1.06s), and `ledger.py verify` recorded PASS against that registered commit. All test evidence is synthetic, not real IdP or deployment qualification.
+
+## 2026-11-18 — Close FIN bounded while retaining FIN-S1.2
+
+The operator explicitly deferred FIN-S1.2 until final project verification and directed that work continue to the next sprint. GPT-PM&#x27;s bounded FIN closure is recorded for exact head `3f7fe83a94793bd97f0e3f5476d1e361668096a9` (request `3b7f1905-5e0e-463b-920f-ee003ab035c0`); that commit is present on `main`. Close the native FIN sprint with the remaining one task still open/externally blocked, preserving its evidence and deferral. FIN is 9/10 accepted in bounded scope; this does not clear FIN-S1.2 or imply product/runtime/production acceptance. S16 remains the active sprint.
+
+The S16-01 code commit subject initially placed `Task: S16-01` on the same line as the prose. The local commit hook expects the task marker as its own trailer line, so it did not append the code commit to the native task record. Preserve the commit and add a documented follow-up with a separate task trailer; the clean-head test evidence remains tied to the code commit `9ad472dc`, while the follow-up is docs-only.
+
+## 2026-11-18 — Select report activity from reconciled sprint status
+
+Historical native harness sprint rows can remain open even when the source plan and Git reconciliation mark them `CLOSED_BOUNDED_SPRINT`; after FIN was closed, the report therefore selected S4 as active ahead of S16. Preserve exact current-branch matching, then prefer the unique sprint with reconciled project status `IN_PROGRESS` or `ACTIVE`; fall back to the legacy native selector only when that project status is absent or ambiguous. This changes report display selection only and does not rewrite historical harness task evidence.
+
+## 2026-11-18 — Separate bounded S16 evidence from deferred adapters
+
+Accept S16-01 only for its verified TEST-backed approval core/page contract at exact test HEAD `8ef18c9cfefe5046c4ec4a0fdc7f2fa69dea66b0`; record HTTP login/session-cookie issuance, real IdP qualification and database-backed atomic audit in the operator backlog. Keep S16-04 partial: its inbound ASGI checks are synthetic evidence, while its outbound target-routing criteria cannot be implemented against a real writer within this sprint because S16 §2/§5 forbids gateway/listener binding and the S14 `OneCWritePort` is `NotWired`. Record that restriction as PROHIBITED in the task ledger and keep the implementation/DNS pinning/redirect/proxy checks in the future private-writer backlog. No writer, listener, 1C call or production behavior is enabled.
+
+Resolve S16 design questions Q2 and Q7 to their documented strict defaults: expose no S16 change tools through a public/tunnel listener (including read-only `status` and `verify`); use loopback by default and permit only explicitly configured private ranges. The existing app factory remains inert and starts no listener.
+
+## 2026-11-18 — Align approval test fixtures with action-bound re-authentication
+
+The S16-01 approval contract now requires a fresh TEST IdP proof bound to the exact decision reference. Update test-only helpers that submit approval decisions to obtain that proof and replace their session before submission; do not weaken the application check to preserve old fixture behavior. No production adapter or runtime credential is introduced.
+
+## 2026-11-18 — Exercise re-authentication in replayed approval journey
+
+The deterministic S16-05 replay must traverse the same decision-bound re-authentication step as the approval page. Its test authenticator delegates the supplied TEST credential and decision reference to the fake IdP, then replaces its in-memory session only when proof succeeds. This is synthetic contract evidence and does not qualify a deployed IdP or HTTP cookie adapter.
+
+## 2026-11-18 — Record S16 exact-head named test results
+
+After committing the S16 approval-helper and replay-fixture corrections, the assigned functional tester ran the six named S16 functional files at clean exact HEAD `ab1a88d919fc3b033d9e32824b540e5a65eaab74` (168 passed, one `httpx2` deprecation warning), and the assigned E2E runner ran `test_s16_replay.py` at the same HEAD (4 passed). Record these as synthetic TEST-only results; they do not establish real IdP, durable database, listener or writer-egress qualification.
+
+## 2026-11-18 — Reconcile live status from current project records
+
+The live report showed 42 tasks on review because 62 ledger task records had no fresh project reconciliation and their native harness `verified` state was being used as the display fallback. The current project plan marks 91 of 111 task placements accepted in bounded scope, 2 blocked, 1 partial and 17 not started. Reconcile all 113 local/remote/archive branch refs against the current plan, preserving native verify/review evidence, then regenerate the report. The resulting project view is 91/111 accepted, 0 on review, 2 blocked, 1 in progress and 17 not started; the independent harness result remains 45/111 done.
+
 </pre></main></body></html>

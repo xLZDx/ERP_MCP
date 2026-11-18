@@ -1937,3 +1937,25 @@ Verify that the selected identity provider issues dedicated private-writer token
 
 Implement and qualify authenticated 1C readers and full-population reconciliation ports against a seeded disposable clone with matching scope and provenance. Observe real movement and version read-back separately from fixture results. Resolve the historical conflict between the controlled-change plan and the sprint map before extending the measured receipt-draft catalogue to contract changes. The qualified channel owner is unassigned in the current plan.
 
+## S15 distinct negative-control receipts
+
+GPT-PM review of the bounded S15 package reported one non-blocking minor issue: the coverage function requires all canonical controls and refuses missing controls, but allows identical duplicate entries. Require a single receipt per required control or report duplicates explicitly before counting receipts for acceptance. No author is assigned.
+
+## S16-01 fresh approval re-authentication
+
+The local S16 implementation defines a fail-closed re-authentication contract: proof is bound to the exact decision reference, is accepted from zero through five minutes old, and is checked before APPROVE is recorded. TEST-only issuance validates the TEST credential authority and stores only the reference digest. The assigned reviewer passed the named synthetic core/page modules at clean exact HEAD `8ef18c9cfefe5046c4ec4a0fdc7f2fa69dea66b0` (89 passed; code/test change is `9ad472dc`); this is not real-provider evidence. The current approval page accepts an injected authenticated session but does not implement the HTTP login/cookie-issuance adapter. Remaining work is that separately designed session adapter with isolated cookie issuance/scope, real authenticated IdP qualification, and proof that re-authentication is one-use at the adapter boundary. The identity-provider owner is unassigned; Codex owns the local adapter design when a later sprint scopes it.
+
+## S16-01 durable approval audit
+
+The isolated store now commits the decision, consumed reference and final audit atomically under its lock. Transport and core refusal events carry only safe codes, timestamps and optional digest correlation. The isolated implementation has no database-backed approval store. Qualify the equivalent atomic durable transaction with concurrent submits, lost replies, failed appends and read-back faults. The durable store owner is unassigned.
+
+## S16-02 operational identity and credential lifecycle
+
+The isolated test provider and in-memory registries exercise principal and session revocation. On 2026-11-18, S16-02 added a TEST-only keyed-digest credential authority and generation-bound session invalidation; six named functional cases passed at source HEAD `e6e5ececc4c4817a48538e5ed6156437098cf02f`. This is bounded synthetic evidence only. The current production-facing secret-store fake remains unconfigured and does not establish a real provider or authoritative identity registry. At final project verification, qualify the configured provider, credential version/revocation and artifact-leakage boundaries; keep credentials out of diagnostics and persisted application artifacts. The provider owner is unassigned.
+
+## S16-04 gateway binding and writer-target route guard
+
+The S16 `RouteProbePort` checks only the private ASGI listener's numeric server address. It does not resolve or pin a registered 1C writer target. This is blocked for S16 by the sprint boundary, not by an unavailable external service: S16 §2/§5 keeps the write port `NOT_WIRED`, uses a fake apply port, and forbids gateway/listener binding. The current S14 `write_port.py` is a non-operational skeleton whose methods raise `NotWired`; the separate `OneCReadClient` is read-only and is not a writer to reuse. Keep S16-04 `BLOCKED_PROHIBITED` for its unimplemented outbound criteria; do not add a disconnected probe abstraction and do not claim writer-target route safety or private gateway deployment.
+
+When a writer adapter is separately brought into scope, enforce routing in that adapter at the actual connection boundary: select targets only from the server-side source registry (never a model URL), refuse public or disallowed lanes independent of labels, resolve and pin an allowed address through TCP connect, disable redirects and environment proxies, and prove public/mixed DNS and changed-resolution refusal with fake transports. Enumerate routes to prove no public/tunnel route reaches write tools. No human owner is assigned; Codex owns this source work when the writer adapter is in scope. Dependency: implementation and approved private-only composition of the S14 writer adapter. S16 remains fake-only; no listener or network is started.
+

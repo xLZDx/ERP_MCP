@@ -21,11 +21,11 @@ from business_ai_gateway.phase2.change.types import BudgetCheck, CallerClass, Ve
 
 from .contracts import (
     ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionBinding, DecisionPage,
-    DomainReceipt, FROZEN_V2_PROPOSAL_KINDS, NonceSource, PreviewSnapshot,
+    DomainReceipt, FROZEN_V2_PROPOSAL_KINDS, IdSource, NonceSource, PreviewSnapshot,
     ProposalPort, Result, TargetRecord,
     canonical_preview_bytes,
 )
-from .core import S16Core, _as_utc, _valid_approver_session
+from .core import S16Core, _as_utc, _confirmation_required, _valid_approver_session
 
 APPROVAL_NONCE_LIFETIME = timedelta(minutes=5)
 PROPOSAL_LIFETIME = timedelta(minutes=5)
@@ -33,6 +33,19 @@ PROPOSAL_LIFETIME = timedelta(minutes=5)
 
 def _digest(raw: bytes | str) -> str:
     return hashlib.sha256(raw.encode("utf-8") if isinstance(raw, str) else raw).hexdigest()
+
+
+class _Uuid4IdSource:
+    def issue(self) -> UUID:
+        return uuid4()
+
+
+def _issue_uuid4(source: IdSource) -> str:
+    value = source.issue()
+    if (type(value) is not UUID or value.version != 4
+            or value.variant != "specified in RFC 4122"):
+        raise ValueError("ID_SOURCE_INVALID")
+    return str(value)
 
 
 def _now(clock, now: datetime | None) -> datetime:
@@ -57,12 +70,13 @@ def _proposal_context(requester, principal_record, target, *, now, expires_at, c
 
 class ChangeService:
     def __init__(self, core: S16Core, store, proposal_port: ProposalPort,
-                 nonce_source: NonceSource, clock) -> None:
+                 nonce_source: NonceSource, clock, *, id_source: IdSource | None = None) -> None:
         self.core = core
         self.store = store
         self.proposal_port = proposal_port
         self.nonce_source = nonce_source
         self.clock = clock
+        self.id_source = id_source or _Uuid4IdSource()
 
     def propose(self, requester: AuthenticatedPrincipal, raw_request: dict[str, object], *,
                 now: datetime | None = None) -> Result[PreviewSnapshot]:
@@ -86,7 +100,7 @@ class ChangeService:
             nonce = self.nonce_source.issue()
             if type(nonce) is not str or len(nonce) < 32:
                 return Result.refused(ErrorCode.SCHEMA_INVALID)
-            change_id = str(uuid4())
+            change_id = _issue_uuid4(self.id_source)
             provisional_context = _proposal_context(
                 requester, principal_record, target, now=timestamp, expires_at=expiry,
                 change_id=change_id, preview_digest="0" * 64)
@@ -228,7 +242,7 @@ class ChangeService:
             return Result.refused(ErrorCode.ROLLBACK_REFUSED)
         try:
             nonce = self.nonce_source.issue()
-            rollback_id = str(uuid4())
+            rollback_id = _issue_uuid4(self.id_source)
             expiry = timestamp + PROPOSAL_LIFETIME
             target = self.core.targets.current(requester.scope)
             principal_record = self.core.principals.current(requester.principal_id)
@@ -323,7 +337,7 @@ class ApprovalService:
         issued_error = self.core.validate_issued_receipt(receipt)
         if issued_error is not None:
             return Result.refused(issued_error)
-        target_error = self.core.validate_current_target(receipt)
+        target, target_error = self.core.current_target_for_receipt(receipt)
         if target_error is not None:
             return Result.refused(target_error)
         if receipt.scope != approver.scope:
@@ -363,23 +377,15 @@ class ApprovalService:
             return Result.refused(ErrorCode.APPROVAL_EXPIRED)
         if _digest(snap.canonical_preview_bytes) != snap.preview_digest:
             return Result.refused(ErrorCode.APPROVAL_EXPIRED)
+        requires = _confirmation_required(receipt.proposal.kind, receipt.proposal.payload, target)
+        if requires is None:
+            return Result.refused(ErrorCode.TARGET_REJECTED)
+        phrase = "CONFIRM CHANGE" if requires else None
         try:
             ref = self.nonce_source.issue()
             if type(ref) is not str or not re.fullmatch(r"[A-Za-z0-9_-]{32,512}", ref):
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
             ref_digest = _digest(ref)
-            target = self.core.targets.current(receipt.scope)
-            if target is None:
-                return Result.refused(ErrorCode.TARGET_REJECTED)
-            requires = receipt.proposal.kind is ChangeKind.POST
-            if receipt.proposal.payload is not None:
-                if target.amount_confirmation_threshold is None:
-                    return Result.refused(ErrorCode.TARGET_REJECTED)
-                from decimal import Decimal
-                amount = sum((Decimal(line.amount) + Decimal(line.vat_amount)
-                              for line in receipt.proposal.payload.lines), Decimal(0))
-                requires = requires or amount > Decimal(target.amount_confirmation_threshold)
-            phrase = "CONFIRM CHANGE" if requires else None
             decision_expires = min(snapshot_expires_at, session_expires_at,
                                    session_idle_expires_at, approver_expires_at)
             binding = DecisionBinding(snap.change_id, snap.version, snap.scope, approver.principal_id,
@@ -410,17 +416,26 @@ class ApprovalService:
                         decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
                         csrf_token: str = "", confirmation_text: str,
                         origin: str, referer: str,
-                        now: datetime | None = None) -> Result[ApprovalDecision]:
+                        now: datetime | None = None, expected_change_id: UUID | None = None) -> Result[ApprovalDecision]:
         try:
             timestamp = _now(self.clock, now)
         except Exception:
+            if not self.record_http_refusal(ErrorCode.NOT_ENTITLED, now=now):
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             return Result.refused(ErrorCode.NOT_ENTITLED)
         if origin != self.origin or not referer.startswith(self.origin + "/"):
+            if not self.record_http_refusal(ErrorCode.NOT_ENTITLED, now=timestamp):
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             return Result.refused(ErrorCode.NOT_ENTITLED)
         return self.core.decide(approver, session, decision_ref, decision,
                                 csrf_token=csrf_token,
                                 confirmation_text=confirmation_text, origin=origin,
-                                referer=referer, now=timestamp)
+                                referer=referer, now=timestamp,
+                                expected_change_id=expected_change_id)
+
+    def record_http_refusal(self, error: ErrorCode, *, now: datetime | None = None) -> bool:
+        """Audit a safe transport refusal before submit_decision enters the core."""
+        return self.core.record_decision_refusal(error, now=now)
 
 
 def _scope_from_proposal(scope, target: TargetRecord):

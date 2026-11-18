@@ -18,7 +18,7 @@ from .contracts import (
     ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionPage, PrincipalRole, Result, TargetScope,
     TokenClass,
 )
-from .core import _valid_approver_session
+from .core import _valid_action_reauthentication, _valid_approver_session
 
 __all__ = ["create_approval_app", "SESSION_COOKIE_NAME"]
 
@@ -38,11 +38,16 @@ class ApprovalServicePort(Protocol):
     def submit_decision(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                         decision_ref: str, decision: str, *, csrf_token: str = "", confirmation_text: str,
                         origin: str, referer: str,
-                        now: datetime | None = None) -> Result[ApprovalDecision, ErrorCode]: ...
+                        now: datetime | None = None,
+                        expected_change_id: UUID | None = None) -> Result[ApprovalDecision, ErrorCode]: ...
+    def record_http_refusal(self, error: ErrorCode, *, now: datetime | None = None) -> bool: ...
 
 
 class ApproverSessionAuthenticator(Protocol):
     def authenticate(self, scope: Mapping[str, Any], headers: Mapping[str, str]) -> ApproverSession | None: ...
+    def reauthenticate(self, scope: Mapping[str, Any], headers: Mapping[str, str],
+                       session: ApproverSession, *, decision_ref: str,
+                       now: datetime) -> ApproverSession | None: ...
 
 
 class Clock(Protocol):
@@ -315,6 +320,27 @@ def create_approval_app(service: ApprovalServicePort,
             await send({"type": "http.response.start", "status": status, "headers": response_headers})
             await send({"type": "http.response.body", "body": content})
             return
+        decision_route = re.fullmatch(
+            r"/approval/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/decision",
+            path,
+        ) if method == "POST" else None
+        canonical_decision_post = bool(
+            decision_route and str(UUID(decision_route.group(1))) == decision_route.group(1)
+        )
+
+        async def decision_error(code: ErrorCode, status: int, *, now: datetime | None = None):
+            if not canonical_decision_post:
+                return _error(code, status)
+            recorder = getattr(service, "record_http_refusal", None)
+            try:
+                recorded = (await _invoke(recorder, code, now=now)
+                            if callable(recorder) else False)
+            except Exception:
+                recorded = False
+            if recorded is not True:
+                return _error(ErrorCode.AUDIT_UNAVAILABLE, 503)
+            return _error(code, status)
+
         raw_headers = scope.get("headers", ())
         header_lists: dict[str, list[str]] = {}
         try:
@@ -322,11 +348,11 @@ def create_approval_app(service: ApprovalServicePort,
                 name = key.decode("latin-1").casefold()
                 header_lists.setdefault(name, []).append(value.decode("latin-1"))
         except (AttributeError, TypeError, UnicodeError, ValueError):
-            response = _error(ErrorCode.SCHEMA_INVALID, 400)
+            response = await decision_error(ErrorCode.SCHEMA_INVALID, 400)
         else:
             headers = {key: values[0] for key, values in header_lists.items() if len(values) == 1}
             if any(len(values) != 1 for values in header_lists.values()):
-                response = _error(ErrorCode.SCHEMA_INVALID, 400)
+                response = await decision_error(ErrorCode.SCHEMA_INVALID, 400)
             elif type(path) is str and path == "/approval/s16.css" and method == "GET":
                 try:
                     style_session = await _invoke(authenticator.authenticate, scope, headers)
@@ -371,9 +397,9 @@ def create_approval_app(service: ApprovalServicePort,
                         except Exception:
                             now = None
                         if now is None:
-                            response = _error(ErrorCode.AUDIT_UNAVAILABLE, 503)
+                            response = await decision_error(ErrorCode.AUDIT_UNAVAILABLE, 503)
                         elif not _live_session(session, now):
-                            response = _error(ErrorCode.NOT_ENTITLED, 401)
+                            response = await decision_error(ErrorCode.NOT_ENTITLED, 401, now=now)
                         elif method == "GET" and path == f"/approval/{ticket}":
                             try:
                                 result = await _invoke(service.open_preview, session.principal, session, parsed_ticket,
@@ -445,9 +471,9 @@ def create_approval_app(service: ApprovalServicePort,
                         elif method == "POST" and path == f"/approval/{ticket}/decision":
                             content_types = header_lists.get("content-type", [])
                             if content_types != ["application/x-www-form-urlencoded"]:
-                                response = _error(ErrorCode.SCHEMA_INVALID, 415)
+                                response = await decision_error(ErrorCode.SCHEMA_INVALID, 415, now=now)
                             elif not _origin_matches(headers.get("origin", ""), headers.get("referer", ""), origin):
-                                response = _error(ErrorCode.NOT_ENTITLED, 403)
+                                response = await decision_error(ErrorCode.NOT_ENTITLED, 403, now=now)
                             else:
                                 body = bytearray()
                                 message_count = 0
@@ -493,29 +519,59 @@ def create_approval_app(service: ApprovalServicePort,
                                 except (UnicodeError, ValueError, OverflowError, TypeError):
                                     data = {}
                                 if not data:
-                                    response = _error(ErrorCode.SCHEMA_INVALID, 400)
+                                    response = await decision_error(ErrorCode.SCHEMA_INVALID, 400, now=now)
                                 else:
-                                    try:
-                                        result = await _invoke(
-                                            service.submit_decision, session.principal, session,
-                                            data["decision_ref"], data["decision"],
-                                            csrf_token=data["csrf_token"],
-                                            confirmation_text=data.get("confirmation_text", ""),
-                                            origin=headers.get("origin", ""), referer=headers.get("referer", ""), now=now)
-                                    except Exception:
-                                        result = None
-                                    if (type(result) is not Result or result.error is not None
-                                            or not _valid_decision_result(
-                                                result.value, ticket=parsed_ticket,
-                                                decision_ref=data["decision_ref"], decision=data["decision"],
-                                                session=session, now=now)):
-                                        response = _error(result.error if type(result) is Result and result.error else
-                                                          ErrorCode.AUDIT_UNAVAILABLE)
-                                    else:
-                                        message = ("Rejection recorded." if data["decision"] == "REJECT"
-                                                   else "Decision recorded.")
-                                        response = _page("Decision recorded", "<p role=\"status\">" + message +
-                                                         "</p><p>Return to pending changes.</p>")
+                                    response = None
+                                    decision_session = session
+                                    if data["decision"] == "APPROVE":
+                                        reauthenticate = getattr(authenticator, "reauthenticate", None)
+                                        try:
+                                            proof_session = (await _invoke(
+                                                reauthenticate, scope, headers, session,
+                                                decision_ref=data["decision_ref"], now=now,
+                                            ) if callable(reauthenticate) else None)
+                                        except Exception:
+                                            proof_session = None
+                                        if (type(proof_session) is not ApproverSession
+                                                or proof_session.session_id != session.session_id
+                                                or proof_session.principal != session.principal
+                                                or proof_session.created_at != session.created_at
+                                                or proof_session.last_seen_at != session.last_seen_at
+                                                or proof_session.idle_expires_at != session.idle_expires_at
+                                                or proof_session.expires_at != session.expires_at
+                                                or proof_session.csrf_secret != session.csrf_secret
+                                                or proof_session.credential_generation != session.credential_generation
+                                                or not _valid_approver_session(
+                                                    proof_session, session.principal, now)
+                                                or not _valid_action_reauthentication(
+                                                    proof_session, data["decision_ref"], now)):
+                                            response = await decision_error(
+                                                ErrorCode.NOT_ENTITLED, 403, now=now)
+                                        else:
+                                            decision_session = proof_session
+                                    if response is None:
+                                        try:
+                                            result = await _invoke(
+                                                service.submit_decision, decision_session.principal, decision_session,
+                                                data["decision_ref"], data["decision"],
+                                                csrf_token=data["csrf_token"],
+                                                confirmation_text=data.get("confirmation_text", ""),
+                                                origin=headers.get("origin", ""), referer=headers.get("referer", ""),
+                                                now=now, expected_change_id=parsed_ticket)
+                                        except Exception:
+                                            result = None
+                                        if (type(result) is not Result or result.error is not None
+                                                or not _valid_decision_result(
+                                                    result.value, ticket=parsed_ticket,
+                                                    decision_ref=data["decision_ref"], decision=data["decision"],
+                                                    session=decision_session, now=now)):
+                                            response = _error(result.error if type(result) is Result and result.error else
+                                                              ErrorCode.AUDIT_UNAVAILABLE)
+                                        else:
+                                            message = ("Rejection recorded." if data["decision"] == "REJECT"
+                                                       else "Decision recorded.")
+                                            response = _page("Decision recorded", "<p role=\"status\">" + message +
+                                                             "</p><p>Return to pending changes.</p>")
                         else:
                             response = _error(ErrorCode.SCHEMA_INVALID, 405)
         status, response_headers, content = response

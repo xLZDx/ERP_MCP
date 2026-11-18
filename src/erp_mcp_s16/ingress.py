@@ -256,6 +256,12 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
         scheme = scope.get("scheme")
         is_approval = type(path) is str and path.startswith(config.approval_prefix)
         is_tool = type(path) is str and (path == config.tool_prefix or path.startswith(config.tool_prefix + "/"))
+        if not is_approval and not is_tool:
+            status, response_headers, body = _safe_response(404, ErrorCode.NOT_ENTITLED)
+            await send({"type": "http.response.start", "status": status,
+                        "headers": response_headers})
+            await send({"type": "http.response.body", "body": body})
+            return
         html_response = bool(is_approval)
         response: tuple[int, list[tuple[bytes, bytes]], bytes] | None = None
         downstream_invoked = False

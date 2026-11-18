@@ -16,6 +16,7 @@ from erp_mcp_s15.verifier import VerificationResult, VerificationStatus
 
 from .contracts import (
     ApprovalDecision, ApplyReceipt, ChangeStore, ClaimRefused, Claimed, ClaimToken,
+    DecisionAuditEvent, DecisionAuditOutcome,
     DecisionBinding, DomainReceipt, KillSwitchPort, TargetScope, VerifyPort,
 )
 
@@ -53,6 +54,24 @@ class FakeNonceSource:
             return raw
 
 
+class FakeIdSource:
+    """Deterministic UUIDv4-shaped IDs for isolated replay fixtures."""
+    def __init__(self, seed: str = "s16-id") -> None:
+        self._seed = seed
+        self._counter = 0
+        self._lock = threading.Lock()
+
+    def issue(self) -> UUID:
+        import hashlib
+        with self._lock:
+            self._counter += 1
+            raw = bytearray(hashlib.sha256(
+                f"{self._seed}:{self._counter}".encode("utf-8")).digest()[:16])
+            raw[6] = (raw[6] & 0x0F) | 0x40
+            raw[8] = (raw[8] & 0x3F) | 0x80
+            return UUID(bytes=bytes(raw))
+
+
 class InMemoryChangeStore(ChangeStore):
     """Storage fake. Claim is an atomic CAS; decision policy remains in S16Core."""
     def __init__(self, *, permissive_decisions: bool = False) -> None:
@@ -61,6 +80,7 @@ class InMemoryChangeStore(ChangeStore):
         self._bindings: dict[str, DecisionBinding] = {}
         self._used_refs: set[str] = set()
         self._used_nonces: set[str] = set()
+        self._decision_audit: list[DecisionAuditEvent] = []
         self._claims: dict[UUID, ClaimToken] = {}
         self._claim_serial = 0
         self.permissive_decisions = permissive_decisions
@@ -147,8 +167,14 @@ class InMemoryChangeStore(ChangeStore):
             return self._bindings.get(decision_ref)
 
     def consume_decision_ref_and_nonce(self, decision_ref: str, *, expected: DecisionBinding,
-                                       decision: ApprovalDecision, s12_record) -> bool:
+                                       decision: ApprovalDecision, s12_record,
+                                       audit_event: DecisionAuditEvent) -> bool:
         with self._lock:
+            if (type(audit_event) is not DecisionAuditEvent
+                    or audit_event.outcome.value != decision.decision
+                    or audit_event.correlation_digest != expected.decision_ref_digest
+                    or decision.decision_ref_digest != expected.decision_ref_digest):
+                return False
             actual = self._bindings.get(decision_ref)
             if not self.permissive_decisions and (
                     actual != expected or decision_ref in self._used_refs
@@ -157,13 +183,31 @@ class InMemoryChangeStore(ChangeStore):
             receipt = self._receipts.get(expected.change_id)
             if receipt is None or receipt.version != expected.version:
                 return False
-            # Even permissive mode models state mutation, while core independently guards replay.
-            self._used_refs.add(decision_ref)
-            self._used_nonces.add(expected.nonce_digest)
-            self._receipts[expected.change_id] = replace(
+            updated_receipt = replace(
                 receipt, status=f"{s12_record.lifecycle.value}:{s12_record.authorization.value}",
                 approval=decision, s12_record=s12_record)
+            updated_refs = self._used_refs | {decision_ref}
+            updated_nonces = self._used_nonces | {expected.nonce_digest}
+            updated_audit = [*self._decision_audit, audit_event]
+            # Even permissive mode models state mutation, while core independently guards replay.
+            self._used_refs = updated_refs
+            self._used_nonces = updated_nonces
+            self._receipts[expected.change_id] = updated_receipt
+            self._decision_audit = updated_audit
             return True
+
+    def append_decision_refusal(self, audit_event: DecisionAuditEvent) -> None:
+        if (type(audit_event) is not DecisionAuditEvent
+                or audit_event.outcome not in (DecisionAuditOutcome.REFUSED,
+                                               DecisionAuditOutcome.ATTEMPT_UNCERTAIN)):
+            raise ValueError("DECISION_AUDIT_EVENT_INVALID")
+        with self._lock:
+            self._decision_audit.append(audit_event)
+
+    @property
+    def decision_audit(self) -> tuple[DecisionAuditEvent, ...]:
+        with self._lock:
+            return tuple(self._decision_audit)
 
     @property
     def claim_count(self) -> int:

@@ -846,3 +846,66 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 FAILURE: The S15 baseline test author invoked an unrequested whitespace check while inspecting a scoped diff. Rule: inspect changed text with plain git diff and keep prohibited automated checks out of authoring and acceptance evidence.
 
+- 2026-11-18 SUCCESS: Two S15 review findings were corrected and validated on the bound commit before matching-head merge. Rule: include review findings and the exact regression receipt, and carry independent operational acceptance in the backlog.
+
+- 2026-11-18 SHORTCOMING: Historical S16 page results did not exercise the strict Boolean independence guard despite running nearby successful paths. Rule: use the exact malformed registry return value as a negative control and assert that nonce issuance is not reached.
+
+- 2026-11-18 SUCCESS: The named S16 regression verified refusal and preserved state for an integer registry response, and accepted exact true through the same approval page fixture. Rule: pair a fail-closed check with its positive control at the same boundary.
+
+- 2026-11-18 SHORTCOMING: Preview and decision calculated confirmation separately, so a malformed threshold could produce a preview the core would refuse. Rule: share the decision policy and validate it before minting a preview reference.
+
+- 2026-11-18 SHORTCOMING: Checking that escaped text occurs somewhere in the page leaves the canonical result section and displayed digest independently mutable. Rule: extract the text from the designated section and compare its bytes and hash against the approved snapshot.
+
+- 2026-11-18 SUCCESS: Two named runs verified both rendered evidence and denial after identity changes on the same exact source. Rule: exercise the page and core boundaries explicitly while keeping durable audit evidence separate.
+
+- 2026-11-18 SHORTCOMING: Reusing the gateway tool logger for S16 would put decision state and audit evidence in separate transactions. Rule: keep the final decision and its audit record in one store operation and record ambiguous response outcomes separately.
+
+- 2026-11-18 SHORTCOMING: The approval HTTP boundary checked its ticket only on returned success, after decision consumption. Rule: enforce route-to-decision binding before effects and retain exact response validation as a separate check.
+
+- 2026-11-18 SHORTCOMING: Core-only auditing could not observe decisions refused before the core. Rule: audit a refusal at the layer where it occurs and never serialize request material to fill missing correlation.
+
+- 2026-11-18 FAILURE: The first named transport run failed in its positive retry fixture because extracted strings were treated as regex match objects. Rule: reuse the already parsed form values in retries and confirm the resulting integration path completes.
+
+- 2026-11-18 SUCCESS: The corrected transport selection covered six named scenarios on one committed tree. Rule: keep audit-disabled and malformed-request controls alongside the valid retry so refusals and successful commits remain distinguishable.
+
+- 2026-11-18 SHORTCOMING: The test identity provider validated a cached session without rereading identity and issued replacements without validating predecessors. Rule: enforce current eligibility on both validation and serialized rotation.
+
+- 2026-11-18 SUCCESS: A barrier-driven concurrent rotation test verified exactly one successor for one predecessor. Rule: keep concurrency evidence separate from sequential revocation and from real credential-provider qualification.
+
+- 2026-11-18 SHORTCOMING: The live report used unreconciled legacy `verified` states as current review work, inflating the review queue to 42 of 111. Root cause: project-plan/Git reconciliation had not been refreshed before report generation, and a sprint-count note was hard-coded. Missed by the report-maintenance path. Rule: reconcile the ledger from current project documents and fetched refs before rendering; keep native harness evidence separate and derive summary counts from current records.
+
+- 2026-11-18 SHORTCOMING: TEST sessions could be issued without verifying a credential. The first generation-binding draft allowed a caller to obtain the current generation without presenting a credential, bypassing the new login check. Require credential proof for every public issue call when the TEST authority is configured, and preserve session rotation only after validating the predecessor. Rule: never let a session-creation API infer authentication from the authority's current state alone.
+
+- 2026-11-18 SUCCESS: The S16 tool operation map is checked against the shared requester matrix at import, with approval and rejection kept outside the model surface. Rule: encode the operation boundary and make policy drift fail closed before any tool registration.
+
+- 2026-11-18 SHORTCOMING: The private ASGI wrapper sent every non-approval path to the tool app, including unknown paths. Rule: reject paths outside the exact protected prefixes before authentication or downstream dispatch, and keep inbound listener routing separate from outbound writer-target routing proof.
+
+- 2026-11-18 SHORTCOMING: Injected clock and nonce sources were insufficient for deterministic S16 transcript replay because generated proposal and correlation UUIDs remained random. Rule: identify every response-affecting generated value and inject a validated deterministic source at synthetic boundaries while retaining secure random defaults.
+
+- 2026-11-18 SUCCESS: The first S16-05 replay run caught two malformed test-fixture assignments before acceptance; the corrected named E2E file passed. Rule: treat test-authoring defects as failures, fix them in the owning test file, and rerun the exact failed target before recording acceptance.
+
+- 2026-11-18 SUCCESS: S16-05 replay fixtures now instantiate their environment and fake server according to the actual helper return contract. Rule: keep acceptance evidence tied to the committed fixture version by rerunning after test-only corrections are committed.
+
+- 2026-11-18 SHORTCOMING: S16's inbound listener probe was described as writer-target route proof even though it only receives the ASGI server address and the S14 writer remains `NotWired`. Rule: keep ingress and egress evidence separate; enforce DNS/redirect/proxy policy at the actual outbound connect boundary and never invent a disconnected probe abstraction.
+
+- 2026-11-18 SHORTCOMING: The S16-01 test author treated the returned `Result` wrapper as the contained page in a new REJECT scenario, and the first correction missed another field access. Rule: inspect the entire new test path for wrapper/value shape, then rerun the exact failed named files before recording acceptance. The corrected named rerun passed at clean exact HEAD `9ad472dc` (89 tests); real IdP/deployment qualification remains separate.
+
+- 2026-11-18 SHORTCOMING: The S16-01 code commit put `Task: S16-01` on the prose subject line, but the ledger commit hook expects it as a separate trailer. Rule: put the task identifier on its own final line, then confirm the ledger registered the commit before binding verification evidence.
+
+- 2026-11-18 SUCCESS: A follow-up run by the explicitly assigned functional-test-reviewer produced the agent-visibility receipt required by `ledger.py verify`; two earlier follow-up executions were not visible to the ledger. Rule: run the required test role directly for verification that must be entered in the native ledger.
+
+- 2026-11-18 SHORTCOMING: `safe_non_code_path` did not recognize the report generator's browsable `*.html.docs/` copies, so a documentation commit incorrectly made product-test evidence stale. Rule: include generated report document copies in docs-only classification and confirm evidence freshness after report commits.
+
+- 2026-11-18 SUCCESS: When a sprint is bounded-closed with one intentionally deferred external task, close the native sprint state while preserving the deferred task and its evidence. The task remains visible in the report; it is not silently counted as accepted.
+
+- 2026-11-18 SHORTCOMING: The report selected the first native sprint still marked open, so it presented historical S4 instead of the unique reconciled `IN_PROGRESS` sprint S16. Rule: reports must preserve native harness state as a separate layer and choose current work from the reconciled project status when historical rows remain open.
+
+- 2026-11-18 SHORTCOMING: S16 approval/session and private-network statuses combined verified fake-backed behavior with absent adapters. Rule: accept only the bounded contract actually exercised; keep cookie/IdP/database integration and writer-target egress behind their explicit adapter dependencies, and do not call listener-origin checks writer-route proof.
+
+- 2026-11-18 FAILURE: S16 approval test helpers submitted decisions without the newly required fresh action-bound TEST IdP proof and failed with NOT_ENTITLED. Rule: update synthetic approval helpers to exercise the same decision-bound re-authentication contract as the page; never relax production validation to accommodate a stale fixture.
+
+- 2026-11-18 SUCCESS: The S16 replay fixture can cover fresh action-bound re-authentication without adding a real identity service: pass the TEST credential through the fake authenticator to the fake IdP and replace the synthetic session only on success. Keep that evidence labeled synthetic.
+
+- 2026-11-18 SUCCESS: Rerunning assigned named test files on one clean committed HEAD gives a precise acceptance boundary across S16-01/03/04/05. Preserve the one deprecation warning and keep external IdP, durable-store and outbound-writer claims explicitly unproven.
+
+- 2026-11-18 SHORTCOMING: The program report fell back to stale native `verified` states for tasks whose project reconciliation was missing, inflating the “on review” count after the plan had already accepted them. Rule: after any project-plan change, reconcile every task against project records and all current branch refs before rendering the report; keep harness test/review evidence as a separate column/state layer.

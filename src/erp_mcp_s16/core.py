@@ -27,6 +27,7 @@ from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationRe
 from .contracts import (
     ApprovalDecision, ApproverSession, ApplyPort, ApplyReceipt, AuthenticatedPrincipal,
     BeginApplyEvidencePort, ChangeStore, ClaimRefused, Claimed, ClaimToken, Clock, DecisionBinding, DomainReceipt,
+    DecisionAuditEvent, DecisionAuditOutcome,
     KillSwitchPort, canonical_preview_bytes,
     PrincipalRecord, PrincipalRegistryPort, PrincipalRole, Result, TargetRecord, TargetRegistryPort,
     TargetVersion, VerifyPort, TargetScope, VerifyRequest,
@@ -102,6 +103,25 @@ def _allowed_target_record(target: object, scope: object) -> bool:
             and target.scope == scope and type(target.version) is TargetVersion)
 
 
+def _confirmation_required(kind: object, payload: object, target: object) -> bool | None:
+    """Return the shared confirmation decision, or None for invalid target policy data."""
+    required = getattr(kind, "value", None) == "POST"
+    if payload is None:
+        return required
+    if (type(target) is not TargetRecord
+            or type(target.amount_confirmation_threshold) is not str):
+        return None
+    try:
+        amount = sum((Decimal(line.amount) + Decimal(line.vat_amount)
+                      for line in payload.lines), Decimal(0))
+        threshold = Decimal(target.amount_confirmation_threshold)
+        if not amount.is_finite() or not threshold.is_finite() or threshold < 0:
+            return None
+        return required or amount > threshold
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+
 def _valid_approver_session(session: object, principal: AuthenticatedPrincipal,
                             now: datetime) -> bool:
     if (type(principal) is not AuthenticatedPrincipal or type(session) is not ApproverSession
@@ -121,6 +141,28 @@ def _valid_approver_session(session: object, principal: AuthenticatedPrincipal,
         return (created_at <= last_seen_at <= current < idle_expires_at <= expires_at
                 and current - last_seen_at <= timedelta(minutes=15)
                 and expires_at - created_at <= timedelta(minutes=15))
+    except Exception:
+        return False
+
+
+def _valid_action_reauthentication(session: object, decision_ref: object,
+                                   now: object) -> bool:
+    """Check recent, action-bound reauthentication without retaining the wire reference."""
+    try:
+        if (type(session) is not ApproverSession or type(decision_ref) is not str
+                or not decision_ref or not _aware(now)):
+            return False
+        proof_time = session.reauthenticated_at
+        proof_digest = session.reauthentication_digest
+        if (type(proof_time) is not datetime or not _aware(proof_time)
+                or type(proof_digest) is not str
+                or not re.fullmatch(r"[0-9a-f]{64}", proof_digest)):
+            return False
+        current = now.astimezone(timezone.utc)
+        proved = proof_time.astimezone(timezone.utc)
+        age = current - proved
+        return (timedelta(0) <= age <= timedelta(minutes=5)
+                and hmac.compare_digest(proof_digest, _sha(decision_ref)))
     except Exception:
         return False
 
@@ -220,19 +262,23 @@ class S16Core:
             return ErrorCode.APPROVAL_VOIDED
         return None
 
-    def validate_current_target(self, receipt: DomainReceipt) -> ErrorCode | None:
+    def current_target_for_receipt(self, receipt: DomainReceipt) -> tuple[TargetRecord | None, ErrorCode | None]:
         try:
             target = self.targets.current(receipt.scope)
             fingerprint = self.targets.resolve_fingerprint(receipt.scope)
         except Exception:
-            return ErrorCode.TARGET_REJECTED
+            return None, ErrorCode.TARGET_REJECTED
         if not _allowed_target_record(target, receipt.scope):
-            return ErrorCode.TARGET_REJECTED
+            return None, ErrorCode.TARGET_REJECTED
         if fingerprint != receipt.scope.base_fingerprint:
-            return ErrorCode.SCOPE_MISMATCH
-        if target.version != receipt.snapshot.target_version:
-            return ErrorCode.STALE_VERSION
-        return None
+            return None, ErrorCode.SCOPE_MISMATCH
+        if target.version != receipt.snapshot.target_version or target.version != receipt.target_version:
+            return None, ErrorCode.STALE_VERSION
+        return target, None
+
+    def validate_current_target(self, receipt: DomainReceipt) -> ErrorCode | None:
+        _, error = self.current_target_for_receipt(receipt)
+        return error
 
     @staticmethod
     def _principal(principal: object, token_class: object) -> bool:
@@ -294,7 +340,65 @@ class S16Core:
     def decide(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
                origin: str, referer: str, confirmation_text: str, now: datetime,
-               csrf_token: str = "") -> Result[ApprovalDecision]:
+               csrf_token: str = "", expected_change_id: UUID | None = None) -> Result[ApprovalDecision]:
+        """Audit refusals at the core boundary and rely on the store for atomic decisions."""
+        audit_state = {"consume_ambiguous": False}
+        result = self._decide(approver, session, decision_ref, decision, origin=origin,
+                              referer=referer, confirmation_text=confirmation_text, now=now,
+                              csrf_token=csrf_token, expected_change_id=expected_change_id,
+                              audit_state=audit_state)
+        if type(result) is not Result:
+            result = Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        if result.error is None:
+            return result
+        # A consume may have committed the final decision/event before raising, or it
+        # may have failed before commit. Record this as a non-terminal uncertain attempt
+        # rather than appending a contradictory second final decision.
+        safe_code = result.error if type(result.error) is ErrorCode else ErrorCode.AUDIT_UNAVAILABLE
+        correlation = _sha(decision_ref) if _valid_wire_text(decision_ref, limit=512) else None
+        outcome = (DecisionAuditOutcome.ATTEMPT_UNCERTAIN if audit_state["consume_ambiguous"]
+                   else DecisionAuditOutcome.REFUSED)
+        if not self._append_decision_refusal(safe_code, now=now, outcome=outcome,
+                                             correlation_digest=correlation):
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        return Result.refused(safe_code)
+
+    def record_decision_refusal(self, error: ErrorCode, *, now: datetime | None = None) -> bool:
+        """Persist a sanitized refusal raised before the core decision path is entered."""
+        safe_code = error if type(error) is ErrorCode else ErrorCode.AUDIT_UNAVAILABLE
+        return self._append_decision_refusal(safe_code, now=now)
+
+    def _append_decision_refusal(self, error: ErrorCode, *, now: object = None,
+                                 outcome: DecisionAuditOutcome = DecisionAuditOutcome.REFUSED,
+                                 correlation_digest: str | None = None) -> bool:
+        event = DecisionAuditEvent(outcome, self._decision_audit_time(now),
+                                   error, correlation_digest)
+        try:
+            self.store.append_decision_refusal(event)
+        except Exception:
+            return False
+        return True
+
+    def _decision_audit_time(self, supplied: object) -> datetime:
+        if _aware(supplied):
+            try:
+                return supplied.astimezone(timezone.utc)
+            except Exception:
+                pass
+        if self.clock is not None:
+            try:
+                value = self.clock.now()
+                if _aware(value):
+                    return value.astimezone(timezone.utc)
+            except Exception:
+                pass
+        return datetime.now(timezone.utc)
+
+    def _decide(self, approver: AuthenticatedPrincipal, session: ApproverSession,
+               decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
+               origin: str, referer: str, confirmation_text: str, now: datetime,
+                csrf_token: str = "", expected_change_id: UUID | None = None,
+                audit_state: dict[str, bool]) -> Result[ApprovalDecision]:
         """Validate every binding before the atomic store operation; retain local replay defense."""
         from .contracts import TokenClass, PrincipalRole
         if not _aware(now):
@@ -304,9 +408,12 @@ class S16Core:
                 or not _valid_approver_session(session, approver, now)
                 or type(decision_ref) is not str or not decision_ref
                 or type(decision) is not str or decision not in ("APPROVE", "REJECT")
+                or (expected_change_id is not None and type(expected_change_id) is not UUID)
                 or type(csrf_token) is not str or not re.fullmatch(r"[0-9a-f]{64}", csrf_token)
                 or type(origin) is not str or type(referer) is not str or not origin or not referer
                 or type(confirmation_text) is not str):
+            return Result.refused(ErrorCode.NOT_ENTITLED)
+        if decision == "APPROVE" and not _valid_action_reauthentication(session, decision_ref, now):
             return Result.refused(ErrorCode.NOT_ENTITLED)
         try:
             binding = self.store.get_decision_binding(decision_ref)
@@ -324,6 +431,8 @@ class S16Core:
                 or type(binding.confirmation_required) is not bool
                 or (binding.confirmation_phrase is not None
                     and type(binding.confirmation_phrase) is not str)):
+            return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
+        if expected_change_id is not None and binding.change_id != expected_change_id:
             return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
         binding_expires_at = _as_utc(binding.expires_at)
         now_utc = _as_utc(now)
@@ -423,7 +532,6 @@ class S16Core:
                     or PrincipalRole.REQUESTER not in requester_record.roles
                     or type(dependencies_current) is not bool or not dependencies_current):
                 return Result.refused(ErrorCode.EPOCH_CHANGED)
-            policy_requires_confirmation = receipt.proposal.kind.value == "POST"
             payload = receipt.proposal.payload
             try:
                 target = self.targets.current(receipt.scope)
@@ -433,17 +541,9 @@ class S16Core:
                 return Result.refused(ErrorCode.TARGET_REJECTED)
             if target.version != receipt.target_version:
                 return Result.refused(ErrorCode.STALE_VERSION)
-            if payload is not None:
-                if target is None or target.amount_confirmation_threshold is None:
-                    return Result.refused(ErrorCode.TARGET_REJECTED)
-                try:
-                    amount = sum((Decimal(line.amount) + Decimal(line.vat_amount) for line in payload.lines), Decimal(0))
-                    threshold = Decimal(target.amount_confirmation_threshold)
-                    if not amount.is_finite() or not threshold.is_finite() or threshold < 0:
-                        return Result.refused(ErrorCode.TARGET_REJECTED)
-                    policy_requires_confirmation = policy_requires_confirmation or amount > threshold
-                except (InvalidOperation, ValueError, TypeError):
-                    return Result.refused(ErrorCode.TARGET_REJECTED)
+            policy_requires_confirmation = _confirmation_required(receipt.proposal.kind, payload, target)
+            if policy_requires_confirmation is None:
+                return Result.refused(ErrorCode.TARGET_REJECTED)
             phrase = "CONFIRM CHANGE"
             if (binding.confirmation_required != policy_requires_confirmation
                     or (policy_requires_confirmation and binding.confirmation_phrase != phrase)
@@ -482,15 +582,21 @@ class S16Core:
                                       approver.epoch, session.session_id, binding.nonce_digest,
                                       binding.decision_ref_digest, binding.preview_digest,
                                       binding.approval_digest, decision, binding.expires_at)
+            audit_event = DecisionAuditEvent(DecisionAuditOutcome(decision),
+                                             self._decision_audit_time(now),
+                                             correlation_digest=binding.decision_ref_digest)
             consume_raised = False
+            audit_state["consume_ambiguous"] = True
             try:
                 consumed = self.store.consume_decision_ref_and_nonce(
-                    decision_ref, expected=binding, decision=result, s12_record=transitioned.record)
+                    decision_ref, expected=binding, decision=result, s12_record=transitioned.record,
+                    audit_event=audit_event)
             except Exception:
                 # The store may have committed atomically before the call failed.
                 # Resolve that ambiguous outcome with an authoritative read below.
                 consume_raised = True
             if not consume_raised and consumed is not True:
+                audit_state["consume_ambiguous"] = False
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
             if not consume_raised and consumed is True:
                 # The atomic store operation has consumed the ref/nonce and persisted
