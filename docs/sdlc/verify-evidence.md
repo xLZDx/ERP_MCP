@@ -1109,3 +1109,10 @@ For S14-06, the current role file and `c4ab1ea` resolve to the same Git blob, `2
 
 On the same source HEAD, the designated functional-test-reviewer used `.venv/Scripts/python.exe -m pytest -q tests/phase2/test_s14_simulated_write_port.py tests/test_auth.py`. The first pass identified two fixture defects: a single change identity was reused across distinct operations, and a fixture authority was reused across different clone instances. The corrected final run reported `44 passed, 23 subtests passed in 6.69s`, exit 0. This covers the clone authority, marker and duplicate refusal, unresolved hold, distinct approvals, and both directions of token audience isolation. The normal additional read audience remains covered.
 
+At exact approved HEAD `1eb298cca27e4ca919110f609d42e9eab41c4d64`, the functional-test-reviewer ran `.venv/Scripts/python.exe -m pytest -q` on the following named nodes:
+
+- `tests/phase2/test_s12_07_ct14_e47.py::test_record_binds_reviewed_sources_and_keeps_rights_revisions_distinct` and `::test_exact_measured_scope_still_requires_qualification_and_authority`: `2 passed in 0.28s`.
+- `tests/test_auth.py::test_read_verifier_rejects_private_writer_only_and_mixed_audiences`, `::test_private_writer_verifier_accepts_only_its_single_audience`, and `::test_private_authenticator_rechecks_injected_verifier_audience`: final exact-head run `7 passed in 0.49s`, a repeat of the named authentication cases.
+
+Independent code, silent-failure, and Python reviewers found zero blockers, majors, and minors across the sprint source. The exact-head code review confirmed no product-source diff after `2e1778c`. GPT-PM approved exact head in request `4ca15a2a-d8cc-4483-b2d8-5ca569b18a48`, reply `53be333a-7bb7-5273-a404-4c61678cb209`. PR 66 merged that head at `ecdb3db812bf1530cc922bc238b5db2a8d2eeb24`. Operational S14 qualification remains NOT_RUN.
+
