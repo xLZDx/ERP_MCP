@@ -866,3 +866,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 FAILURE: The first named transport run failed in its positive retry fixture because extracted strings were treated as regex match objects. Rule: reuse the already parsed form values in retries and confirm the resulting integration path completes.
 
+- 2026-11-18 SUCCESS: The corrected transport selection covered six named scenarios on one committed tree. Rule: keep audit-disabled and malformed-request controls alongside the valid retry so refusals and successful commits remain distinguishable.
+

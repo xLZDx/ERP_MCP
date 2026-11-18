@@ -1945,3 +1945,7 @@ GPT-PM review of the bounded S15 package reported one non-blocking minor issue: 
 
 The approval principal currently carries an MFA-authenticated flag and the session carries expiry and activity timestamps. These fields establish session checks only. The re-authentication criterion needs a verified identity-provider proof that the approver authenticated again for the approval action and that the proof belongs to that session and decision. Define and qualify that adapter contract with an expiry and replay control, then test accepted, stale, missing and cross-decision proof. The page currently receives an injected session authenticator. Its cookie attribute string is a specification constant; verify actual cookie issuance and scope on the configured session adapter. The identity-provider owner is unassigned.
 
+## S16-01 durable approval audit
+
+The isolated store now commits the decision, consumed reference and final audit atomically under its lock. Transport and core refusal events carry only safe codes, timestamps and optional digest correlation. The isolated implementation has no database-backed approval store. Qualify the equivalent atomic durable transaction with concurrent submits, lost replies, failed appends and read-back faults. The durable store owner is unassigned.
+
