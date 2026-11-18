@@ -2343,4 +2343,9 @@ Compared preserved 65c4086 migration 027 function bodies with current migration 
 
 Restore the standalone verifier and resolver tests from 1083e7e. The four modules under test are unchanged from that revision, and the shared scenario seed is retained. The tests grant specific loader permissions inside their invocation-owned disposable database for verification of signed synthetic evidence. Their fixture grants are not evidence of deployed database grants or operational trust. Test execution remains pending sprint verification.
 
+
+## 2026-11-18 - Normalize lesson records after post-commit import
+
+The S13 evidence test commit succeeded, but the post-commit importer reported an unparsed lesson. Convert the recent entries to the established dated list and Rule format so the importer can read them. No product or test code changes.
+
 </pre></main></body></html>
