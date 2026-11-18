@@ -2303,3 +2303,7 @@ GPT-PM approved the S12-01 compatibility design at 1ac5bdf (request 974f286e-724
 ### 2026-11-18 - Advance to retained S12 transition taxonomy verification
 
 S12-01's isolated admission and canonicalization checks passed (54 passed, 21 disposable database cases skipped). The broader named four-file probe at the same head found two unrelated inherited transition fixtures. Reconcile the fixtures with retained source: an incompletely bound returned outcome keeps the T9 call-ownership hold, and the T16 witness cannot be the prior approver. Both are fail-closed existing semantics; no reducer or signer authority change is needed for these two failures.
+
+### 2026-11-18 - Integrate the historical S12 PR without losing retained main behavior
+
+The named S12-02 module passed 542 cases at 9a33cc0. Source and fixture comparison identified which remaining bounded contracts were byte-identical to PR #54 and which crash-window tests were unique to each lineage. Locally merge 2629aa2 while keeping the tested main transition and helper definitions, frozen-governed versus legacy parser boundary, and corrected T9/T16 fixtures. Take the historical CT10 Appendix C, keep current crash-window coverage and recover the missing historical parser refusal cases. This keeps PR #54 ancestry and makes a normal approved update possible without force push.

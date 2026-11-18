@@ -956,3 +956,7 @@ At 1ba0cf3b27bc763767e6fa15e19f242264044f2a the e2e-runner ran test_capture_loop
 ## 2026-11-18 - S12-01 retained proposal admission verification
 
 At b2fbca488f0ecfd0d4e3cdc2929c1e45aadfc8f5, the e2e-runner executed the four named proposal, change, approval-digest and simulation modules. Result: 590 passed, 21 skipped, 2 failed in 6.90s, exit 1. The two failures were retained state-transition fixture expectations: T9 described an incompletely bound reply as clean success, and T16 allowed the prior approver as recovery witness. The S12-01 commit changes neither the reducer nor those fixture inputs. On the same clean HEAD, the named S16 proposal boundary, approval digest, simulation and four specific canonical parser/digest nodes returned 54 passed, 21 skipped in 1.04s, exit 0. The 21 disposable database cases were NOT_RUN because no test database DSN was configured for this invocation. No live/gated work was performed. The scoped probe confirms S12-01's offline contract only; it does not clear the two original failures.
+
+## 2026-11-18 - S12-02 retained taxonomy verification
+
+Named test_change_offline.py on clean 9a33cc086d2a212bf6e5d13e02ee5f031436eb94 returned 542 passed in 5.67s, exit 0, with checkout root/source on PYTHONPATH and the repository .venv interpreter. The two original T9/T16 assertion differences are corrected without changing their retained reducer guards. The run contains pure model fixtures, not durable evidence or writer execution.

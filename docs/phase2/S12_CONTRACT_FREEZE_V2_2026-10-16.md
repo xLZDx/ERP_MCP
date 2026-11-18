@@ -188,3 +188,85 @@ GPT project-owner ruling `d289d167-b1f2-43d7-a17a-e01891748eb3` (reply `0d9e7e0e
 ### Post-completion causal watermark for entered conditional conflicts (2026-10-23)
 
 An entered conditional-version conflict remains held until the exact signed completion proof and independent no-effect observation are linked causally. The candidate chain is `CompletionProof → PostCompletionChallenge → PostCompletionReadAttestation + OutcomeEvidenceV3`: after authenticating completion, a distinct supervisor signs a random nonce and query-plan digest. A separately process-attested read-attestor signs the nonce-bound live request, exact source-response and outcome-claim digests, and durable sequence above the challenge floor; V3 binds that attestation. The validator checks the proof, challenge, attestor process/signature, query/request/response/outcome digest bindings and sequence. Same-host timestamps are additional consistency checks; cross-host timestamps are not an ordering source. Timestamp-only order, self-asserted sequence, or relabeled cached evidence is insufficient. V1/V2 cannot authorize this terminal path. The database transition rechecks the receipt, completion, challenge, read attestation, V3 reference, current serving instance/epoch and T16 approvals atomically. Attestor implementation, SQL and qualification remain unimplemented until independently proven.
+
+### Appendix C — CT10 source reconciliation (approved for bounded offline acceptance)
+
+This appendix records the bounded V2-S12-02 source reconciliation authorized by GPT-PM request
+`409d42a6-a596-48ad-aed3-d60de21545e0` and approved with the exact remediation in request
+`9488400a-ccec-4a88-96d2-77ae5391e98f`, against baseline
+`53fa0515c0ea0d8b3275d03bf82502a81d6c1e02` (delivered as commit
+`f79d34eacc80439d150d52cd2ad45a4a2b3ed934`). Approval covers the offline source crosswalk,
+literal CT10 comparison and pure transition model only. It neither amends the frozen contract nor
+proves runtime, authenticated adapter/ledger evidence or production capability.
+
+#### Source precedence and interpretation
+
+1. `S12_CONTRACT_AMENDMENT_2026-10-28.md`, “What changed” item 4, supplies the explicit T6 period
+   observation overlay.
+2. This freeze controls v2.0 semantics and evidence strength, especially §§2.1–2.3, 3, 5 and 6.
+3. `S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md` §4, revision 6, supplies inherited CT10 rows and
+   dimensions only where compatible with items 1–2. Its operation scope is superseded by §1.
+4. `transitions.py` is the implementation being compared; it is not an oracle source.
+
+“Inherited” means a revision-6 row remains applicable under §6. “Overlay” means the freeze or
+amendment strengthens or replaces part of that row. “Derived” identifies a comparison variant
+needed to express generation, permit, retry or terminal behavior governed by the sources; it adds
+no authority to perform a write. The matrix describes expected source semantics, not the current
+implementation projection.
+
+| Row / variant | Source, lineage | From / event | Guards to preserve | Destination | Ledger and effect consequences |
+|---|---|---|---|---|---|
+| T1 | Draft §4, inherited | none / propose | valid schema and scope; entitled requester; unused or same-digest logical key; epoch read | PROPOSED | append intent; same key/digest returns prior receipt, other digest refuses; no reservation |
+| T2 | Draft §4, inherited | PROPOSED / validate | server preview; business key, budget and qualified-shape checks; derive allowed effects | VALIDATED or DUPLICATE_PARKED | unoverridden collision is terminal; a new proposal is required for override |
+| T3_REJECT | Draft T3, inherited variant | PROPOSED, VALIDATED or APPROVED / reject | entitled approver rejects | REJECTED | terminal; no effect or reservation |
+| T3_EXPIRE | Draft T3, inherited variant | PROPOSED, VALIDATED or APPROVED / sweep expire | expires_at has passed | EXPIRED_QUEUED, authorization EXPIRED | terminal; no effect or reservation |
+| T4 | Draft §4, inherited | VALIDATED / approve | requester and approver are different people; nonce consumed once; digest set bound; approver entitled at epoch | authorization APPROVED | immutable signed approval record, not caller-set flag |
+| T5 | Draft §4, inherited | APPROVED / claim | requester caller; approval/epochs current; switch below STOP_ADMIT; no disallowed hold; verified parent except exact repair-UNPOST case; matching scope/target; target/key locks and lease free; atomic budget reserve | CLAIMED, execution NOT_STARTED; generation + 1 | token binds change, generation, scope, digests and claim epoch; acquire locks/lease and reserve atomically |
+| T5x | Draft §§4, 4.1–4.2, inherited | CLAIMED / release_claim | claim TTL, blocking switch or pre-dispatch T6 guard failure | APPROVED or EXPIRED; token SUPERSEDED | release own locks, lease, reservation; repair atomically hands target lock back and keeps parent halt |
+| T6 | Draft §4 + amendment item 4 (overlay) | CLAIMED / begin_apply | writer lock; epoch unchanged; switch off; no disallowed hold; approval current; target version/base fingerprint/dependents match; positively observe period open; then compare remaining business digest | APPLYING, dispatch NOT_PERMITTED | atomic APPLYING + call-ownership/pre-image row; `period_open` immediately precedes `state_digest_equal`; positively closed => PERIOD_CLOSED; missing observation or other mismatch => DIGEST_MISMATCH |
+| T6_REPLAY | Draft generation fencing + freeze §§2.1, 3 (derived) | CLAIMED / replay begin_apply | same current generation; not DISPATCHED; no superseding claim | existing current ticket/state | read-only replay; no second call identity or permit |
+| T6p | Draft §4 + freeze §§2.1, 3 (overlay) | APPLYING, NOT_PERMITTED / issue permit | checkpoint covers committed T6 head and was read back; switch off; generation current | dispatch PERMITTED | signed bound permit; checkpoint failure uses T6r; no physical call yet |
+| T6p_DISPATCH | Draft §4 + freeze §§2.1, 3 (derived) | APPLYING, PERMITTED / mark dispatched | verify permit, generation, checkpoint, switch/hold/repair guards; atomic PERMITTED→DISPATCHED CAS wins | dispatch DISPATCHED | durable event precedes one physical call; cancellation winner forbids this transition |
+| T6r | Draft §4, inherited | APPLYING, NOT_PERMITTED / permit not issued | checkpoint unavailable, blocking switch/hold or permit TTL; no permit exists | APPROVED, NOT_STARTED; token SUPERSEDED | no call possible; release own locks/lease/reservation, with repair handback if applicable |
+| T6c | Draft §4, inherited | APPLYING, PERMITTED / cancel permit | switch/hold, superseded generation or TTL; atomic PERMITTED→CANCELLED_UNDISPATCHED CAS and permit invalidation win | CANCELLED_UNDISPATCHED; APPROVED, NOT_STARTED; token SUPERSEDED | only winning cancel CAS proves nondispatch/releases resources; DISPATCHED winner follows T7/T9 |
+| T7 | Draft T7 + freeze §§2.1–2.3, 3 (overlay) | APPLYING, DISPATCHED / call success | exact authenticated dispatch receipt and applicable signed completion/result evidence bind call, CAS, generation, identity, operation and immutable evidence; return value alone is insufficient | APPLIED; PROVEN_FINISHED; attribution PROVEN | consume reservation; terminal checkpoint/evidence persistence; verification due; persistence failure retains unresolved hold |
+| T8 | Draft T8 + freeze §§2.1, 3 (overlay) | APPLYING / refused or no-effect resolution | post-CAS: durable process/CAS-bound receipt proves NOT_INVOKED and operation-specific no effect; entered conditional conflict is excluded; pre-CAS refusal has no dispatch receipt; code alone is insufficient | FAILED_APPLY or ROLLBACK_REFUSED; bounded transient LOCK_BUSY retry | release only with exact proof and atomic durable terminal record; entered conflict stays APPLY_UNKNOWN/held for completion, independent no-effect proof and governed two-person resolution |
+| T9 | Draft T9 + freeze §§2.1–2.3, 3 (reinforced) | APPLYING / timeout, crash, disconnect or ambiguous result | neither T7 success nor complete T8 proof established | APPLY_UNKNOWN; POSSIBLY_EXECUTING | keep target lock, lease, reservation and CALL_OWNERSHIP hold; no automatic retry/release |
+| T10 | Draft T10 + freeze §§2.2–3, 5 (overlay) | APPLY_UNKNOWN / resolve found | independent completion proof; healthy reader; settle period and complete observation; exact effect identity and attribution with receipt/evidence bindings; entered conditional conflict is excluded from direct T10 | APPLIED; attribution PROVEN | consume reservation/release hold only after proof acceptance; unattributable present effect routes to T12 |
+| T11 | Draft T11 + freeze §§2.1–3, 5 (overlay) | APPLY_UNKNOWN / resolve absent | independent completion proof; healthy reader; settle period; complete healthy absence observation; explicit bound history proves mutating COM method was not entered | FAILED_APPLY | release reservation, locks, lease and hold only with proof; entered conditional conflict or unknown history must use T12 and governed T16; marker absence/timeout is not proof |
+| T12 | Draft T12, inherited | APPLY_UNKNOWN / age limit or unattributable effect | durable bounded attempts/window exhausted or effect lacks attribution | TRIAGE_REQUIRED | hold, lease, target lock and reservation stay; alert; only governed T16 resolution |
+| T13 | Draft T13 + freeze §§2.2–3, 5 (overlay) | APPLIED, NOT_VERIFIED / verify | independently signed/bound fields, movement multiset and version evidence exactly match oracle/rule table | VERIFIED | release target/key locks; bounded retries; acknowledgement/partial field match is insufficient |
+| T14 | Draft T14 + freeze evidence model | APPLIED, NOT_VERIFIED / verify mismatch | bound independent observation proves unexpected/missing field, movement or version | FAILED_VERIFY; record effect_known | keep target lock and consumed reservation; open FAILED_VERIFY_HALT and alert |
+| T15 | Draft T15, inherited | NOT_STARTED or pre-dispatch CLAIMED / revoke | session/role/approver revoked or listed epoch dependency changed | authorization VOIDED/REVOKED; execution refused | release pre-effect resources; unrelated epoch change does not revoke |
+| T16_ABSENT | Draft T16 + freeze §§2.1–3, 5 (overlay) | TRIAGE_REQUIRED / operator resolve absent | T11-grade completion and healthy complete-observation proof; distinct operator and recovery witness, neither requester; witness differs from approver (the approver may be the operator signer when otherwise eligible); no operator substitution for machine proof; for entered conflict, exact receipt, completion proof, independent no-effect observation and V3 causal chain | FAILED_APPLY | release hold/reservation atomically with evidence-bound resolution; route is T9 → T12 → T16 only after T12's exhausted bounded attempts/window or genuinely unattributable observed-effect trigger |
+| T16_PRESENT_ATTRIBUTED | Draft T16 + freeze §§2.1–3, 5 (overlay) | TRIAGE_REQUIRED / resolve present, attributed | T10-grade proof, exact effect identity/attribution; distinct operator and recovery witness, neither requester; witness differs from approver (the approver may be the operator signer when otherwise eligible); for entered conflict, exact receipt, completion proof, independent no-effect observation and V3 causal chain before release | APPLIED, attribution PROVEN | consume reservation/release hold only atomically after evidence acceptance |
+| T16_PRESENT_UNATTRIBUTED | Draft T16 + freeze §5 (overlay) | TRIAGE_REQUIRED / resolve present, unattributed | completion proof and complete observation; explicit unattributed marking; distinct operator and recovery witness, neither requester; witness differs from approver (the approver may be the operator signer when otherwise eligible); entered-conflict release still requires exact receipt/completion/no-effect/V3 chain | APPLIED, attribution UNPROVEN_OPERATOR_ATTESTED | consume reservation; later POST must bind the flag in its approval digest; do not claim this call caused effect |
+| T17_RETRY | Draft T17 + freeze §3 (inherited bound) | FAILED_VERIFY, halt open / retry verify | worker supplies bound independent evidence; retry count < 3 | VERIFIED on match; otherwise FAILED_VERIFY with attempt increment | success releases halt/target lock; reservation stays consumed |
+| T17_CLOSE | Draft T17 and hold rules (inherited) | FAILED_VERIFY, halt open / close with operator evidence | governed evidence-bound closure, required two-person/operator authority and complete observation | failed-verification change closed | release halt only under recorded closure; no refund or conversion to VERIFIED |
+
+#### Unresolved reconciliation items
+
+- T9 → T12 → T16 is the only lawful operator-recovery route, and only when T12's exhausted bounded
+  attempts/window or genuinely unattributable observed-effect trigger is satisfied. T11 refuses an
+  entered conditional conflict or unknown conflict history. For an entered conflict, T16 additionally
+  requires the exact receipt, completion proof, independent no-effect observation and V3 causal chain
+  before release. Recovery witness must differ from both requester and approver; operator eligibility
+  remains governed independently. The model flags are synthetic summaries, not durable hold reads or
+  cryptographic proof; the production adapter/ledger still must supply verified records.
+- T7, T8, T10, T11 and T13: the offline model now requires receipt/result/persistence flags for T7,
+  receipt plus post-CAS NOT_INVOKED/no-effect flags for T8, bound attempt/completion/observation
+  flags for T10/T11, and an explicit oracle/operation match for T13. They remain synthetic summary
+  inputs, not authenticated envelopes; the literal oracle and reviewer must preserve that limitation
+  and confirm the upstream validators actually establish each flag before parity is accepted.
+- T6: `period_open` is an amendment overlay immediately before `state_digest_equal`; only a positive
+  closed-period observation yields `PERIOD_CLOSED`; a missing observation fails closed as
+  `DIGEST_MISMATCH`.
+- `T6_REPLAY`, `T6p_DISPATCH`, and the three T16 outcomes are comparison variants, not new write
+  authority.
+
+GPT-PM approved the exact bounded offline V2-S12-02 delta: the literal T1–T17 table/variant
+comparison and pure `apply_transition()` model are accepted for this scope. Evidence remains
+offline/synthetic. Authenticated upstream T16 adapter/ledger evidence and durable hold enforcement
+remain `NOT_VERIFIED`; G3's operator-facing status projection remains `PARTIAL`; full E45/runtime
+qualification remains `NOT_VERIFIED`. Nothing here authorizes production/live 1C writes, changes
+Release 2 `NO-GO`, or closes a G0–G8 gate.
