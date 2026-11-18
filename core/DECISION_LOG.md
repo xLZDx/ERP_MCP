@@ -2522,3 +2522,7 @@ The rules digest covers the ordered field path, scope, field type and reference 
 
 At `7364df754065541ad174c2c0a7701fd7dfa26463`, 17 named provenance regression cases passed in 0.57s. Re-review confirmed the oracle fix and exposed the analogous baseline gap: declared pair metadata could still conceal a foreign source snapshot. Require the actual baseline snapshot identities to match the declared and current pair before fetching new snapshots.
 
+## 2026-11-18 - Close bounded S15 engineering after PR 67 merge
+
+At exact `22dea9b04990aca8174718dd1a1ddbf73781bdb4`, nine selected comparison nodes expanded to 17 passing cases in 0.59s. The final independent review confirmed the baseline source finding was fixed. GPT-PM approved that head under request `388c322d-26e9-4af5-8884-1ceeca9d9fe0`, reply `c4d645e1-f54a-53bd-ab58-1c9f3a01b4e1`. PR 67 merged it into main at `bfd2661e5cf8e1c228ae3495486819e494ec837a` with no auto-merge request. The ledger closed five bounded tasks. Native 1C, authenticated source capture and live ledger integration remain unverified. The duplicate-control minor is in the backlog.
+

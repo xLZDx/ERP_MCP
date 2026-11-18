@@ -1937,3 +1937,7 @@ Verify that the selected identity provider issues dedicated private-writer token
 
 Implement and qualify authenticated 1C readers and full-population reconciliation ports against a seeded disposable clone with matching scope and provenance. Observe real movement and version read-back separately from fixture results. Resolve the historical conflict between the controlled-change plan and the sprint map before extending the measured receipt-draft catalogue to contract changes. The qualified channel owner is unassigned in the current plan.
 
+## S15 distinct negative-control receipts
+
+GPT-PM review of the bounded S15 package reported one non-blocking minor issue: the coverage function requires all canonical controls and refuses missing controls, but allows identical duplicate entries. Require a single receipt per required control or report duplicates explicitly before counting receipts for acceptance. No author is assigned.
+
