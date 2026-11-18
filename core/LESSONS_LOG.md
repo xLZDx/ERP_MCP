@@ -688,3 +688,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: Distinguish a reported zero balance from an empty generated sheet by asserting both dimensions and the absence of an exported artifact, digest and provenance. Rule: exercise each missing dimension through the same report-generation adapter used for a nonempty result.
 
 - 2026-11-18 FAILURE: The first named S6 run failed because the negative fixture hit private-root validation and a preserved test still expected the historical component list. Rule: prove a negative test reaches the intended gate and reconcile inherited exact-list assertions with the recorded integration change.
+
+- 2026-11-18 SUCCESS: S6 recorded exact-head named synthetic verification and routed reviews before merge and preserved the native product qualification gap. Rule: retain the historical first-run failure, the corrected exact receipt and the distinct product acceptance scope.
+
+- 2026-11-18 SHORTCOMING: The consolidated S8 timeline preserved the source ownership check but omitted its dedicated regression and a positive fixture binding. Rule: compare regression and fixtures alongside product code when transferring historical fixes to main.
