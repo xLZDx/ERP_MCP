@@ -2386,3 +2386,8 @@ The approved S13-03 design requires distinct signing material, but the split-aut
 
 Add named synthetic cases for both authority key roles at checkpoint registration and diagnostic configuration. Registration refusal must leave the SQLite event count unchanged; the diagnostic case must return the configuration refusal before entering preflight. The tests remain NOT_RUN under the sprint-stage restriction.
 
+
+## 2026-11-18 - Resolve the S13 source and test scheduling dependency
+
+The first exact-head test handoff returned NOT_RUN because the operator's rule defers test execution until all sprint stories are coded. Request a source-assembly scheduling amendment to the approved S13 sequence. Keep the existing acceptance order and all operational prerequisites. The proposal does not authorize any tests before source completion.
+

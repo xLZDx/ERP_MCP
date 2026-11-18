@@ -100,3 +100,12 @@ Decision requested: approve or revise this bounded sequence, including whether t
 
 GPT-PM approved the bounded sequence on 9c7b097d83bc904a4fb0d48546e0e5c768cddc8f (PMG-20261118-9c7b097d, request 69234aa4-2737-430f-a35f-45fdc8223c2f, reply f954cd0f-cbee-5006-b997-7ae2c8915bc3). S13-04 may proceed after independently adjudicated S13-03 synthetic acceptance, followed by S13-05 after bounded S13-04 verification. Operational prerequisites in the backlog stay open. The receipt is documentation-only and provides no new test evidence or sprint code approval.
 
+
+### Source assembly and verification ordering amendment for review
+
+The operator's test rule schedules all named test execution after the sprint's stories are coded. The previous documentation verdict put bounded S13-03 acceptance ahead of proceeding with S13-04/05. An implementation dependency on that acceptance would prevent completing the coding required to run the tests that supply it.
+
+Requested amendment: proceed in order through local source assembly for S13-03, S13-04, and S13-05 against the approved disposable contracts. Record each source disposition separately while keeping verification NOT_RUN. Once all bounded source is assembled, run the designated named scenarios and adjudicate S13-01 through S13-05 in order. An unresolved predecessor still prevents accepting its successor. This changes only the scheduling of independent source assembly and preserves the operator's test restriction, all acceptance criteria, and the separate operational backlog.
+
+The candidate source already includes scoped target registration and observation and a recovery entry in migration 036. The latter deliberately revokes execution from all runtime roles. Any local source assembly must preserve that restriction unless a separate design approves a new authority. Diagnostic preflight remains read-only and cannot produce READY. Review this scheduling amendment only; no code acceptance, publication, runtime enablement, or production grant is requested.
+

@@ -764,3 +764,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The retained regression distinguishes key registration refusal from any later provider failure. Rule: exercise each authority role and assert storage or connection boundaries explicitly.
 
+
+- 2026-11-18 SHORTCOMING: The first S13 sequence left a circular dependency between test-stage eligibility and the order of local work. Rule: specify source assembly order separately from test execution and acceptance order when a sprint must be fully coded before verification.
+
