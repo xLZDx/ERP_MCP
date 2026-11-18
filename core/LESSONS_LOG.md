@@ -903,3 +903,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: S16 approval/session and private-network statuses combined verified fake-backed behavior with absent adapters. Rule: accept only the bounded contract actually exercised; keep cookie/IdP/database integration and writer-target egress behind their explicit adapter dependencies, and do not call listener-origin checks writer-route proof.
 
 - 2026-11-18 FAILURE: S16 approval test helpers submitted decisions without the newly required fresh action-bound TEST IdP proof and failed with NOT_ENTITLED. Rule: update synthetic approval helpers to exercise the same decision-bound re-authentication contract as the page; never relax production validation to accommodate a stale fixture.
+
+- 2026-11-18 SUCCESS: The S16 replay fixture can cover fresh action-bound re-authentication without adding a real identity service: pass the TEST credential through the fake authenticator to the fake IdP and replace the synthetic session only on success. Keep that evidence labeled synthetic.

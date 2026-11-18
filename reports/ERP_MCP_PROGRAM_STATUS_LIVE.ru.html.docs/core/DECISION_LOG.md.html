@@ -2632,4 +2632,8 @@ Resolve S16 design questions Q2 and Q7 to their documented strict defaults: expo
 
 The S16-01 approval contract now requires a fresh TEST IdP proof bound to the exact decision reference. Update test-only helpers that submit approval decisions to obtain that proof and replace their session before submission; do not weaken the application check to preserve old fixture behavior. No production adapter or runtime credential is introduced.
 
+## 2026-11-18 — Exercise re-authentication in replayed approval journey
+
+The deterministic S16-05 replay must traverse the same decision-bound re-authentication step as the approval page. Its test authenticator delegates the supplied TEST credential and decision reference to the fake IdP, then replaces its in-memory session only when proof succeeds. This is synthetic contract evidence and does not qualify a deployed IdP or HTTP cookie adapter.
+
 </pre></main></body></html>

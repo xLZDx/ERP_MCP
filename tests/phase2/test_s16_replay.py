@@ -17,11 +17,23 @@ from tests.phase2.test_s16_tools import Server
 
 
 class _SessionAuth:
-    def __init__(self, session):
+    def __init__(self, session, env):
         self.session = session
+        self.env = env
 
     def authenticate(self, _scope, headers):
         return self.session if headers.get("x-test-session") == "approver-session" else None
+
+    def reauthenticate(self, _scope, headers, session, *, decision_ref, now):
+        credential = headers.get("x-test-reauth-credential")
+        if credential is None:
+            return None
+        replacement = self.env.idp.reauthenticate(
+            session, decision_ref, now, credential=credential,
+        )
+        if replacement is not None:
+            self.session = replacement
+        return replacement
 
 
 def _invoke(server, name, arguments, principal):
@@ -105,7 +117,7 @@ def test_full_fake_approval_journey_replays_through_page_and_serialized_tools():
     session = env.idp.issue(env.approver, NOW, credential=env.test_credential)
     assert session is not None
     approval_app = create_approval_app(
-        env.approval_service, _SessionAuth(session), origin=ORIGIN, clock=env.clock)
+        env.approval_service, _SessionAuth(session, env), origin=ORIGIN, clock=env.clock)
     client = TestClient(approval_app, base_url=ORIGIN)
 
     proposed = _invoke(
@@ -126,7 +138,8 @@ def test_full_fake_approval_journey_replays_through_page_and_serialized_tools():
         f"/approval/{change_id}/decision",
         data={"decision_ref": decision_ref.group(1), "csrf_token": csrf_token.group(1),
               "decision": "APPROVE"},
-        headers={**headers, "origin": ORIGIN, "referer": ORIGIN + "/approval/review"},
+        headers={**headers, "origin": ORIGIN, "referer": ORIGIN + "/approval/review",
+                 "x-test-reauth-credential": env.test_credential},
     )
     assert approved.status_code == 200
     stored = env.store.get(UUID(change_id))
