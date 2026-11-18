@@ -2690,4 +2690,8 @@ After S17-05 redaction commit `877bf5f`, refresh the program report again and up
 
 Review objects must expose extracted values to the explicitly authorized renderer, but their default `repr()` is not an intended disclosure interface. Redact values, source-coordinate metadata and entity suggestions from field representations to reduce accidental log leakage; leave the authenticated response contract unchanged.
 
+## 2026-11-18 — Reject hidden XLSX content at the parser boundary
+
+S17-04&#x27;s corpus contract previously left hidden worksheet, row, and column content to a future UI warning even though `SheetValues` carried no visibility metadata. That could make a human review incomplete without any indication. Reject the whole XLSX with fixed `HIDDEN_CONTENT` before returning sheet values; malformed visibility metadata fails as `MALFORMED_XML`. Preserve the no-partial-output contract. The source change is implemented, but named parser tests remain NOT_RUN until all S17 story code is complete.
+
 </pre></main></body></html>

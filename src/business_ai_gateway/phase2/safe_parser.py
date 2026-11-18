@@ -133,6 +133,7 @@ NOT_A_ZIP = "NOT_A_ZIP"
 ENCRYPTED_MEMBER = "ENCRYPTED_MEMBER"
 MACRO_PRESENT = "MACRO_PRESENT"
 EXTERNAL_LINK = "EXTERNAL_LINK"
+HIDDEN_CONTENT = "HIDDEN_CONTENT"
 XML_DTD_OR_ENTITY = "XML_DTD_OR_ENTITY"
 ZIP_BOMB_RATIO = "ZIP_BOMB_RATIO"
 TOO_MANY_MEMBERS = "TOO_MANY_MEMBERS"
@@ -159,7 +160,8 @@ TIMEOUT = "TIMEOUT"
 CHILD_ABORTED = "CHILD_ABORTED"
 
 _KNOWN_CODES = frozenset({
-    "OK", NOT_A_ZIP, ENCRYPTED_MEMBER, MACRO_PRESENT, EXTERNAL_LINK, XML_DTD_OR_ENTITY,
+    "OK", NOT_A_ZIP, ENCRYPTED_MEMBER, MACRO_PRESENT, EXTERNAL_LINK, HIDDEN_CONTENT,
+    XML_DTD_OR_ENTITY,
     ZIP_BOMB_RATIO, TOO_MANY_MEMBERS, MEMBER_TOO_LARGE, PATH_TRAVERSAL_MEMBER,
     MALFORMED_XML, UNSUPPORTED_FORMAT, INVALID_INPUT, PARSE_FAILED, CSV_NOT_UTF8,
     CSV_NUL_BYTE, CSV_MALFORMED, BOUND_INPUT_BYTES, BOUND_ROWS, BOUND_CELLS,
@@ -593,6 +595,43 @@ def _sheet_rows(
     return tuple(rows)
 
 
+def _is_hidden(value: str | None) -> bool:
+    """Validate OOXML visibility booleans; malformed values fail closed."""
+    if value is None or value in ("0", "false", "False"):
+        return False
+    if value in ("1", "true", "True"):
+        return True
+    raise _Deny(MALFORMED_XML)
+
+
+def _reject_hidden_content(sheet: _Node, root: _Node) -> None:
+    """Refuse hidden workbook dimensions rather than presenting an incomplete review."""
+    state = sheet.attrs.get("state", "visible")
+    if state not in ("visible", "hidden", "veryHidden"):
+        raise _Deny(MALFORMED_XML)
+    if state != "visible":
+        raise _Deny(HIDDEN_CONTENT)
+
+    if root.tag != "worksheet" or root.ns != _MAIN_NS:
+        raise _Deny(UNSUPPORTED_FORMAT)
+    data = root.child("sheetData")
+    if data is not None:
+        if data.ns != _MAIN_NS:
+            raise _Deny(UNSUPPORTED_FORMAT)
+        for row in data.children:
+            if row.tag == "row" and row.ns == _MAIN_NS and _is_hidden(row.attrs.get("hidden")):
+                raise _Deny(HIDDEN_CONTENT)
+
+    columns = root.child("cols")
+    if columns is not None:
+        if columns.ns != _MAIN_NS:
+            raise _Deny(UNSUPPORTED_FORMAT)
+        for column in columns.children:
+            if (column.tag == "col" and column.ns == _MAIN_NS
+                    and _is_hidden(column.attrs.get("hidden"))):
+                raise _Deny(HIDDEN_CONTENT)
+
+
 def _parse_workbook(data: bytes, limits: ParseLimits, clock: Callable[[], float]) -> ParseResult:
     counters = _Counters()
     try:
@@ -674,6 +713,8 @@ def _workbook_sheets(
         used_parts: set[str] = set()
         for sheet in entries:
             budget.check()
+            if sheet.tag != "sheet" or sheet.ns != _MAIN_NS:
+                raise _Deny(UNSUPPORTED_FORMAT)
             rid = sheet.attrs.get("id", "")
             if rid not in rels or not rels[rid][0].endswith("/worksheet"):
                 raise _Deny(MALFORMED_XML)
@@ -684,6 +725,7 @@ def _workbook_sheets(
                 raise _Deny(MALFORMED_XML)
             used_parts.add(part)
             tree = _parse_xml(cache[part], limits, budget)
+            _reject_hidden_content(sheet, tree)
             rows = _sheet_rows(tree, sst, limits, budget, counters)
             out.append(SheetValues(sheet.attrs.get("name", ""), rows))
         return tuple(out)
