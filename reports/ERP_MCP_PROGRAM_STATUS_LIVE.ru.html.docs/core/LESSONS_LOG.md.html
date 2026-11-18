@@ -929,4 +929,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: Intake file and manual previews can reuse the authenticated `WorkbenchSession` boundary and return provenance without adding a proposal/apply route. Rule: perform session and company entitlement checks before processing user input, keep materiality unclassified until review, bind manual values to an ordered digest, and expose unresolved identities instead of guessing.
 
 - 2026-11-18 SUCCESS: H3 can be calculated without retaining invoice values, but a numeric threshold alone cannot qualify the intake path. Rule: bind 30 unique hashes before extraction, count substantive human corrections exactly, require human review for every material field, fail on any confidently wrong unreviewed approval, and keep synthetic-only evidence explicitly non-accepting.
+
+- 2026-11-18 SUCCESS: The pre-commit program report records the parent HEAD by design. Rule: after an evidence-bearing local commit, regenerate the live report so its snapshot and commit log include that commit without promoting its task to accepted.
 </pre></main></body></html>

@@ -2680,4 +2680,8 @@ Compose bounded upload extraction and optional server-injected company-scoped al
 
 Implement only the frozen calculation and evidence-shape guard in `h3_scorecard.py`: 30 unique file hashes frozen before extraction, exact integer comparison for the 10% material-field correction limit, separate file-format strata, and hard failure when a material field lacks human review or a confidently wrong material field is approved without human review. A synthetic-only or missing-lane record is `NOT_ACCEPTANCE`. No 30-file evaluation dataset, test-lane run, H3 measurement, or acceptance is claimed.
 
+## 2026-11-18 — Refresh the S17 program report after the H3 commit
+
+The standard pre-commit report snapshot is generated before the new commit exists. Regenerate the required live report after `7a94afc` so the visible HEAD and commit history include the H3 scorecard. This is a reporting correction only; no task status, acceptance evidence, or test result is promoted.
+
 </pre></main></body></html>
