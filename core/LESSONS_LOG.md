@@ -848,3 +848,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Two S15 review findings were corrected and validated on the bound commit before matching-head merge. Rule: include review findings and the exact regression receipt, and carry independent operational acceptance in the backlog.
 
+- 2026-11-18 SHORTCOMING: Historical S16 page results did not exercise the strict Boolean independence guard despite running nearby successful paths. Rule: use the exact malformed registry return value as a negative control and assert that nonce issuance is not reached.
+

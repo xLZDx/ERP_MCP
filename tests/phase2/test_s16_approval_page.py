@@ -93,6 +93,33 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
     assert "<form" not in decided.text
 
 
+def test_preview_rejects_truthy_integer_independence_before_issuing_nonce():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-independence-exact-bool")
+    client = _client(env)
+    before_receipt = env.store.get(snapshot.change_id)
+    nonce_count_before = env.nonce_source._counter
+    original_are_independent = env.principals.are_independent
+
+    # A registry adapter must return the declared bool contract, not merely a truthy value.
+    env.principals.are_independent = lambda _requester, _approver: 1
+    refused = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+
+    assert refused.status_code == 403
+    assert render(ErrorCode.APPROVER_NOT_INDEPENDENT).message in refused.text
+    assert "<form" not in refused.text
+    assert env.nonce_source._counter == nonce_count_before
+    assert env.store.get(snapshot.change_id) == before_receipt
+
+    # The same fixture succeeds when the registry honors its exact bool contract.
+    env.principals.are_independent = original_are_independent
+    accepted = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+    assert accepted.status_code == 200
+    assert '<form' in accepted.text
+    assert env.nonce_source._counter == nonce_count_before + 1
+    assert env.store.get(snapshot.change_id) == before_receipt
+
+
 def test_approval_post_rejects_missing_or_foreign_origin_and_keeps_authorization_unchanged():
     env = build_env()
     # A pending proposal supplies a live approval page without making a decision.

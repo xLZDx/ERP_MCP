@@ -2526,3 +2526,7 @@ At `7364df754065541ad174c2c0a7701fd7dfa26463`, 17 named provenance regression ca
 
 At exact `22dea9b04990aca8174718dd1a1ddbf73781bdb4`, nine selected comparison nodes expanded to 17 passing cases in 0.59s. The final independent review confirmed the baseline source finding was fixed. GPT-PM approved that head under request `388c322d-26e9-4af5-8884-1ceeca9d9fe0`, reply `c4d645e1-f54a-53bd-ab58-1c9f3a01b4e1`. PR 67 merged it into main at `bfd2661e5cf8e1c228ae3495486819e494ec837a` with no auto-merge request. The ledger closed five bounded tasks. Native 1C, authenticated source capture and live ledger integration remain unverified. The duplicate-control minor is in the backlog.
 
+## 2026-11-18 - Start S16 with the retained approval-page evidence
+
+Use FIN-S2.2 as bounded approval-page evidence and FIN-S2.1 as its core dependency. The retained service already refuses an independence attestation unless the registry returns exact Boolean true. Earlier named receipts did not exercise the truthy non-Boolean case. Add that case at the approval page boundary before counting the guard as verified. Keep separate open criteria for browser, session, and deployment acceptance.
+
