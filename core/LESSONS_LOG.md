@@ -781,3 +781,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Completed named S13 ledger and claim cases on owned clusters and identified the retained module's independent DSN requirement. Rule: use an explicit owned fixture mode to exercise tests that otherwise rely on an externally supplied database.
 
+
+- 2026-11-18 SUCCESS: The ordered named checks proved local ledger integrity, transactional recovery boundaries, and diagnostic restore refusal on owned fixtures. Rule: record the exact head, isolation and cleanup beside each receipt before independently adjudicating acceptance.
+

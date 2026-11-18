@@ -982,3 +982,41 @@ Result: 2 passed in 14.92s. The fixture applies through 039; scope isolation and
 
 Result: 2 passed in 14.76s. Claim/release routing and cross-scope global-ID contention only. Ownership label verified for r2-s13-dump-aa9a0a5ba2bc-a; the exact container was absent after teardown. No unrelated containers were touched. Pytest reported both invocations passing; the numeric shell exit code was not captured separately. Direct runtime DML refusal, hash-chain integrity and same-target transaction rollback remain NOT_RUN at this head.
 
+
+## 2026-11-18 - Ordered S13-01 through S13-03 named verification after source assembly
+
+Clean head: 024d5fbd28ff660f83bedb0be7172ffcb8e62557. The designated e2e-runners invoked .venv/Scripts/python.exe -m pytest -q -s with the following explicit node IDs. Before each PostgreSQL group the agent confirmed ERP_PHASE2_TEST_DSN absent and enabled the invocation-owned fixture. The retained ledger module additionally required ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1 and ERP_PHASE2_REQUIRE_PG=1.
+
+S13-01, tests/phase2/test_change_ledger_sql.py:
+
+- test_runtime_roles_have_no_effective_table_or_column_dml_through_inheritance
+- test_event_log_is_append_only_even_for_the_owner_path
+- test_hash_chain_verifies_and_every_tamper_is_detected
+
+Result: 3 passed in 24.57s; exit 0. Owned fixture performed cleanup on exit.
+
+S13-02, tests/phase2/test_change_ledger_sql.py:
+
+- test_concurrent_same_target_claim_waits_for_commit_then_refuses_second_claim
+- test_claim_rolls_back_state_reservation_and_all_locks_on_transaction_failure
+- test_unknown_outcome_keeps_lock_lease_reservation_and_opens_call_ownership_hold
+
+Result: 3 passed in 18.08s; exit 0. Owned fixture performed cleanup on exit.
+
+S13-03, local signature, refusal and idempotency:
+
+- tests/phase2/test_s13_dev_anchor_service_v2.py::test_register_key_rejects_authority_signer_without_appending_event
+- tests/phase2/test_s13_dev_anchor_preflight_e2e.py::test_cli_rejects_authority_key_in_checkpoint_registry_before_io
+- tests/phase2/test_s13_checkpoint_runtime_authority.py::test_t16_readback_failure_after_sink_write_keeps_database_holds_open
+- tests/phase2/test_s13_t16_recovery_error_mapping.py::test_an_existing_terminal_snapshot_replays_without_repeating_t16_work
+
+Result: 8 passed in 4.22s; exit 0.
+
+S13-03, owned PostgreSQL and development anchor:
+
+- tests/phase2/test_s13_checkpoint_restore_e2e.py::test_restore_behind_external_anchor_fails_closed
+- tests/phase2/test_s13_dev_anchor_preflight_e2e.py::test_cli_signed_checkpoint_preflight_is_read_only_and_never_ready
+- tests/phase2/test_s13_completion_outcome_e2e.py::test_s13_completion_outcome_pre_write_no_effect_finalizer
+
+Result: 3 passed in 43.78s; exit 0. Restore fixture reported "CLEANUP: owned PostgreSQL container and 1 volume(s) absent". Three cases retain their own documented migration chains. No existing databases or operational services were used. This evidence verifies the listed behavior only. Independently adjudicated task acceptance, S13-04/05 qualification, production custody, provider retention and physical writer qualification remain open.
+
