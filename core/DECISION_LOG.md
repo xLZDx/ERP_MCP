@@ -2267,3 +2267,7 @@ PR #64 merged exact GPT-PM-approved head 2531847f08dbd2cb31741967a25c6d232f0b892
 ### 2026-11-18 - Reverify the retained S10 engineering contracts
 
 After bounded S9 closure through PR #64, verify S10 dev/test capture and manifest assembly in order. The historical PR #53 merge lives on its integration branch; the current main code retains the capture runtime and its focused tests but has later loop/composition and manifest changes. Use exact current named synthetic results before recording bounded acceptance. Release 2 remains NO-GO; no real canary, UAT, or release artifact is fabricated.
+
+### 2026-11-18 - Align S10 capture failure documentation and regression
+
+The first S10 capture run found one stale inherited expectation. The scheduler emits only WORK_EXCEPTION on an unexpected failure, preventing the exception text and type from entering persisted job details. Keep that behavior, correct the capture-loop docstring and named assertion, and rerun. Separately traced the historical S10 manifest digest: converting the Git blob of 4445dd2c5d84 to its Windows checkout line endings yields C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE, as recorded in the S11 exit package. The later integration merge carries different bytes, and the artifact is absent from current main, so the historical match does not establish current release evidence.

@@ -200,11 +200,12 @@ async def test_guard_exception_text_is_never_persisted_or_returned():
     living, sched, tracker, loop = await build(conn)
     res = await loop.capture_step(job(), CONN, req())
     assert res.status is CaptureStatus.FAILED
-    assert res.run.detail == "WORK_EXCEPTION:RuntimeError"
+    assert res.run.detail == "WORK_EXCEPTION"
     assert res.outcome_kind is CaptureOutcomeKind.OUTAGE
     view = await living.get_job(WORKER, SCOPE, job())
     for text in (repr(res), repr(view), repr(sched.export_state())):
         assert "hunter2" not in text and "secret.example" not in text
+        assert "RuntimeError" not in text
 
 
 async def test_guard_drift_on_complete_does_not_advance_accepted_hash():

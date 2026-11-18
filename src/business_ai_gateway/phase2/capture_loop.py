@@ -21,7 +21,7 @@ Rules
 - An SDK-invalid response (``ValidationError`` or wrong type) is the failure
   ``WORK_RETURNED_INVALID`` (work returns a non-outcome), never drift, never a hash.
 - Typed connector failures are raised as ``ConnectorFailure(kind)``; ``TimeoutError`` is a TIMEOUT;
-  any other exception is an OUTAGE recorded by the scheduler as ``WORK_EXCEPTION:<ClassName>``.
+  any other exception is an OUTAGE recorded by the scheduler as the fixed ``WORK_EXCEPTION`` reason.
   Raw exception text is never stored or returned.
 - The response ``content_digest`` is used as the structural hash handed to ``drift.classify`` ONLY for
   an ``OK_COMPLETE`` outcome; a partial/unknown capture carries no hash (drift rejects one).

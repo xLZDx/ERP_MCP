@@ -704,3 +704,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: The S9 authorization receipt could not bind the scratch repo path. Rule: when the approved docs CLI requires a registered project path, verify the identical clean head in that checkout and obtain a genuine documentation approval before retrying the authorized test. Keep the final code verdict separate.
 
 - 2026-11-18 SUCCESS: Distinguished the historical S10 integration merge from byte-equivalent retained capture modules and later main changes. Rule: compare source and test paths independently before transferring old acceptance to a new main baseline.
+
+- 2026-11-18 SHORTCOMING: The retained capture-loop test and docstring still expected a class-qualified error after the scheduler moved to a fixed safe reason. Rule: reconcile both documented and tested error serialization when integrating a shared scheduler change.
