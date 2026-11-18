@@ -1943,7 +1943,7 @@ GPT-PM review of the bounded S15 package reported one non-blocking minor issue: 
 
 ## S16-01 fresh approval re-authentication
 
-The local S16 candidate now defines a fail-closed re-authentication contract: proof is bound to the exact decision reference, is accepted from zero through five minutes old, and is checked before APPROVE is recorded. TEST-only issuance validates the TEST credential authority and stores only the reference digest. The assigned reviewer passed the named synthetic core/page modules (89 passed at dirty-tree HEAD `c2d43c72`); this is not commit-bound or real-provider evidence. Remaining work is the real authenticated IdP/session adapter, actual cookie issuance and scope, and proof that re-authentication is one-use at the deployed adapter boundary. The identity-provider owner is unassigned; Codex owns the local contract and synthetic qualification.
+The local S16 implementation defines a fail-closed re-authentication contract: proof is bound to the exact decision reference, is accepted from zero through five minutes old, and is checked before APPROVE is recorded. TEST-only issuance validates the TEST credential authority and stores only the reference digest. The assigned reviewer passed the named synthetic core/page modules at clean exact HEAD `9ad472dc28f01af81fb332fa3252c7e4138800ad` (89 passed); this is not real-provider evidence. Remaining work is the real authenticated IdP/session adapter, actual cookie issuance and scope, and proof that re-authentication is one-use at the deployed adapter boundary. The identity-provider owner is unassigned; Codex owns the local contract and synthetic qualification.
 
 ## S16-01 durable approval audit
 
