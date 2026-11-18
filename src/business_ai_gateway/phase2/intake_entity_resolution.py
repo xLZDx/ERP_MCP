@@ -8,6 +8,8 @@ unmatched until a separately curated in-scope mapping exists.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum
@@ -80,8 +82,11 @@ def resolve_extracted_entity(
             or type(text) is not str or type(state) is not ExtractionState
             or state not in (ExtractionState.REVIEW_REQUIRED, ExtractionState.BEST_EFFORT_REVIEW)):
         return _refused(scope, _safe_provenance_value(provenance))
+    context_key = _provenance_key(provenance)
     try:
-        result = resolver.resolve(scope, ResolveQuery(reference=reference, name=text))
+        result = resolver.resolve(
+            scope, ResolveQuery(reference=reference, name=text, context_key=context_key),
+        )
     except Exception:  # noqa: BLE001 - malformed or failing resolver fails closed
         return _refused(scope, provenance)
 
@@ -140,7 +145,9 @@ def confirm_ambiguous_entity(
             or not all(type(item) is str for item in candidate_ids)
             or type(suggestions) is not tuple
             or not all(type(item) is str for item in suggestions)
-            or not _valid_provenance(provenance)):
+            or not _valid_provenance(provenance)
+            or type(queue_item_id) is not str
+            or not resolver.has_context(safe_scope, queue_item_id, _provenance_key(provenance))):
         return _refused(safe_scope, _safe_provenance_value(provenance))
     try:
         decision = resolver.resolve_ambiguity(
@@ -193,6 +200,15 @@ def _valid_provenance(provenance: object) -> bool:
         )
     except Exception:  # noqa: BLE001 - forged or malformed provenance fails closed
         return False
+
+
+def _provenance_key(provenance: SourceProvenance) -> str:
+    payload = json.dumps(
+        [provenance.source_sha256, provenance.source_format.value, provenance.sheet_name,
+         provenance.row_number, provenance.column_number, provenance.field_key],
+        ensure_ascii=False, separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _safe_scope(scope: object) -> AliasScope | None:

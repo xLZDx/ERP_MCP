@@ -286,6 +286,8 @@ S17-01 implementation follow-up (2026-11-18): commit `16ea7275` preflights ordin
 
 S17-02 implementation follow-up (2026-11-18): a code review found that partially initialized slotted parser records could leak `AttributeError` during adapter validation. `_valid_parse_result` now converts only missing-field `AttributeError` into the fixed `MALFORMED_PARSE_RESULT` path; unrelated exceptions are not broadly swallowed. Independent re-review found no remaining issue. Named S17-02 tests remain NOT_RUN, so this follow-up does not promote the task beyond IN_PROGRESS.
 
+S17-03 implementation follow-up (2026-11-18): review found that `confirm_ambiguous_entity` trusted any well-formed provenance attached to a caller-constructed resolution. The adapter now fingerprints validated source-cell provenance, records those fingerprints in the resolver's in-memory queue item, and refuses confirmation unless the exact provenance fingerprint is already bound to that scoped item. A stable queue item may collect contexts from multiple independently resolved source cells. The test plan names the substituted-provenance refusal case. Tests and final S17 review remain NOT_RUN; S17-03 stays IN_PROGRESS.
+
 ## Sprint S18 - Reliability and security
 Goal: Reliability and security.
 

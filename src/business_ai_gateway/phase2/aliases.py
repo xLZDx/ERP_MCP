@@ -127,6 +127,7 @@ class AliasRecord:
 class ResolveQuery:
     reference: Reference | None = None
     name: str = ""
+    context_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +151,7 @@ class QueueItem:
     candidate_ids: tuple[str, ...]
     suggestions: tuple[str, ...]
     decision: Decision | None = None
+    context_keys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,8 +242,18 @@ class AliasResolver:
             return _scope_bad()
         if type(query) is not ResolveQuery:
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="QUERY_INVALID")
+        try:
+            ref = query.reference
+            name = query.name
+            context_key = query.context_key
+        except AttributeError:
+            return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="QUERY_INVALID")
         in_scope = [e for (k, _), e in self._entities.items() if k == skey]
-        ref = query.reference
+        if context_key is not None and (
+                type(context_key) is not str
+                or len(context_key) != 64
+                or any(char not in "0123456789abcdef" for char in context_key)):
+            return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="QUERY_INVALID")
         if ref is not None and not _ref_ok(ref):
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="REFERENCE_INVALID")
         ref_hits: set[str] = set()
@@ -253,14 +265,14 @@ class AliasResolver:
             for a in self._aliases:
                 if _skey(a.scope) == skey and a.reference is not None and a.reference.key() == rk:
                     ref_hits.add(a.entity_id)
-        name_hits = self._name_hits(skey, in_scope, query.name)
+        name_hits = self._name_hits(skey, in_scope, name)
         if len(ref_hits) == 1:
             return ResolutionResult(AliasOutcome.RESOLVED, entity_id=next(iter(ref_hits)))
         if len(ref_hits) >= 2:
-            return self._ambiguous(scope, ref_hits, name_hits)
+            return self._ambiguous(scope, ref_hits, name_hits, context_key)
         # no reference match: names alone can only suggest, never resolve
         if len(name_hits) >= 2:
-            return self._ambiguous(scope, name_hits, name_hits)
+            return self._ambiguous(scope, name_hits, name_hits, context_key)
         return ResolutionResult(AliasOutcome.NOT_FOUND, suggestions=tuple(sorted(name_hits)),
                                 code="NO_EXACT_REFERENCE")
 
@@ -276,14 +288,21 @@ class AliasResolver:
         return hits
 
     def _ambiguous(self, scope: AliasScope, candidates: set[str],
-                   suggestions: set[str]) -> ResolutionResult:
+                   suggestions: set[str], context_key: str | None = None) -> ResolutionResult:
         cands = tuple(sorted(candidates))
         skey = scope.key()
         digest = hashlib.sha256(stable_key(*skey, *cands).encode("utf-8")).hexdigest()[:24]
         item_id = f"RQ-{digest}"
         if item_id not in self._queue:
             self._queue[item_id] = QueueItem(item_id, scope, cands,
-                                             tuple(sorted(suggestions - candidates)))
+                                             tuple(sorted(suggestions - candidates)),
+                                             context_keys=(context_key,) if context_key else ())
+        elif context_key and context_key not in self._queue[item_id].context_keys:
+            item = self._queue[item_id]
+            self._queue[item_id] = QueueItem(
+                item.item_id, item.scope, item.candidate_ids, item.suggestions, item.decision,
+                tuple(sorted((*item.context_keys, context_key))),
+            )
         return ResolutionResult(AliasOutcome.AMBIGUOUS, candidate_ids=cands, queue_item_id=item_id,
                                 code="AMBIGUOUS_CANDIDATES")
 
@@ -294,6 +313,15 @@ class AliasResolver:
         if skey is None:
             return ()
         return tuple(i for i in self._queue.values() if _skey(i.scope) == skey)
+
+    def has_context(self, scope: AliasScope, item_id: str, context_key: str) -> bool:
+        """Check that a queue context was recorded by this resolver instance."""
+        skey = _skey(scope)
+        item = self._queue.get(item_id) if type(item_id) is str else None
+        return (
+            skey is not None and item is not None and _skey(item.scope) == skey
+            and type(context_key) is str and context_key in item.context_keys
+        )
 
     def resolve_ambiguity(self, scope: AliasScope, item_id: str, chosen_entity_id: str,
                           approver: Approver, reason: str) -> DecisionResult:
@@ -321,5 +349,5 @@ class AliasResolver:
             return DecisionResult(AliasOutcome.REJECTED_CONFLICT, code="DECISION_CONFLICT")
         decision = Decision(chosen_entity_id, exact_text(approver.identity), why, self.clock())
         self._queue[item.item_id] = QueueItem(item.item_id, item.scope, item.candidate_ids,
-                                              item.suggestions, decision)
+                                              item.suggestions, decision, item.context_keys)
         return DecisionResult(AliasOutcome.DECIDED, decision)

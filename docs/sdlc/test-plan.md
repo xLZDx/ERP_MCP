@@ -82,6 +82,7 @@ The assigned functional-test-reviewer owns these named cases after all S17 story
 - A name-only unique suggestion remains `UNMATCHED_REVIEW`; display-name similarity must not become a resolved entity. A missing entity produces `MANUAL_MAPPING_REQUIRED`, preserves provenance and cannot authorize a proposal.
 - Multiple in-scope name matches produce `AMBIGUOUS_REVIEW` with the complete scoped candidate set and a stable queue item. No candidate is selected automatically.
 - A valid explicit HUMAN choice for an ambiguity is recorded through the existing resolver; invalid/non-human approvers, out-of-set choices, foreign-scope queue items, conflicting replay choices, and missing reason fail closed.
+- Confirmation must reject a caller-constructed resolution that substitutes a different but well-formed `SourceProvenance`; only provenance previously bound to that resolver queue item may be returned after a HUMAN choice. Re-resolving another source cell may register its own provenance on the same stable queue item.
 - An exact namespaced reference may identify one in-scope candidate, but intake still returns `MATCH_REVIEW_REQUIRED`; every result has `proposal_allowed == false`.
 - Malformed scope, extracted value, provenance, reference or resolver failure returns a fixed refusal without echoing extracted text or exception details.
 - Incomplete slotted `ExtractedValue` and `IntakeEntityResolution` instances fail closed with the same fixed refusal; no missing-field exception escapes the adapter.
