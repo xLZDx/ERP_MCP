@@ -1901,3 +1901,8 @@ The existing S13 operator adapter selects directly ungranted versioned registrat
 
 The scoped code review of fc25b8f identified one MINOR coverage gap. Registration and client pin configuration refuse a checkpoint signer colliding with either receipt authority, and startup checks retained key registrations. Add a focused legacy fixture proving startup refuses an otherwise valid historical role collision. This is test coverage work; no current functional defect was established.
 
+
+## S14-01 operational 1C write port qualification
+
+The retained offline simulation has an approved TEST-only contract and the low-level COM draft executor and STA lane remain candidate source. Completing the measured operational port requires a CT14-qualified licensed clone and channel, measured write-account rights including payment/delete denial, a confirmed in-write marker, and authenticated base/tenant/company/organization/version binding. Exercise the exact authorized receipt operations and retain evidence for lookup, queue fencing and recovery. The licensed-channel owner is not assigned in the canonical plan. Continue local technical work without representing simulation receipts or historical draft rollback as full S14 acceptance. No live channel activation is implied.
+

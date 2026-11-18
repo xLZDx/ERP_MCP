@@ -45,3 +45,11 @@ After all in-scope coding is complete, `functional-test-reviewer` and `e2e-runne
 ## Unknowns and acceptance boundary
 
 The canonical S14 sprint requires the measured purchase-receipt path through a CT14-approved channel, atomic marker enforcement, least privilege, and channel-specific evidence. No such channel/owner is recorded in the current repository. Correlated GPT-PM decision `b5f382b5-86b4-4bc1-9e62-52dc762aad23` returned **GO — LOCAL IMPLEMENTATION ONLY**. Conditions: strict simulation-only validation of synthetic ticket/permit bindings and simulator identity; allow only `CREATE_DRAFT`, `POST`, and `UNPOST`; explicit TEST-only result/error types; no signed `FailureEvidence`, T8/T9 interpretation, hidden clone oracle, production wiring, migration, or formal S14/R-01 closure; and atomic expected-version validation plus mutation under simulator-owned synchronization. This story creates no formal S14 pass and does not close R-01. Accountable task owner: operator; execution owner: GPT/Codex; test owners: functional-test-reviewer and e2e-runner; licensed channel owner: unknown in canonical records.
+
+## Exact simulator identity
+
+An instance label and a deterministic state fingerprint describe configuration and contents. They do not distinguish separately allocated simulators. The TEST permit authority binds to a single live clone instance before issuing permits; the same exact clone can serve multiple adapters with the same fixture key and scope. Per-instance binding does not change the business-state fingerprint, does not appear in results, and has no production authority. Separately allocated or restarted simulations require fresh fixture permits. Verification remains scheduled after local source assembly.
+
+
+The named verification should confirm that two adapters on the same live clone remain compatible, an unbound authority refuses issuance, and independently allocated clones never share the same TEST permit identity even when their display labels and state fingerprints match. Treat those identity checks as simulation evidence only.
+

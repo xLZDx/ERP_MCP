@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import secrets
 from collections import deque
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -209,6 +210,13 @@ class SimulatedOneC:
         self._write_lock = RLock()
         self._simulation_calls: dict[str, tuple[object, ...]] = {}
         self._simulation_scope: tuple[str, str, str] | None = None
+        # Stable for this live object only. Unlike label/state_fingerprint, this
+        # distinguishes independently-created clones with identical contents.
+        self._simulation_permit_binding = secrets.token_bytes(32)
+
+    def _simulation_permit_binding_token(self) -> bytes:
+        """Private TEST-adapter identity; never part of business state or results."""
+        return self._simulation_permit_binding
 
     def bind_simulation_scope(self, tenant_id: str, company_id: str, organization: str) -> None:
         """Permanently bind this clone instance to one synthetic tenant/company/org tuple."""

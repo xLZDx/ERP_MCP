@@ -802,3 +802,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Closed the bounded S13 delivery after exact-head review and a confirmed matched-head GitHub merge. Rule: preserve the task-specific evidence limits, independent static review receipts and operational backlog beside the merge record.
 
+
+- 2026-11-18 SHORTCOMING: A simulation label and a deterministic state fingerprint identify a configuration but do not identify a live clone instance. Rule: bind TEST permits to the exact instance while keeping state fingerprints deterministic and production authority separate.
+
