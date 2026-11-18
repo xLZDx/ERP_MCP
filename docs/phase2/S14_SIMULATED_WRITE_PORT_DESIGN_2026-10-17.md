@@ -72,3 +72,7 @@ The separate governed-write simulation records an unknown outcome only while the
 
 Named verification should hand back an attempt with valid no-invocation evidence, dispatch a second attempt on the same base, then deliver the old unknown notification and verify that a third attempt still encounters the second attempt's hold. Exercise delayed notifications after an applied result and after verification, as well as a genuinely unresolved interruption that retains its hold. Use the existing offline contracts for these scenarios.
 
+## S14-05 distinct approved receipt operations
+
+Once the governed TEST clone admits a call, bind its change identity to the operation, target, expected version, and approved payload digest under the clone write lock. A fresh call identity or generation may carry the same frozen change. A different operation, target, version, or digest requires its own approval identity. Exercise create, post, and unpost with distinct approvals and verify their movement effects against independent expected counts. Include an attempt to reuse an approval for another operation and confirm that the target and registers stay unchanged.
+

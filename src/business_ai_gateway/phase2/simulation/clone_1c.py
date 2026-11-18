@@ -210,6 +210,7 @@ class SimulatedOneC:
         # final base-fingerprint/version check with the mutation itself.
         self._write_lock = RLock()
         self._simulation_calls: dict[str, tuple[object, ...]] = {}
+        self._simulation_change_intents: dict[str, tuple[str, str | None, str | None, str]] = {}
         self._simulation_write_held = False
         self._simulation_scope: tuple[str, str, str] | None = None
         # Stable for this live object only. Unlike label/state_fingerprint, this
@@ -378,9 +379,14 @@ class SimulatedOneC:
                 raise CloneRejected("CALL_ID_CONFLICT")
             if self._simulation_write_held:
                 raise CloneRejected("BASE_WRITE_HELD")
+            change_intent = (kind.value, target_ref, expected_version, digest_set_hash)
+            previous_intent = self._simulation_change_intents.get(change_id)
+            if previous_intent is not None and previous_intent != change_intent:
+                raise CloneRejected("IDEMPOTENCY_CONFLICT")
             # Consume the synthetic call identity before entering the mutation path.
             # Any uncertain or refused attempt therefore cannot be replayed under a
             # changed ticket/base to produce a second side effect.
+            self._simulation_change_intents.setdefault(change_id, change_intent)
             self._simulation_calls[call_id] = call_identity
             create_marker = (change_id, digest_set_hash) if kind is ChangeKind.CREATE_DRAFT else None
             try:
