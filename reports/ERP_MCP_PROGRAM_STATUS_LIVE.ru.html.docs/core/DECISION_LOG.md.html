@@ -2801,4 +2801,8 @@ Code inspection found that `_invoice_valid` and `_field_valid` read slots direct
 ## 2026-11-18 — Allow bounded carry width in S17-02 stated totals
 
 The max-cardinality exact-arithmetic case showed that `_parse_exact_amount` applied the component&#x27;s 18-integer-digit input bound to the stated total too. Up to 100,000 separately bounded line/VAT inputs may sum to a valid 23-integer-digit result. Keep the original 18-digit bound on each component and derive a separate 23-digit total bound from `MAX_TOTAL_COMPONENTS`; do not relax individual amount validation. The focused regression rerun is pending.
+
+## 2026-11-18 — Align disposable DB verifiers with migration 018
+
+The disposable E2E startup applied migration 018, then failed schema verification because `scripts/verify_schema.py` and `scripts/check_db_privileges.py` still referenced the pre-018 14-argument `record_capability_observation` signature. Migration 018 and runtime callers require 15 arguments including the reservation ID. Update only the verifier signatures to the current migration contract; do not change migration SQL or the separate real1c stack. Re-run the setup on an isolated synthetic stack and continue the named S17 browser journey.
 </pre></main></body></html>

@@ -123,7 +123,7 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
         "bag.reject_audit_mutation()",
         "bag.reject_admin_audit_mutation()",
         "bag.invalidate_validated_profile_on_mapping_change()",
-        "bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)",
+        "bag.record_capability_observation(text,uuid,bigint,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)",
         "bag.accept_capability_observation(text,uuid,bigint)",
         "bag.read_accepted_capability_observation(text,uuid,bigint)",
         "bag.bump_source_row_version()",
@@ -142,7 +142,7 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
         if await conn.fetchval("SELECT rolcanlogin FROM pg_roles WHERE rolname=$1", role):
             raise AssertionError(f"capability authority group role must be NOLOGIN: {role}")
     capability_functions = {
-        "record": "bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)",
+        "record": "bag.record_capability_observation(text,uuid,bigint,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)",
         "accept": "bag.accept_capability_observation(text,uuid,bigint)",
         "read_accepted": "bag.read_accepted_capability_observation(text,uuid,bigint)",
     }

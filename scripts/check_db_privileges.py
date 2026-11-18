@@ -157,7 +157,7 @@ async def main() -> None:
                     f"{role} TRUNCATE {table}: expected {expected}, got {actual}"
                 )
         record_signature = (
-            "bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)"
+            "bag.record_capability_observation(text,uuid,bigint,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)"
         )
         accept_signature = "bag.accept_capability_observation(text,uuid,bigint)"
         read_accepted_signature = "bag.read_accepted_capability_observation(text,uuid,bigint)"

@@ -292,6 +292,8 @@ S17-06 implementation follow-up (2026-11-18): code inspection found that malform
 
 S17-02 implementation follow-up (2026-11-18): the final max-cardinality test exposed a mismatch between the 18-integer-digit component bound and a valid stated total carrying up to 23 integer digits after summing 100,000 bounded line/VAT amounts. Component parsing retains its 18-digit limit; stated totals now use the derived carry bound. Focused functional rerun remains pending; S17-02 stays IN_PROGRESS.
 
+S17-05 E2E setup follow-up (2026-11-18): the disposable environment applied migration 018 successfully, but startup schema/privilege verifiers still searched for the pre-018 14-argument `record_capability_observation` function. Both verifiers now match the 15-argument migration signature. The browser journey remains pending a fresh isolated-stack startup and exact E2E run.
+
 ## Sprint S18 - Reliability and security
 Goal: Reliability and security.
 
