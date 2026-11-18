@@ -2694,4 +2694,8 @@ Review objects must expose extracted values to the explicitly authorized rendere
 
 S17-04&#x27;s corpus contract previously left hidden worksheet, row, and column content to a future UI warning even though `SheetValues` carried no visibility metadata. That could make a human review incomplete without any indication. Reject the whole XLSX with fixed `HIDDEN_CONTENT` before returning sheet values; malformed visibility metadata fails as `MALFORMED_XML`. Preserve the no-partial-output contract. The source change is implemented, but named parser tests remain NOT_RUN until all S17 story code is complete.
 
+After commit `acdcab4b`, regenerate the standard live report so it includes the parser boundary change and current HEAD. This is report synchronization only; S17-04 remains in progress until its named evidence is run at the agreed sprint verification stage.
+
+The refreshed report exposed stale reconciliation coverage: 42 tasks fell back to the legacy harness `verified` state despite recorded project-plan statuses. Run the supported `ledger.py reconcile-project` against the current `PROJECT_PLAN.md` and 115 branch refs; all 111 task records now have document/Git reconciliation, with harness verify/review evidence preserved. The project distribution is 91 bounded accepted, 5 in progress, 2 externally blocked, 1 partial, 1 in review, and 11 not started. No test or reviewer result was changed.
+
 </pre></main></body></html>
