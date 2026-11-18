@@ -2726,3 +2726,7 @@ S17-03 accepts caller-controlled extraction and resolution objects, including ma
 
 After implementation commit `235ceca1`, regenerate `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` so its snapshot and commit log include the code. The generator did not change the task's acceptance state or program numerator; S17 verification remains pending.
 
+# 2026-11-18 — Store explicit Admin source-to-tenant binding for S17-05
+
+S17-05 must read the durable change ledger using `(tenant_id, company_id)`, while the authenticated Admin API authorizes `(source_id, company_id)`. Do not derive tenant from the source identifier, caller token, company row, or unrelated `living.sources` registry. Add a nullable tenant field to `bag.sources` and an audited, idempotent, expected-version Admin operation restricted to a global platform administrator with recent step-up. Legacy sources stay unbound; the endpoint cannot reassign a binding. Keep the Admin company authorization recheck before any later ledger disclosure. Migration 019 is additive and authored but not applied; the environment has no `BAG_*` database variable names or PostgreSQL CLI, and the change-ledger DSN/reader role is not configured. This slice creates the trusted mapping mechanism only; it does not claim a live ledger list or runtime acceptance.
+

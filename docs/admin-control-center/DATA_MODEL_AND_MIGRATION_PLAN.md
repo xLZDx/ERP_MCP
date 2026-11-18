@@ -202,3 +202,31 @@ Before production:
 ## 12. Data retention
 
 Admin/audit retention is a separate governance decision. Until defined, do not implement automatic deletion. Revocation uses timestamps, not DELETE.
+
+## 13. S17-05 source-to-tenant binding (migration 019)
+
+Migration `019_source_tenant_binding.sql` adds nullable `bag.sources.tenant_id` and a database trigger that refuses changing or clearing a non-null binding. Existing sources remain unbound; the migration does not infer tenant IDs from source IDs, company rows, tokens, or `living.sources`. The Admin API can set a binding once through `PUT /admin/v1/sources/{source_id}/tenant-binding`; the operation requires a global `PLATFORM_ADMIN`, a recent configured step-up claim, an expected `row_version`, an idempotency key, and a non-empty reason. Reassignment through this endpoint is refused. The mutation and its source/tenant result are stored in the append-only Admin audit.
+
+Rollout order:
+
+1. Back up the disposable/development PostgreSQL target and confirm the target is not production.
+2. Apply migration 019 with the repository migration runner after all S17 code is ready for the sprint verification stage. `lock_timeout` is five seconds; the nullable column preserves existing rows.
+3. Verify `bag.schema_migrations` records identified version 19, the column exists, all legacy sources have `tenant_id IS NULL`, and the check constraint is validated. Do not populate mappings until each source/tenant relationship is known from trusted operator configuration.
+4. Bind a source through the authenticated Admin endpoint and verify the audit event, source `row_version` increment, idempotent replay, stale-version refusal, scoped-admin refusal, and immutable-conflict refusal.
+5. Only after the separately configured ledger connection and least-privilege `auditor_role` are available may a server-side list service use the stored mapping; every result must also recheck the exact company allow/deny grant.
+
+The migration is additive and has no application-data backfill. Before any tenant binding exists, application rollback may leave the nullable column inert. Once a binding is written, do not drop the column as rollback; keep the mapping and roll back only application code. Runtime migration and verification are currently NOT_RUN.
+
+## 13. S17-05 source-to-tenant binding (migration 019)
+
+Migration `019_source_tenant_binding.sql` adds nullable `bag.sources.tenant_id`. Existing sources remain unbound; the migration does not infer tenant IDs from source IDs, company rows, tokens, or `living.sources`. The Admin API can set a binding once through `PUT /admin/v1/sources/{source_id}/tenant-binding`; the operation requires a global `PLATFORM_ADMIN`, a recent configured step-up claim, an expected `row_version`, an idempotency key, and a non-empty reason. Reassignment through this endpoint is refused. The mutation and its source/tenant result are stored in the append-only Admin audit.
+
+Rollout order:
+
+1. Back up the disposable/development PostgreSQL target and confirm the target is not production.
+2. Apply migration 019 with the repository migration runner after all S17 code is ready for the sprint verification stage. `lock_timeout` is five seconds; the nullable column preserves existing rows.
+3. Verify `bag.schema_migrations` records identified version 19, the column exists, all legacy sources have `tenant_id IS NULL`, and the check constraint is validated. Do not populate mappings until each source/tenant relationship is known from trusted operator configuration.
+4. Bind a source through the authenticated Admin endpoint and verify the audit event, source `row_version` increment, idempotent replay, stale-version refusal, scoped-admin refusal, and immutable-conflict refusal.
+5. Only after the separately configured ledger connection and least-privilege `auditor_role` are available may a server-side list service use the stored mapping; every result must also recheck the exact company allow/deny grant.
+
+The migration is additive and has no application-data backfill. Before any tenant binding exists, application rollback may leave the nullable column inert. Once a binding is written, do not drop the column as rollback; keep the mapping and roll back only application code. Runtime migration and verification are currently NOT_RUN.

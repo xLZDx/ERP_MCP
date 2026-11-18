@@ -750,6 +750,87 @@ class AdminMutationService:
             mutation=mutation,
         )
 
+    async def bind_source_tenant(
+        self,
+        *,
+        actor: AdminActor,
+        source_id: str,
+        tenant_id: str,
+        expected_version: int,
+        reason: str,
+        request_id: uuid.UUID,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        if (not isinstance(source_id, str) or not source_id or source_id != source_id.strip()
+                or len(source_id) > 255):
+            raise AdminValidationError("source_id is invalid")
+        if (not isinstance(tenant_id, str) or not tenant_id or tenant_id != tenant_id.strip()
+                or len(tenant_id) > 255 or any(ord(char) < 32 or ord(char) == 127 for char in tenant_id)):
+            raise AdminValidationError("tenant_id is invalid")
+        if type(expected_version) is not int or expected_version < 1:
+            raise AdminValidationError("expected_version is invalid")
+
+        request = {
+            "source_id": source_id,
+            "tenant_id": tenant_id,
+            "expected_version": expected_version,
+        }
+
+        async def mutation(conn):
+            before = await conn.fetchrow(
+                "SELECT tenant_id, row_version FROM bag.sources WHERE source_id=$1 FOR UPDATE",
+                source_id,
+            )
+            if before is None:
+                raise AdminNotFound("source not found")
+            if before["row_version"] != expected_version:
+                raise AdminConflict("source version changed")
+            if before["tenant_id"] is not None:
+                if before["tenant_id"] != tenant_id:
+                    raise AdminConflict("source tenant binding is immutable")
+                return {
+                    "id": source_id,
+                    "source_id": source_id,
+                    "tenant_id": tenant_id,
+                    "row_version": expected_version,
+                    "before_fingerprint": _fingerprint(dict(before)),
+                }
+            row = await conn.fetchrow(
+                """
+                UPDATE bag.sources
+                SET tenant_id=$3, row_version=row_version+1, updated_at=now()
+                WHERE source_id=$1 AND row_version=$2 AND tenant_id IS NULL
+                RETURNING source_id, tenant_id, row_version, updated_at
+                """,
+                source_id,
+                expected_version,
+                tenant_id,
+            )
+            if row is None:
+                raise AdminConflict("source tenant binding changed")
+            return {
+                "id": row["source_id"],
+                "source_id": row["source_id"],
+                "tenant_id": row["tenant_id"],
+                "row_version": row["row_version"],
+                "updated_at": str(row["updated_at"]),
+                "before_fingerprint": _fingerprint(dict(before)),
+            }
+
+        return await self._execute(
+            actor=actor,
+            command="source.tenant_bind",
+            target_type="source_tenant_binding",
+            target_id=source_id,
+            source_id=source_id,
+            company_id=None,
+            reason=reason,
+            request_id=request_id,
+            idempotency_key=idempotency_key,
+            request=request,
+            mutation=mutation,
+        )
+
     async def create_source(
         self,
         *,

@@ -324,6 +324,16 @@ class AdminRepository:
         )
         return _json_record(row) if row is not None else None
 
+    async def tenant_for_source(self, ctx: AdminContext, source_id: str) -> str | None:
+        """Return only the explicitly registered tenant for an authorized source."""
+        if not ctx.can_admin_source(source_id):
+            return None
+        row = await self.db.require_pool().fetchrow(
+            "SELECT tenant_id FROM bag.sources WHERE source_id=$1 AND enabled=true",
+            source_id,
+        )
+        return row["tenant_id"] if row is not None else None
+
     async def source_model(self, ctx: AdminContext, source_id: str):
         if not ctx.can_admin_source(source_id):
             return None
@@ -1352,6 +1362,35 @@ class AdminAPI:
         except Exception as exc:  # noqa: BLE001 - redact API boundary failures
             return self._mutation_error(exc)
 
+    async def source_tenant_bind(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if self.mutations is None:
+            return self._disabled()
+        # Tenant assignment changes the boundary used for cross-service ledger reads.
+        # Only an unscoped platform administrator with recent step-up may set it.
+        if ctx.source_scope("PLATFORM_ADMIN") is not None:
+            return self._denied()
+        guard = self._step_up_guard(ctx)
+        if guard is not None:
+            return guard
+        try:
+            source_id = request.path_params["source_id"]
+            body = await _json_body(request)
+            result = await self.mutations.bind_source_tenant(
+                actor=self._actor(ctx),
+                source_id=source_id,
+                tenant_id=body.get("tenant_id"),
+                expected_version=body.get("expected_version"),
+                reason=str(body.get("reason", "")),
+                request_id=_request_id(request),
+                idempotency_key=request.headers.get("idempotency-key", ""),
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            return self._mutation_error(exc)
+
     async def company_update(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
@@ -1910,6 +1949,7 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ("/admin/v1/overview", ["GET"], api.overview_view),
         ("/admin/v1/sources", ["GET"], api.sources),
         ("/admin/v1/sources/{source_id}", ["GET"], api.source_detail_view),
+        ("/admin/v1/sources/{source_id}/tenant-binding", ["PUT"], api.source_tenant_bind),
         ("/admin/v1/companies", ["GET"], api.companies),
         ("/admin/v1/intake/preview", ["POST"], api.intake_preview),
         ("/admin/v1/intake/manual-preview", ["POST"], api.intake_manual_preview),
