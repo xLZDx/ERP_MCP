@@ -2734,3 +2734,7 @@ S17-05 must read the durable change ledger using `(tenant_id, company_id)`, whil
 ## 2026-11-18 — Bind both Admin and change-ledger scope identities
 
 The S17-05 reader cannot equate Admin's `(source_id, company UUID)` with the change ledger's `(tenant_id, company_id)`. Keep migration 019 immutable after its source-to-tenant binding was committed; add migration 020 for the nullable, one-way company UUID-to-ledger-company mapping. Bind it through a separate audited, idempotent, expected-version endpoint restricted to global `PLATFORM_ADMIN` with recent step-up. Resolve the two keys only by joining the enabled registered source and exact enabled company after the current company allow/deny check. Missing mappings or denial produce no ledger scope. This does not compose or qualify a live ledger connection. Migration, runtime, and named tests remain NOT_RUN.
+
+## 2026-11-18 — Refresh S17 program report after scope-binding commit
+
+Regenerate the standard Russian live report after commit `faaf2bae` so its provenance names the current HEAD and its document copies include the scope-binding decision. This is a generated documentation snapshot only; it does not change any task status, test evidence, review result, runtime state, or acceptance count.

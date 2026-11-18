@@ -951,3 +951,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: Admin source scope and durable ledger tenant scope are different identities. Rule: persist an explicit, audited source-to-tenant mapping, make legacy rows fail closed, bind it only through a privileged step-up operation, and recheck company authorization before disclosure; never equate IDs across registries.
 
 - 2026-11-18 SUCCESS: Admin company UUIDs and durable change-ledger company keys are distinct identifiers. Rule: persist both source-to-tenant and company-to-ledger-company bindings as explicit, immutable, audited assignments; resolve only the exact joined scope after current company allow/deny authorization, and never cast or infer one identifier as another.
+
+- 2026-11-18 SUCCESS: Generated project status reports snapshot the source HEAD and include browsable copies of normative documents. Rule: regenerate after source/evidence commits; do not interpret report generation as acceptance or test evidence.
