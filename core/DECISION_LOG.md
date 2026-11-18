@@ -2536,3 +2536,11 @@ At exact head `8f8fb9e4558eab4a6ab49f3fefc4fc918abcae39`, the designated functio
 
 The preview must offer the same confirmation requirement the decision path enforces. Read the current target, validate its version and reject invalid amount thresholds before allocating a decision reference. Derive the rule in the approval core and use it at both boundaries. Keep the existing requirement for POST and amounts greater than the registered threshold.
 
+At exact `572546a6d5271edccb63a3069326e272f9f2b95e`, the named page and core selection reported 10 passed in 1.50s, exit 0. It covers invalid threshold types and values, equal and above-threshold cases, target changes, and the retained approval preview checks.
+
+## 2026-11-18 - Check rendered S16 preview bytes against the approval digest
+
+Read the canonical preview from the rendered page and compare its independently computed SHA-256 with the displayed digest and server snapshot digest. The existing escaped text assertion alone does not bind a specific rendered element to the digest. The separate fresh re-authentication criterion is in the backlog: the current principal stores an MFA flag and an expiry, while the session tracks age and activity rather than fresh action-bound proof.
+
+The offline page regression also obtains a real preview, revokes the approver in the injected registry and asserts that the next preview and the outstanding decision both refuse, without issuing another reference or changing the receipt.
+

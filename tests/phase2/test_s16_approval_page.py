@@ -59,6 +59,20 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
     assert page.headers["referrer-policy"] == "no-referrer"
     assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
     assert html.escape(snapshot.canonical_preview_bytes.decode("utf-8")) in page.text
+    preview_section = re.search(
+        r'<section aria-labelledby="canonical-preview">(.*?)</section>',
+        page.text,
+        re.DOTALL,
+    )
+    assert preview_section is not None
+    displayed_preview = re.search(r"<pre>(.*?)</pre>", preview_section.group(1), re.DOTALL)
+    displayed_digest = re.search(r"SHA-256 preview digest: <code>([0-9a-f]{64})</code>",
+                                  preview_section.group(1))
+    assert displayed_preview is not None and displayed_digest is not None
+    visible_preview_bytes = html.unescape(displayed_preview.group(1)).encode("utf-8")
+    assert visible_preview_bytes == snapshot.canonical_preview_bytes
+    visible_preview_digest = hashlib.sha256(visible_preview_bytes).hexdigest()
+    assert displayed_digest.group(1) == visible_preview_digest == snapshot.preview_digest
     assert env.session.session_id not in page.text
     assert env.session.csrf_secret not in page.text
     decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', page.text)
@@ -119,6 +133,39 @@ def test_preview_rejects_truthy_integer_independence_before_issuing_nonce():
     assert '<form' in accepted.text
     assert env.nonce_source._counter == nonce_count_before + 1
     assert env.store.get(snapshot.change_id) == before_receipt
+
+
+def test_approval_page_refuses_preview_and_decision_after_approver_revocation():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-page-approver-revoked")
+    client = _client(env)
+    preview = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+
+    assert preview.status_code == 200
+    decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', preview.text)
+    csrf_token = re.search(r'name="csrf_token" value="([^"]+)"', preview.text)
+    assert decision_ref is not None and csrf_token is not None
+    stale_form = {"decision_ref": decision_ref.group(1),
+                  "csrf_token": csrf_token.group(1), "decision": "APPROVE"}
+    receipt_before_revoke = env.store.get(snapshot.change_id)
+    nonce_count_before_revoke = env.nonce_source._counter
+
+    env.principals.revoke(env.approver.principal_id)
+
+    next_preview = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+    refused_decision = client.post(
+        f"/approval/{snapshot.change_id}/decision",
+        data=stale_form,
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert next_preview.status_code == 403
+    assert "<form" not in next_preview.text
+    assert refused_decision.status_code == 403
+    assert "Decision recorded." not in refused_decision.text
+    assert env.nonce_source._counter == nonce_count_before_revoke
+    assert env.store.get(snapshot.change_id) == receipt_before_revoke
+    assert env.apply_port.calls == 0
 
 
 @pytest.mark.parametrize("threshold", ["Infinity", "-1", 1, True], ids=[
