@@ -916,3 +916,7 @@ GPT-PM approved the bounded offline implementation and S5 closure (request da9af
 ## 2026-11-18 - First named S6 standard engine run
 
 The e2e-runner ran test_native_engine_reports.py at b398851c85f2ed39e7d120a3989460e7e82a21d4. Result: 2 failed, 59 passed in 1.08s, exit 1. The new external processing test failed before report selection because its private root was not configured to use the temporary fixture. The existing component-list assertion still expected the historical four-service fake lane, while the current orchestrator includes capability_acceptor and capability_observer. The module uses test doubles and did not connect to 1C.
+
+## 2026-11-18 - Final S6 bounded acceptance
+
+The e2e-runner ran D:/Repo/ERP_MCP/.venv/Scripts/python.exe -m pytest -q --confcutdir=tests/real1c tests/real1c/test_native_engine_reports.py from the clean S6 worktree at 9591e781505d75769e80f182e90972972f9f9fbe with that worktree's source and root on PYTHONPATH. Result: 61 passed in 0.87s, exit 0. This module used fake COM objects. Code, Python and silent-failure reviewers found no actionable issue in the exact source/test delta. GPT-PM approved bounded implementation and 8/8 engineering closure (request 9504fced-efe7-4bef-b2fc-8c8e8cc41387, reply 9a9b32c3-c18e-509c-a796-6876488f07c8). PR #62 merged that head as dbfa62d2f74838300108f7424f45111e3a986c62. Native product qualification remains NOT_RUN.
