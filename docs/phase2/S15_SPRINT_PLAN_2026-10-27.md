@@ -3,6 +3,14 @@
 Status: DRAFT planning artifact. It does not alter `governance/GATE_MANIFEST.json`, pass any gate, qualify or enable the writer, or authorize
 any COM write or production activity. Nothing below is implemented unless a cited change record says so.
 
+## 2026-11-18 execution baseline
+
+S13 bounded engineering is recorded in PR 58 and S14 bounded engineering in PR 66. Their operational prerequisites remain open. The maintained task IDs are the five S15 rows in the current project plan and ledger. The existing implementation in `src/erp_mcp_s15/` and its tests are the starting point. The oracle dependency already exists in source. Start evidence review at S15-01, then follow the project-plan row order. Review changes to shared oracle behavior before treating a new verifier result as accepted.
+
+Run named offline acceptance cases through the designated test roles. Keep their results separate from historical fixture runs and from live 1C or ledger integration. CR-390 records GPT-PM REJECT at `6af54a3`; CR-391 records verification after its source fixes. A fresh bounded sprint review remains due for the exact current candidate.
+
+Use the measured one-line receipt draft contract for this offline verification pass. Carry the historical contract-update scope discrepancy, authenticated 1C readers, full-population reconciliation adapters and native register evidence in the backlog. Section 6 remains the source of the existing offline assertions.
+
 ## 1. Authority and sources
 
 - Sprint and story IDs: `S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md` (S15 = V2-S15-01 .. V2-S15-05: verifier, independent oracle,
@@ -100,7 +108,7 @@ to CREATE_DRAFT; how document version is read back (UNKNOWN, A14).
 ### Epic E15-2 Independent versioned oracle (V2-S15-02)
 
 Assertions:
-1. Each verification result carries the oracle version; changing the version changes the recorded value.
+1. Each verification result identifies the typing table used, including unsupported, inconclusive, and mismatch results. The exact default keeps `s15-oracle-1`. Alternate tables carry the supplied release label with a SHA-256 digest of the rules, so reusing the default label with different rules cannot claim the default version.
 2. An import-graph check shows that verifier and oracle modules do not import preview or normalization modules (plan S15).
 3. The oracle's total rule takes the includes-VAT flag and the approved `vat_amount` as inputs; with the flag false the expected total is amount plus
    VAT (20 + 1.82 = 21.82), with true it equals the amount (A5).
@@ -116,7 +124,7 @@ Assertions:
 1. Comparison runs through the test-lane read-only MCP; its result is labelled as a machine-read agreement, never a native 1C PASS.
 2. Expected differences are compared as multisets (document ref, N movement lines, balance delta); an extra or a missing item is red (E1).
 3. An unrelated baseline difference neither masks an expected effect nor imitates one (E43).
-4. Incomplete data yields INCONCLUSIVE; amounts and names are hidden unless `show_values=true` is passed.
+4. Incomplete data yields INCONCLUSIVE; amounts and names are hidden unless `show_values` is the Boolean true. Check lane bindings before and after both reads. Require each baseline and current reader snapshot to carry the identity of the source that supplied the data. Missing or mismatched snapshot bindings are inconclusive even when the declared pairs agree. Authenticated source binding remains an obligation of the concrete reader.
 Open questions: which lanes are A and B (UNKNOWN); how the baseline is re-captured after clone re-creation (section 3).
 
 ### Epic E15-4 Bidirectional ledger<->1C check, R-c (V2-S15-04)
@@ -126,7 +134,7 @@ Assertions:
 2. 1C->ledger: a document without a marker, and an edit that left the marker unchanged but changed the content hash, are each detected (E12, E43).
 3. The check runs at each of three triggers: startup, after a restore, and periodically; a test per trigger asserts that a run occurs (the interval is
    an open question).
-4. Skew after restore (ledger older or newer than 1C; a valid but old chain) leaves applies blocked until the check is clean (E25).
+4. Skew after restore (ledger older or newer than 1C; a valid but old chain) leaves applies blocked until the check is clean (E25). An enabled writer still needs a finite positive freshness window and a valid age within that window. An unavailable or invalid clock cannot authorize an apply.
 5. A document found after an `outcome_unknown=True` result is classified by marker lookup with no resend (A11).
 6. The "applies blocked" gate is inert while the writer is disabled: with the writer disabled, a dirty reconciliation does not change the behavior of
    any existing path (test: dirty state with writer disabled -> no new refusal on non-write paths).

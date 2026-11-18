@@ -11,8 +11,10 @@ binding set; the divergence check in the verifier is what detects a mismatch).
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from enum import Enum
@@ -71,18 +73,42 @@ class FieldRule:
     catalog: str | None = None
 
     def __post_init__(self) -> None:
-        if (self.field_type is FieldType.REFERENCE) != (self.catalog is not None):
+        if (type(self.path) is not str or not self.path
+                or type(self.scope) is not Scope or type(self.field_type) is not FieldType
+                or (self.catalog is not None and type(self.catalog) is not str)
+                or (self.field_type is FieldType.REFERENCE) != (self.catalog is not None)):
             raise ValueError("ORACLE_RULE_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
 class TypingTable:
     rules: tuple[FieldRule, ...]
+    version: str
+    result_version: str = field(init=False)
 
     def __post_init__(self) -> None:
-        paths = [r.path for r in self.rules]
-        if not self.rules or len(paths) != len(set(paths)):
+        # The S16 result serializer accepts at most 128 printable ASCII characters. A
+        # non-canonical table records its caller-supplied label plus a full SHA-256 digest.
+        if (type(self.version) is not str or not self.version.strip()
+                or len(self.version) > 63
+                or any(ord(char) < 0x20 or ord(char) > 0x7E or char == "@"
+                       for char in self.version)):
+            raise ValueError("ORACLE_VERSION_INVALID")
+        if (type(self.rules) is not tuple or not self.rules
+                or any(type(rule) is not FieldRule for rule in self.rules)):
             raise ValueError("ORACLE_TABLE_INVALID")
+        paths = [r.path for r in self.rules]
+        if len(paths) != len(set(paths)):
+            raise ValueError("ORACLE_TABLE_INVALID")
+        result_version = self.version
+        if not (self.version == ORACLE_VERSION and self.rules == _RECEIPT_RULES):
+            serialized = json.dumps(
+                [(rule.path, rule.scope.value, rule.field_type.value, rule.catalog)
+                 for rule in self.rules],
+                ensure_ascii=True, separators=(",", ":"),
+            ).encode("ascii")
+            result_version = f"{self.version}@{hashlib.sha256(serialized).hexdigest()}"
+        object.__setattr__(self, "result_version", result_version)
 
     def get(self, path: str) -> FieldRule | None:
         for rule in self.rules:
@@ -95,7 +121,8 @@ class TypingTable:
 
 
 # Reviewed typing of the supplier-receipt draft with one line (assumed logical paths).
-RECEIPT_TYPING_TABLE = TypingTable((
+# Keep the immutable canonical tuple explicit so only this exact table can use the bare release.
+_RECEIPT_RULES = (
     FieldRule("header.organization", Scope.HEADER, FieldType.REFERENCE, "Organizations"),
     FieldRule("header.counterparty", Scope.HEADER, FieldType.REFERENCE, "Counterparties"),
     FieldRule("header.contract", Scope.HEADER, FieldType.REFERENCE, "Contracts"),
@@ -108,7 +135,8 @@ RECEIPT_TYPING_TABLE = TypingTable((
     FieldRule(AMOUNT_PATH, Scope.LINE, FieldType.NUMBER),
     FieldRule("line.vat_rate", Scope.LINE, FieldType.ENUMERATION),
     FieldRule(VAT_AMOUNT_PATH, Scope.LINE, FieldType.NUMBER),
-))
+)
+RECEIPT_TYPING_TABLE = TypingTable(_RECEIPT_RULES, version=ORACLE_VERSION)
 
 
 def _real_day(text: str) -> bool:

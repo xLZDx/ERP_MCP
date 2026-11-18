@@ -687,7 +687,7 @@ def test_runner_rejects_a_non_positive_retry_interval(retry):
                              required_scope=SCOPE, retry_interval_seconds=retry)
 
 
-@pytest.mark.parametrize("max_age", [0, -1, float("nan")])
+@pytest.mark.parametrize("max_age", [0, -1, float("nan"), float("inf")])
 def test_gate_rejects_a_non_positive_max_age(max_age):
     with pytest.raises(ValueError, match="GATE_MAX_AGE_INVALID"):
         ApplyGate(lambda: True, max_age)
@@ -1127,7 +1127,10 @@ def test_dirty_reconciliation_does_not_block_while_the_writer_is_disabled(trigge
 
 
 def test_fresh_gate_with_writer_disabled_is_not_blocked_and_never_raises():
-    gate = ApplyGate(lambda: False, 10.0)
+    def broken_clock():
+        raise RuntimeError("clock unavailable")
+
+    gate = ApplyGate(lambda: False, 10.0, broken_clock)
     assert gate.applies_blocked() is False
     gate.ensure_apply_allowed()
     gate.mark_restore()
@@ -1225,6 +1228,31 @@ def test_a_clock_that_went_backwards_never_leaves_a_clean_open():
     assert gate.applies_blocked() is False
     clock.now = 50.0
     assert gate.applies_blocked() is True
+
+
+@pytest.mark.parametrize("bad_time", [float("nan"), float("inf"), RuntimeError("clock failed")],
+                         ids=["nan", "infinity", "raises"])
+def test_a_clean_gate_blocks_when_its_clock_becomes_invalid_and_recovers_when_fresh(bad_time):
+    current = {"value": 0.0}
+
+    def clock():
+        value = current["value"]
+        if isinstance(value, BaseException):
+            raise value
+        return value
+
+    gate = ApplyGate(lambda: True, 30.0, clock)
+    gate.record(CLEAN_REPORT, gate.epoch)
+    assert gate.applies_blocked() is False
+
+    current["value"] = bad_time
+    assert gate.applies_blocked() is True
+    with pytest.raises(ApplyBlockedError, match="RECONCILIATION_NOT_CLEAN"):
+        gate.ensure_apply_allowed()
+
+    current["value"] = 10.0
+    assert gate.applies_blocked() is False
+    gate.ensure_apply_allowed()
 
 
 def test_a_stalled_scheduler_lets_the_clean_expire_until_the_next_clean_tick():

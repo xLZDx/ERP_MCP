@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 
 import pytest
 
@@ -178,14 +179,29 @@ ID_A, ID_B = "gateway-base-a", "gateway-base-b"
 
 
 def baseline(snap_a=None, snap_b=None, id_a=ID_A, id_b=ID_B):
-    """A baseline bound to the identity pair the default FakeLaneReader reports."""
-    return LaneBaseline(snap() if snap_a is None else snap_a,
-                        snap() if snap_b is None else snap_b, id_a, id_b)
+    """A baseline whose captured snapshots are bound to their declared source identities."""
+    snapshot_a = snap() if snap_a is None else snap_a
+    snapshot_b = snap() if snap_b is None else snap_b
+    if type(snapshot_a) is LaneSnapshot and snapshot_a.source_identity is None:
+        snapshot_a = replace(snapshot_a, source_identity=id_a)
+    if type(snapshot_b) is LaneSnapshot and snapshot_b.source_identity is None:
+        snapshot_b = replace(snapshot_b, source_identity=id_b)
+    return LaneBaseline(snapshot_a, snapshot_b, id_a, id_b)
 
 
 class FakeLaneReader:
-    def __init__(self, lanes, fail_on=None, error=None, identities=None, identity_error=None):
-        self.lanes = lanes
+    def __init__(self, lanes, fail_on=None, error=None, identities=None, identity_error=None,
+                 snapshot_sources=None):
+        # Snapshot provenance is captured from the fixture's data source at construction time.
+        # It is deliberately independent from source_identity(), which models the reader's
+        # preflight/post-read alias lookup and can change during a test.
+        actual_sources = {"A": ID_A, "B": ID_B} if snapshot_sources is None else snapshot_sources
+        self.lanes = {
+            lane: (replace(snapshot, source_identity=actual_sources.get(lane))
+                   if type(snapshot) is LaneSnapshot and snapshot.source_identity is None
+                   and actual_sources.get(lane) is not None else snapshot)
+            for lane, snapshot in lanes.items()
+        }
         self.fail_on = fail_on
         self.error = error or RuntimeError("lane down")
         self.identities = {"A": ID_A, "B": ID_B} if identities is None else identities
@@ -251,6 +267,15 @@ def test_values_are_shown_only_when_requested():
     assert result.status is S.MISMATCH
     assert dict(result.extra_items) == {extra: 1}
     assert dict(result.missing_items) == {BAL: 1}
+
+
+@pytest.mark.parametrize("show_values", ["true", 1], ids=["truthy_string", "truthy_int"])
+def test_non_boolean_truthy_show_values_never_exposes_direct_comparison_items(show_values):
+    extra = DiffItem("movement", "SECRET-KEY-77", "123456.78")
+    result = compare(EFFECT[:3] + (extra,), show_values=show_values)
+    assert result.status is S.MISMATCH and result.extra_count == 1
+    assert result.extra_items == () and result.missing_items == ()
+    assert "SECRET-KEY-77" not in repr(result) and "123456.78" not in repr(result)
 
 
 def test_show_values_defaults_to_false_in_via_readers_as_well():
@@ -412,7 +437,87 @@ def test_two_distinct_identities_with_matching_provenance_match_and_carry_no_rea
     reader = good_reader()
     result = via(reader)
     assert result.status is S.MATCH and result.reason == ""
-    assert reader.identity_calls == ["A", "B"] and reader.calls == ["A", "B"]
+    assert reader.lanes["A"].source_identity == ID_A
+    assert reader.lanes["B"].source_identity == ID_B
+    assert reader.identity_calls == ["A", "B", "A", "B"]
+    assert reader.calls == ["A", "B"]
+
+
+def test_snapshot_from_foreign_source_is_inconclusive_and_hides_values():
+    secret = DiffItem("document", "FOREIGN-SECRET")
+    reader = good_reader(snapshot_sources={"A": ID_A, "B": ID_B})
+    reader.lanes["B"] = replace(snap(*EFFECT, secret), source_identity="foreign-gateway")
+
+    result = via(reader, show_values=True)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "SNAPSHOT_IDENTITY_MISMATCH"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
+    assert "FOREIGN-SECRET" not in repr(result)
+
+
+def test_snapshot_without_source_provenance_is_inconclusive():
+    reader = good_reader(snapshot_sources={"A": ID_A, "B": None})
+
+    result = via(reader, show_values=True)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "SNAPSHOT_IDENTITY_UNKNOWN"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
+
+
+@pytest.mark.parametrize("show_values", ["true", 1], ids=["truthy_string", "truthy_int"])
+def test_non_boolean_truthy_show_values_never_exposes_reader_comparison_items(show_values):
+    secret = DiffItem("document", "SECRET-DOC")
+    reader = FakeLaneReader({"A": snap(), "B": snap(*EFFECT, secret)})
+    result = via(reader, show_values=show_values)
+    assert result.status is S.MISMATCH and result.extra_count == 1
+    assert result.extra_items == () and result.missing_items == ()
+    assert "SECRET-DOC" not in repr(result)
+
+
+def test_source_identity_change_during_reads_is_inconclusive_and_hides_values():
+    secret = DiffItem("document", "SECRET-DOC")
+
+    class ChangingIdentityReader(FakeLaneReader):
+        def read_snapshot(self, lane):
+            snapshot = super().read_snapshot(lane)
+            if lane == "B":
+                self.identities["B"] = "gateway-replaced-during-read"
+            return snapshot
+
+    reader = ChangingIdentityReader(
+        {"A": snap(), "B": snap(*EFFECT, secret)})
+    result = via(reader, show_values=True)
+    assert result.status is S.INCONCLUSIVE and result.reason == "LANE_IDENTITY_CHANGED"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
+    assert "SECRET-DOC" not in repr(result)
+
+
+@pytest.mark.parametrize("post_identity", [None, "   ", "raise"],
+                         ids=["unavailable", "blank", "exception"])
+def test_unavailable_post_read_identity_is_inconclusive_and_hides_values(post_identity):
+    secret = DiffItem("document", "SECRET-DOC")
+
+    class PostReadIdentityFailureReader(FakeLaneReader):
+        def source_identity(self, lane):
+            if self.calls:
+                self.identity_calls.append(lane)
+                if post_identity == "raise":
+                    raise RuntimeError("identity lookup failed after read")
+                return post_identity
+            return super().source_identity(lane)
+
+    reader = PostReadIdentityFailureReader(
+        {"A": snap(), "B": snap(*EFFECT, secret)})
+    result = via(reader, show_values=True)
+    assert result.status is S.INCONCLUSIVE and result.reason == "LANE_IDENTITY_UNKNOWN"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
+    assert "SECRET-DOC" not in repr(result)
 
 
 def test_a_real_difference_between_distinct_lanes_is_a_mismatch_with_no_reason():
@@ -518,6 +623,33 @@ def test_a_baseline_of_another_pair_or_without_provenance_is_refused_and_lanes_a
     result = compare_via_readers(reader, "A", "B", bad_base, ExpectedDifferences(EFFECT))
     assert result.status is S.INCONCLUSIVE and result.reason == "BASELINE_PROVENANCE_MISMATCH"
     assert result.status is not S.MATCH
+    assert reader.calls == []
+
+
+def test_baseline_snapshot_from_foreign_source_is_rejected_even_with_correct_pair_labels():
+    captured = baseline()
+    foreign_baseline = replace(
+        captured,
+        snapshot_b=replace(captured.snapshot_b, source_identity="foreign-gateway"),
+    )
+    reader = good_reader()
+
+    result = via(reader, base=foreign_baseline)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "BASELINE_PROVENANCE_MISMATCH"
+    assert reader.calls == []
+
+
+def test_baseline_snapshot_without_source_provenance_is_rejected_before_reads():
+    captured = baseline()
+    unbound_baseline = replace(captured, snapshot_b=snap(*EFFECT))
+    reader = good_reader()
+
+    result = via(reader, base=unbound_baseline)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "BASELINE_PROVENANCE_MISMATCH"
     assert reader.calls == []
 
 

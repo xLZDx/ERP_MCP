@@ -820,3 +820,29 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: Existing fixtures reused one approval across distinct changes and one authority across separate clones. Rule: create separate fixture identities for separate real-world operations and reserve shared identities for deliberate replay scenarios.
 
+- 2026-11-18 SUCCESS: S14 received exact-head approval after named offline tests and independent review. Rule: keep role provenance, synthetic behavior, and operational proof distinct through review and merge.
+
+- 2026-11-18 SUCCESS: Existing S15 implementation and its original review history were located before new coding. Rule: resolve stale plan assumptions against current source and refresh evidence where the implementation already exists.
+
+- 2026-11-18 SHORTCOMING: An oracle test changed the global version label and another changed the table, but neither checked that a different table carried its own label. Rule: pair each ruleset with its version and assert both together in verification results.
+
+- 2026-11-18 FAILURE: The S15-02 test runner first used system Python and failed loading the project's MCP dependency during collection. Rule: invoke the repository virtual environment explicitly for named test runs.
+
+- 2026-11-18 FAILURE: An exact-head test invocation used an incorrect import-graph filename before the corrected nine-case run. Rule: resolve exact node paths from the current checkout before handing off a named run.
+
+- 2026-11-18 SHORTCOMING: The A-to-B SIM read accepted a before-read identity without checking for a later remap, and a truthy non-Boolean value could disclose details. Rule: recheck source identity after reads and require explicit Boolean true to reveal values.
+
+- 2026-11-18 SHORTCOMING: The write gate expressed staleness as two comparisons that both evaluate false for NaN. Rule: require a valid age inside a finite freshness window before admitting an enabled writer.
+
+- 2026-11-18 SUCCESS: The existing negative controls tie named field and movement discrepancies to an undistorted positive baseline. Rule: verify the retained controls by name and preserve their synthetic evidence boundary.
+
+- 2026-11-18 SHORTCOMING: Rechecking lane identities before and after the read missed a source that switched and reverted during one call. The Python reviewer found the counterexample. Rule: bind provenance to the returned snapshot and validate it before admitting data to a comparison.
+
+- 2026-11-18 SHORTCOMING: The first oracle change still let different rules claim an existing release label. The silent-failure reviewer found the collision. Rule: derive alternate result identities from immutable rules as well as the supplied label.
+
+- 2026-11-18 SUCCESS: Keeping the configured label separate from the computed result identity preserves normal table reconstruction. Rule: recompute the identifier from its inputs and retain the constructor label unchanged.
+
+- 2026-11-18 SHORTCOMING: The first snapshot provenance fix verified current data but trusted the baseline's declared labels. The re-review identified the same failure on the baseline side. Rule: validate provenance for both sides of any comparison under the same identity contract.
+
+- 2026-11-18 FAILURE: The S15 baseline test author invoked an unrequested whitespace check while inspecting a scoped diff. Rule: inspect changed text with plain git diff and keep prohibited automated checks out of authoring and acceptance evidence.
+
