@@ -3,6 +3,14 @@
 Status: DRAFT planning artifact. It does not alter `governance/GATE_MANIFEST.json`, pass any gate, qualify or enable the writer, or authorize
 any COM write or production activity. Nothing below is implemented unless a cited change record says so.
 
+## 2026-11-18 execution baseline
+
+S13 bounded engineering is recorded in PR 58 and S14 bounded engineering in PR 66. Their operational prerequisites remain open. The maintained task IDs are the five S15 rows in the current project plan and ledger. The existing implementation in `src/erp_mcp_s15/` and its tests are the starting point. The oracle dependency already exists in source. Start evidence review at S15-01, then follow the project-plan row order. Review changes to shared oracle behavior before treating a new verifier result as accepted.
+
+Run named offline acceptance cases through the designated test roles. Keep their results separate from historical fixture runs and from live 1C or ledger integration. CR-390 records GPT-PM REJECT at `6af54a3`; CR-391 records verification after its source fixes. A fresh bounded sprint review remains due for the exact current candidate.
+
+Use the measured one-line receipt draft contract for this offline verification pass. Carry the historical contract-update scope discrepancy, authenticated 1C readers, full-population reconciliation adapters and native register evidence in the backlog. Section 6 remains the source of the existing offline assertions.
+
 ## 1. Authority and sources
 
 - Sprint and story IDs: `S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md` (S15 = V2-S15-01 .. V2-S15-05: verifier, independent oracle,

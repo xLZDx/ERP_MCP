@@ -1933,3 +1933,7 @@ Reuse the measured narrow role on clone `818HA_p2diff` as the reference. The Oct
 
 Verify that the selected identity provider issues dedicated private-writer tokens and that its read clients use configured read audiences. Exercise both actual listeners against normal, mixed, and wrong-audience tokens and record denial before any 1C call. The authorized deployed identity-provider binding is not in the current evidence.
 
+## S15 operational readers and write catalogue reconciliation
+
+Implement and qualify authenticated 1C readers and full-population reconciliation ports against a seeded disposable clone with matching scope and provenance. Observe real movement and version read-back separately from fixture results. Resolve the historical conflict between the controlled-change plan and the sprint map before extending the measured receipt-draft catalogue to contract changes. The qualified channel owner is unassigned in the current plan.
+
