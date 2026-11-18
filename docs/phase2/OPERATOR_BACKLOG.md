@@ -1925,3 +1925,7 @@ Resolve the triage timing discrepancy before operational acceptance. The offline
 
 On the qualified 1C clone, execute separate approved create, post, and unpost changes and independently inspect the recorder registers before and after each. Confirm no draft movements, the approved post movements, removal by unpost, and no payment or unexpected register effects. Record the exact clone, channel, receipt shape, and roles. The qualified channel owner is unassigned in the current plan.
 
+## S14-06 effective rights for the selected writer identity
+
+Reuse the measured narrow role on clone `818HA_p2diff` as the reference. The October 12 record covers 53 objects and the October 27 follow-up covers 57 after four catalog read grants in `c4ab1ea`. Before enabling the selected writer, bind its actual account and clone identity, compare effective rights with the measured role, and repeat receipt admission and denied payment/delete controls on that account. The earlier clone measurements do not establish the identity or inherited grants of the selected channel. The qualified channel owner is unassigned in the current plan.
+
