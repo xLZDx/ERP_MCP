@@ -884,4 +884,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: Injected clock and nonce sources were insufficient for deterministic S16 transcript replay because generated proposal and correlation UUIDs remained random. Rule: identify every response-affecting generated value and inject a validated deterministic source at synthetic boundaries while retaining secure random defaults.
 
+- 2026-11-18 SUCCESS: The first S16-05 replay run caught two malformed test-fixture assignments before acceptance; the corrected named E2E file passed. Rule: treat test-authoring defects as failures, fix them in the owning test file, and rerun the exact failed target before recording acceptance.
+
 </pre></main></body></html>

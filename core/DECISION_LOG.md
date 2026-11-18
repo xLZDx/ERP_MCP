@@ -2594,3 +2594,7 @@ The private S16 ASGI wrapper selected the tool app for every path that was not a
 
 S16-05 requires identical fake-state responses when a recorded transcript is replayed. Proposal IDs, rollback IDs and transport correlation IDs were generated randomly, so the existing injected clock and nonce did not make responses deterministic. Add an `IdSource` seam with a secure random UUIDv4 default and a deterministic, thread-safe fake for tests; reject non-UUIDv4 or malformed injected values. This supports synthetic replay only and does not establish any real-client observation. Acceptance tests are authored but NOT_RUN until all S16 stories are coded.
 
+## 2026-11-18 — Record bounded S16-05 replay acceptance
+
+At HEAD `107a6f2174bfd1dbf8e29df6ffbcdd2ddf68b2f9`, the assigned functional reviewer passed the four named S16 modules (130 tests, one deprecation warning) and the assigned E2E runner passed `test_s16_replay.py` (4 tests). An initial E2E run found two test-only fixture unpacking errors; those were corrected and the named file passed on rerun. Mark S16-05 `ACCEPTED_BOUNDED` for hand-authored fake transcripts and the fake approval/apply/verify journey only. Keep real clients, deployed gateway, IdP handshake and runtime NOT_RUN. S16-04 remains partial because current route checks cover only the ASGI listener, not the registered 1C writer target.
+
