@@ -1,7 +1,7 @@
 ---
 project: ERP_MCP
 as_of: 2026-11-18
-active_sprint: S16
+active_sprint: S17
 scope: single_sprint
 approved_sprints: FIN, REBASELINE, MAIN_CONSOLIDATION
 operator_approved: true
@@ -63,8 +63,8 @@ The audit/preparation sprint completed locally in its bounded scope. Its PM appr
 | S13 | Ledger and audit anchor | CLOSED_BOUNDED_SPRINT (5/5) | PR #58 merged at 1f0192d after exact-head approval of 6dc18f0. Operational provider, writer and coordinated recovery prerequisites remain in the backlog. |
 | S14 | 1C write port | CLOSED_BOUNDED_SPRINT (7/7) | PR #66 merged at ecdb3db after GPT-PM approval of exact head 1eb298c. All seven stories are accepted for bounded offline engineering. Licensed 1C writer qualification and production activation remain explicitly open in the operational backlog. |
 | S15 | Verification and reconciliation | CLOSED_BOUNDED_SPRINT (5/5) | PR #67 merged at bfd2661e after exact-head approval of 22dea9b. All five stories have bounded offline acceptance. Authenticated live 1C readers and ledger integration remain in the operational backlog. |
-| S16 | Independent approval and MCP | IN_PROGRESS (S16-04 private-network exposure) | S16-01/02/03/05 have bounded synthetic acceptance. S16-04 private ASGI ingress is synthetic-tested; outbound writer-target route enforcement and gateway binding are blocked by the S16 prohibition on writer wiring and are moved to the private-writer backlog. Qualified identity, cookie/session adapter, secret-store and durable audit integration remain separate backlog items. |
-| S17 | Document intake and workbench | QUEUED | Document intake and workbench. |
+| S16 | Independent approval and MCP | CLOSED_BOUNDED_SPRINT (4/5; S16-04 remains PARTIAL) | PR #68 merged at `ffa1a0b2759469e4a1266c98a056f69b6295bdda` after GPT-PM APPROVE for exact HEAD `12df2ca369d694860d16317ef97fc20a41905e8c`. S16-01/02/03/05 are bounded accepted; S16-04 outbound writer-target routing and listener binding remain prohibited/partial and are transferred to `docs/phase2/OPERATOR_BACKLOG.md`. This is not 5/5 or operational acceptance. |
+| S17 | Document intake and workbench | IN_PROGRESS | Start from the approved upload/manual-entry-only scope in `docs/sdlc/next-sprint-preparation.md`; no Drive integration. First task S17-01 establishes the untrusted-file boundary using bounded parsing and explicit Windows containment limits. |
 | S18 | Reliability and security | QUEUED | Reliability and security. |
 | S19 | Release candidate and acceptance | GIT_ACTIVITY_NOT_CLOSED | Release candidate and acceptance. |
 
