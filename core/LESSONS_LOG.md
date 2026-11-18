@@ -842,3 +842,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Keeping the configured label separate from the computed result identity preserves normal table reconstruction. Rule: recompute the identifier from its inputs and retain the constructor label unchanged.
 
+- 2026-11-18 SHORTCOMING: The first snapshot provenance fix verified current data but trusted the baseline's declared labels. The re-review identified the same failure on the baseline side. Rule: validate provenance for both sides of any comparison under the same identity contract.
+
+- 2026-11-18 FAILURE: The S15 baseline test author invoked an unrequested whitespace check while inspecting a scoped diff. Rule: inspect changed text with plain git diff and keep prohibited automated checks out of authoring and acceptance evidence.
+

@@ -236,6 +236,14 @@ def compare_via_readers(reader: LaneReader, lane_a: str, lane_b: str,
             or _canonical(baseline.lane_a_identity) != _canonical(identity_a)
             or _canonical(baseline.lane_b_identity) != _canonical(identity_b)):
         return _result(ComparisonStatus.INCONCLUSIVE, reason="BASELINE_PROVENANCE_MISMATCH")
+    baseline_snapshot_pair = (
+        _canonical(baseline.snapshot_a.source_identity)
+        if type(baseline.snapshot_a) is LaneSnapshot else None,
+        _canonical(baseline.snapshot_b.source_identity)
+        if type(baseline.snapshot_b) is LaneSnapshot else None,
+    )
+    if baseline_snapshot_pair != (_canonical(identity_a), _canonical(identity_b)):
+        return _result(ComparisonStatus.INCONCLUSIVE, reason="BASELINE_PROVENANCE_MISMATCH")
     try:
         post_a = reader.read_snapshot(lane_a)
         post_b = reader.read_snapshot(lane_b)

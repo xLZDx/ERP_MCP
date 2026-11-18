@@ -2520,3 +2520,5 @@ The silent-failure review independently confirmed the snapshot gap and found tha
 
 The rules digest covers the ordered field path, scope, field type and reference catalog. The configured release label remains an independent constructor field. Result identities stay within the existing 128-character printable ASCII response contract.
 
+At `7364df754065541ad174c2c0a7701fd7dfa26463`, 17 named provenance regression cases passed in 0.57s. Re-review confirmed the oracle fix and exposed the analogous baseline gap: declared pair metadata could still conceal a foreign source snapshot. Require the actual baseline snapshot identities to match the declared and current pair before fetching new snapshots.
+

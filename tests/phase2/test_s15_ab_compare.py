@@ -179,9 +179,14 @@ ID_A, ID_B = "gateway-base-a", "gateway-base-b"
 
 
 def baseline(snap_a=None, snap_b=None, id_a=ID_A, id_b=ID_B):
-    """A baseline bound to the identity pair the default FakeLaneReader reports."""
-    return LaneBaseline(snap() if snap_a is None else snap_a,
-                        snap() if snap_b is None else snap_b, id_a, id_b)
+    """A baseline whose captured snapshots are bound to their declared source identities."""
+    snapshot_a = snap() if snap_a is None else snap_a
+    snapshot_b = snap() if snap_b is None else snap_b
+    if type(snapshot_a) is LaneSnapshot and snapshot_a.source_identity is None:
+        snapshot_a = replace(snapshot_a, source_identity=id_a)
+    if type(snapshot_b) is LaneSnapshot and snapshot_b.source_identity is None:
+        snapshot_b = replace(snapshot_b, source_identity=id_b)
+    return LaneBaseline(snapshot_a, snapshot_b, id_a, id_b)
 
 
 class FakeLaneReader:
@@ -618,6 +623,33 @@ def test_a_baseline_of_another_pair_or_without_provenance_is_refused_and_lanes_a
     result = compare_via_readers(reader, "A", "B", bad_base, ExpectedDifferences(EFFECT))
     assert result.status is S.INCONCLUSIVE and result.reason == "BASELINE_PROVENANCE_MISMATCH"
     assert result.status is not S.MATCH
+    assert reader.calls == []
+
+
+def test_baseline_snapshot_from_foreign_source_is_rejected_even_with_correct_pair_labels():
+    captured = baseline()
+    foreign_baseline = replace(
+        captured,
+        snapshot_b=replace(captured.snapshot_b, source_identity="foreign-gateway"),
+    )
+    reader = good_reader()
+
+    result = via(reader, base=foreign_baseline)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "BASELINE_PROVENANCE_MISMATCH"
+    assert reader.calls == []
+
+
+def test_baseline_snapshot_without_source_provenance_is_rejected_before_reads():
+    captured = baseline()
+    unbound_baseline = replace(captured, snapshot_b=snap(*EFFECT))
+    reader = good_reader()
+
+    result = via(reader, base=unbound_baseline)
+
+    assert result.status is S.INCONCLUSIVE
+    assert result.reason == "BASELINE_PROVENANCE_MISMATCH"
     assert reader.calls == []
 
 
