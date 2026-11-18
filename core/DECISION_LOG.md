@@ -2768,6 +2768,10 @@ Regenerate the standard Russian live report after the reconciliation event and S
 
 `AdminContext.bindings` is a request-start snapshot. The S17 change-status routes already re-resolve the exact company grant and ledger identity after the PostgreSQL read, but the source role was checked against that stale snapshot. `ledger_scope_for_company` now reloads active role bindings by the verified token subject and groups on every call; because routes call it before and after the ledger read, revocation during the read prevents disclosure. Preserve fixed not-found responses and the same exact-company allow/deny checks. Add a named revoke-during-read case; execution remains NOT_RUN.
 
+## 2026-11-18 — Preflight ZIP central-directory allocation for S17-01
+
+CPython `ZipFile._RealGetContents` iterates the central-directory byte size, not the ordinary EOCD entry count. A forged ordinary count can therefore understate the number of `ZipInfo` objects that `zipfile` will materialize. Preflight the selected central-directory byte range and count fixed-size entry records before constructing `ZipFile`; reject a count over `max_members` or a mismatch with the ordinary EOCD total. Continue scanning when only per-disk count or offset fields are sentinel values. Preserve the documented ZIP64 fallback when a locator can override EOCD fields or the total-count/directory-size fields are sentinels. Regression criteria are recorded in `docs/sdlc/test-plan.md`; tests remain NOT_RUN.
+
 ## 2026-11-18 — Refresh S17 report after live role revalidation
 
 After source commit `98fc9109`, update the plan with the role-revocation guard, reconcile project-document status against the plan and Git refs, then regenerate the standard live report. Keep S17-05 in progress and its named tests NOT_RUN; this report snapshot documents implementation state only.

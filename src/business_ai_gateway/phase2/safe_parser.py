@@ -375,13 +375,53 @@ def _check_name(name: str, seen: set[str]) -> None:
 
 
 def _check_entry_count(data: bytes, limits: ParseLimits) -> None:
-    """Compare the EOCD entry count with max_members before zipfile builds entries."""
+    """Bound central-directory entries before zipfile materializes ZipInfo objects.
+
+    CPython's ZipFile walks the central-directory byte size, not the entry count
+    copied from EOCD. Check both the claimed count and the actual fixed-size
+    directory records first. A ZIP64 locator or a total-count / directory-size
+    sentinel remains an explicit fallback to zipfile, as documented above.
+    """
     pos = data.rfind(b"PK\x05\x06", max(0, len(data) - 22 - 65_535))
-    if pos < 0 or pos + 12 > len(data):
+    if pos < 0 or pos + 22 > len(data):
         return  # let zipfile classify it
+    if pos >= 20 and data[pos - 20 : pos - 16] == b"PK\x06\x07":
+        return  # zipfile's ZIP64 locator can override every ordinary EOCD field.
     total = int.from_bytes(data[pos + 10 : pos + 12], "little")
-    if total != 0xFFFF and total > limits.max_members:  # 0xFFFF = ZIP64 marker
+    if total == 0xFFFF:  # ZIP64 count marker; retain the documented stdlib fallback.
+        return
+    if total > limits.max_members:
         raise _Deny(TOO_MANY_MEMBERS)
+
+    directory_size = int.from_bytes(data[pos + 12 : pos + 16], "little")
+    if directory_size == 0xFFFFFFFF:
+        return  # ZIP64 size marker; retain the documented stdlib fallback.
+    directory_start = pos - directory_size
+    if directory_start < 0:
+        raise _Deny(NOT_A_ZIP)
+
+    # ZipFile._RealGetContents iterates until `directory_size` bytes have been
+    # consumed; it does not use EOCD's entry count as its allocation bound.
+    # Count each record in-place without creating a list or per-entry objects.
+    cursor = directory_start
+    directory_end = pos
+    observed = 0
+    while cursor < directory_end:
+        if cursor + 46 > directory_end or data[cursor : cursor + 4] != b"PK\x01\x02":
+            raise _Deny(NOT_A_ZIP)
+        name_size = int.from_bytes(data[cursor + 28 : cursor + 30], "little")
+        extra_size = int.from_bytes(data[cursor + 30 : cursor + 32], "little")
+        comment_size = int.from_bytes(data[cursor + 32 : cursor + 34], "little")
+        next_cursor = cursor + 46 + name_size + extra_size + comment_size
+        if next_cursor > directory_end:
+            raise _Deny(NOT_A_ZIP)
+        observed += 1
+        if observed > limits.max_members:
+            raise _Deny(TOO_MANY_MEMBERS)
+        cursor = next_cursor
+
+    if observed != total:
+        raise _Deny(NOT_A_ZIP)
 
 
 def _check_directory(zf: zipfile.ZipFile, data_len: int, limits: ParseLimits) -> list[zipfile.ZipInfo]:
