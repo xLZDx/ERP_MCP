@@ -1088,3 +1088,10 @@ Result: 7 passed in 48.89s; exit 0. Fixture teardown reported no error. No unrel
 
 The independent reviewers chosen for the sprint diff were code-reviewer, silent-failure-hunter, python-reviewer, and database-reviewer. They reviewed fc25b8f statically. No BLOCKER or MAJOR was reported. The code reviewer reported one MINOR: current tests cover role-collision refusal at registration and CLI configuration, while historic replay rejection has source evidence only. Track the focused replay regression in the backlog. Database review independently inspected the test fixture and SQL scope but did not run the migrations or tests. The reviewed source remains diagnostic/TEST only; the complete registry race matrix, adapter cutover, operational trust, physical-writer fencing and live recovery remain open.
 
+
+## 2026-11-18 - Exact approved S13 head supplemental and merge receipt
+
+On clean 6dc18f0177f88d8ccfc8f2c5e748385d636712c1, a fresh designated e2e-runner used .venv/Scripts/python.exe -m pytest -q -s with test_s13_release_claim_fence.py::test_s13_uf54_release_claim_wrong_target_owner_refuses_without_delta and test_s13_base_recovery_preflight.py::test_malformed_begin_result_is_rejected_before_any_scope_preflight. With owned fixture enabled and inherited DSN absent, 15 passed in 9.62s; exit 0. The exact owned container was absent afterward. The first malformed CLI attempt failed before test execution; this corrected invocation is the execution receipt. The exact-head code reviewer confirmed no source, database or test changes since fc25b8f; the separate static database review is retained in this log although the ledger did not have a fresh role telemetry record for it.
+
+PR 58 merged the approved head into main at 1f0192d. This is bounded engineering; operational recovery and release acceptance remain NOT_RUN.
+
