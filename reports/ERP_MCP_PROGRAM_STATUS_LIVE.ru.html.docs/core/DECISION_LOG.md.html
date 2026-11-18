@@ -2358,4 +2358,9 @@ Recover historical test inputs for anchor-gap cosign, witness cosign and signed 
 
 Recover the historical completion, ownership refusal, pre-write terminal replay and repair-handoff scenarios. Use an owned disposable fixture and apply the prerequisite legacy patches before migration 030, matching the existing integration migration order. Keep fixture readiness and operational readiness separate. Tests and migrations were NOT_RUN.
 
+
+## 2026-11-18 - Retain scoped grant replay and rollback scenarios
+
+Recover the scoped budget-revoke scenarios from 5655a2c on the byte-equivalent migration 027 routine. Retain the exact role-scope conflict scenario from f93b6aa in the fixture that applies through 039, including the explicit conflict target from migration 030. The scoped grant tests check transaction and replay behavior. The role-scope test checks that repeating the same tuple yields one row. Both are pending execution on disposable PostgreSQL.
+
 </pre></main></body></html>

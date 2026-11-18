@@ -746,3 +746,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Retained terminal outcome scenarios with a fixture matching the integration migration that implements the tested rule. Rule: place new migration prerequisites in the scoped fixture and preserve the other scenarios' historical baseline.
 
+
+- 2026-11-18 SUCCESS: Recovered two types of scoped replay coverage on their respective migration baselines. Rule: place each historical assertion on the current integration fixture that actually includes the relevant SQL routine.
+
