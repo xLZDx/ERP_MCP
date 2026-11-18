@@ -2381,3 +2381,8 @@ Record PMG-20261118-9c7b097d and its correlated reply: ordered S13-04 and S13-05
 
 The approved S13-03 design requires distinct signing material, but the split-authority service accepted checkpoint registration without comparing the authority pins. Enforce byte-level separation before registration and reject conflicting persisted registrations on replay. Reject conflicting CLI config before provider or database I/O. Existing stores with such registrations now fail closed on restart and require distinct material in a separate dev store. Preserve their original event history. This change does not enable readiness or affect production composition.
 
+
+## 2026-11-18 - Add signal for development key-role refusal
+
+Add named synthetic cases for both authority key roles at checkpoint registration and diagnostic configuration. Registration refusal must leave the SQLite event count unchanged; the diagnostic case must return the configuration refusal before entering preflight. The tests remain NOT_RUN under the sprint-stage restriction.
+

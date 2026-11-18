@@ -5,6 +5,7 @@ This is a synthetic TEST fixture. It does not prove external provider freshness 
 from __future__ import annotations
 
 import asyncio
+import sqlite3
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,7 +27,9 @@ from business_ai_gateway.phase2.change_ledger.checkpoint import (
     CheckpointRecord,
 )
 from business_ai_gateway.phase2.change_ledger.dev_anchor_service_s13.service import (
+    AnchorServiceError,
     DevAnchorConfig,
+    SQLiteAnchorStore,
     create_app,
 )
 from erp_mcp_private_writer.dpapi_signer import (
@@ -99,6 +102,33 @@ def _config(tmp_path: Path, latest_signer: _Signer, key_signer: _Signer) -> DevA
 
 def test_split_authorities_bind_challenges_history_and_scope(tmp_path: Path) -> None:
     asyncio.run(_exercise_split_authorities(tmp_path))
+
+
+@pytest.mark.parametrize("authority_role", ["latestness", "key_authority"])
+def test_register_key_rejects_authority_signer_without_appending_event(
+        tmp_path: Path, authority_role: str) -> None:
+    latest_signer = _Signer(Ed25519PrivateKey.generate())
+    key_signer = _Signer(Ed25519PrivateKey.generate())
+    store = SQLiteAnchorStore(
+        (tmp_path / f"authority-collision-{authority_role}.sqlite3").resolve(),
+        SERVICE_ID,
+        latestness_signer=latest_signer,
+        key_authority_signer=key_signer,
+    )
+    authority_signer = latest_signer if authority_role == "latestness" else key_signer
+    with sqlite3.connect(store.path) as connection:
+        before = connection.execute("SELECT count(*) FROM events").fetchone()[0]
+
+    with pytest.raises(AnchorServiceError, match="KEY_REGISTRATION_INVALID"):
+        store.register_key(
+            SCOPE.tenant_id, SCOPE.company_id,
+            f"collision-{authority_role}", authority_signer.public_key_bytes.hex(),
+        )
+
+    with sqlite3.connect(store.path) as connection:
+        after = connection.execute("SELECT count(*) FROM events").fetchone()[0]
+    assert after == before == 0
+    assert store._head_revision == 0
 
 
 def test_dpapi_signer_keeps_latestness_and_key_authority_domains_separate(

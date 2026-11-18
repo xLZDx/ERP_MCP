@@ -202,6 +202,24 @@ def test_cli_rejects_malformed_checkpoint_registry_before_database_connect(keys)
     }
 
 
+@pytest.mark.parametrize("authority_role", ["latestness", "key_authority"])
+def test_cli_rejects_authority_key_in_checkpoint_registry_before_io(authority_role):
+    latest_public = _raw_public(Ed25519PrivateKey.generate())
+    key_authority_public = _raw_public(Ed25519PrivateKey.generate())
+    checkpoint_public = latest_public if authority_role == "latestness" else key_authority_public
+    result = _invoke(_environment(**{
+        PREFIX + "LATEST_PUBLIC_KEY_HEX": latest_public.hex(),
+        PREFIX + "KEY_AUTHORITY_PUBLIC_KEY_HEX": key_authority_public.hex(),
+        PREFIX + "CHECKPOINT_PUBLIC_KEYS_JSON": json.dumps({
+            "synthetic-checkpoint-key": checkpoint_public.hex(),
+        }),
+    }))
+    assert result.returncode == 2
+    assert _payload(result) == {
+        "status": "NOT_READY", "reason": "PREFLIGHT_CONFIGURATION_INVALID",
+    }
+
+
 @pytest.mark.e2e
 def test_cli_signed_checkpoint_preflight_is_read_only_and_never_ready(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
