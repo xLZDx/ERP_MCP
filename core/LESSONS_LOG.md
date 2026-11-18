@@ -919,3 +919,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: Cross-checking current task state found S17-02 already started in the native ledger while the project plan still said not started. Rule: reconcile both task-status layers after a task start; never conflate reviewer evidence counts with the number of tasks currently in review.
 
 - 2026-11-18 SUCCESS: S17-02 can cross-check exact line/VAT totals only under the explicitly recorded `includes_vat` rule and same-currency input. Rule: preserve each source cell, use exact decimal arithmetic without inferred rates or rounding, keep every result under human review, and send unsupported accounting shapes to `UNCOMPUTABLE_REVIEW`.
+
+- 2026-11-18 SUCCESS: S17 entity resolution can reuse the existing scoped alias registry without making display-name similarity authoritative. Rule: bind every lookup and human ambiguity decision to the selected company, preserve source provenance, and keep unmatched or confirmed identities unable to authorize a financial proposal.

@@ -72,6 +72,18 @@ The assigned functional-test-reviewer owns these named cases after all S17 story
 - Mixed currencies, unknown `includes_vat`, discounts, credit notes, unsupported rounding/precision or other undefined accounting shapes remain `UNCOMPUTABLE_REVIEW`; no unsupported proposal or guessed tolerance is emitted.
 - PDF/image input before qualified H3 extraction returns manual-review-only status and cannot produce a proposal or bypass human review.
 
+## S17-03 company-scoped entity resolution
+
+The assigned functional-test-reviewer owns these named cases after all S17 story code is complete; do not run them before then. Keep identity resolution separate from proposal authorization and preserve the exact source-cell provenance through every result.
+
+- Register same-named entities in two companies and resolve each under its selected `AliasScope`; candidates and queue items must contain only IDs from that exact tenant/company scope.
+- A name-only unique suggestion remains `UNMATCHED_REVIEW`; display-name similarity must not become a resolved entity. A missing entity produces `MANUAL_MAPPING_REQUIRED`, preserves provenance and cannot authorize a proposal.
+- Multiple in-scope name matches produce `AMBIGUOUS_REVIEW` with the complete scoped candidate set and a stable queue item. No candidate is selected automatically.
+- A valid explicit HUMAN choice for an ambiguity is recorded through the existing resolver; invalid/non-human approvers, out-of-set choices, foreign-scope queue items, conflicting replay choices, and missing reason fail closed.
+- An exact namespaced reference may identify one in-scope candidate, but intake still returns `MATCH_REVIEW_REQUIRED`; every result has `proposal_allowed == false`.
+- Malformed scope, extracted value, provenance, reference or resolver failure returns a fixed refusal without echoing extracted text or exception details.
+- This adapter does not authenticate the asserted human identity, persist alias decisions, create proposals, or call 1C; those remain outside this bounded in-memory story.
+
 ## Required final verification selections
 
 The post-code phase must include (a) the specifically required S12 SQL code parity test and exhausted-budget SQL behavior; (b) the finisher brief's required slow SQL/E2E selected set, including the relevant producer/list-status integration paths; and (c) the required selected S15 suites from `docs/phase2/S15_SPRINT_PLAN_2026-10-27.md` §9. Test owners resolve exact existing test paths and run commands from those source documents after implementation. This plan does not expand the requirement to `pytest` without selection or a full repository suite. If exact suite selection conflicts across records, preserve the source and resolve it in the execution report rather than silently choosing a smaller set.

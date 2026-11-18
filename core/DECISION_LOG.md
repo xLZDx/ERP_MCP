@@ -2662,3 +2662,7 @@ Reconcile the 111 planned task placements against 115 fetched local, remote, and
 
 Adapt only the existing in-memory XLSX/CSV parser output into per-cell candidates identified by source-byte SHA-256 and one-based coordinates. Every value and arithmetic match remains for human review; parser state never creates or authorizes a proposal. Reuse the recorded CT14 `includes_vat` arithmetic (`false`: explicit line plus explicit VAT; `true`: line amount) as a narrow exact-decimal diagnostic for same-currency inputs, with no rounding, inferred VAT rate, or tolerance. Leave unsupported accounting shapes `UNCOMPUTABLE_REVIEW` and tracked in the backlog. PDF/image remain manual-review-only until H3 qualifies extraction. S17-02 focused tests are specified but NOT_RUN until all S17 story code is complete.
 
+## 2026-11-18 — Keep S17 intake entity matching company-scoped and non-authoritative
+
+S17-03 adapts extracted values to the existing in-memory `AliasResolver` under an explicit tenant/company scope. Only exact namespaced references may identify a unique candidate; a display-name suggestion remains unmatched, and multiple matches stay queued until an explicit HUMAN choice. Preserve the source cell with each result. The adapter never authorizes a proposal, authenticates the caller-asserted human, persists a choice, or contacts 1C. Unmatched values remain blocked from proposal until a separately curated in-scope mapping exists. Named tests are recorded but NOT_RUN until all S17 story code is complete.
+
