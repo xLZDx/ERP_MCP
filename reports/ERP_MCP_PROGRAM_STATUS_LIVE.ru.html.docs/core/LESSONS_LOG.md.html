@@ -810,4 +810,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: The governed TEST create simulation reserved call identity but did not store a per-change marker with the new draft. Rule: check proposal identity and the full business key inside the same lock and commit the marker with the draft.
 
+- 2026-11-18 SHORTCOMING: Consuming one simulation call identity leaves another adapter free to attempt a write on the same clone. Rule: hold the clone while the first outcome is unresolved and keep replay classification and read-only inspection available.
+
 </pre></main></body></html>

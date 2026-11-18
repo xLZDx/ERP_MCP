@@ -61,3 +61,8 @@ For the governed TEST port, create the draft and store a private marker carrying
 
 When preparing the named tests, use distinct change IDs for distinct proposals and retain a single ID for true same-proposal retries. Keep the ordinary duplicate case separate from the same-marker case, including changed-digest refusal, same-key independent proposals, response loss after creation, and a legitimate document whose contract or currency differs. Verify contents on the TEST clone only.
 
+
+## S14-03 unresolved invocation holds the TEST base
+
+When a governed clone write crosses the mutation call boundary and its outcome becomes unknown, preserve consumed call identity and latch a base-wide write hold while still owning the clone lock. Refuse otherwise valid new writes through any adapter on that live clone before consuming another call identity. Retain exact call replay/conflict classification and keep read-only inspection available. A definite simulated pre-write refusal does not create a hold. The TEST adapter has no authority to clear an unresolved hold and never forces termination or turns a timeout into finished-call proof. Separate failure-injection cases use separate fixture instances. No operational deadline, worker-process lifecycle, or 1C-session proof follows from a simulated failure.
+

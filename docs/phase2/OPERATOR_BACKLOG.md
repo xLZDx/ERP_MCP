@@ -1911,3 +1911,7 @@ The retained offline simulation has an approved TEST-only contract and the low-l
 
 Verify that the selected CT14-qualified licensed channel records the change identity and digest in the same receipt write, independently reads them back, and serializes the canonical business-key check with the actual create. Include response loss, edited-marker control, a conflicting proposal, and an independently approved separate document. Historical draft rollback and the governed TEST simulator do not establish those channel-specific properties. The qualified channel owner is unassigned in the current plan.
 
+## S14-03 operational call ownership and deadline proof
+
+Qualify compare-and-write under one 1C lock on the selected licensed test clone. Bind each invocation to the host, worker process, and 1C session, and observe call completion independently of a caller timeout. Keep the base held while execution is possible. A timeout alone provides no termination evidence. The governed TEST hold models this decision locally. The qualified channel owner is unassigned in the current plan.
+

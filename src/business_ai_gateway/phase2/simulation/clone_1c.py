@@ -210,6 +210,7 @@ class SimulatedOneC:
         # final base-fingerprint/version check with the mutation itself.
         self._write_lock = RLock()
         self._simulation_calls: dict[str, tuple[object, ...]] = {}
+        self._simulation_write_held = False
         self._simulation_scope: tuple[str, str, str] | None = None
         # Stable for this live object only. Unlike label/state_fingerprint, this
         # distinguishes independently-created clones with identical contents.
@@ -375,13 +376,21 @@ class SimulatedOneC:
                 if previous == call_identity:
                     raise CloneRejected("CALL_REPLAYED")
                 raise CloneRejected("CALL_ID_CONFLICT")
+            if self._simulation_write_held:
+                raise CloneRejected("BASE_WRITE_HELD")
             # Consume the synthetic call identity before entering the mutation path.
             # Any uncertain or refused attempt therefore cannot be replayed under a
             # changed ticket/base to produce a second side effect.
             self._simulation_calls[call_id] = call_identity
             create_marker = (change_id, digest_set_hash) if kind is ChangeKind.CREATE_DRAFT else None
-            return self._apply_locked(kind, payload_bytes, target_ref, expected_version,
-                                      simulation_marker=create_marker)
+            try:
+                return self._apply_locked(kind, payload_bytes, target_ref, expected_version,
+                                          simulation_marker=create_marker)
+            except CloneRejected:
+                raise
+            except BaseException:
+                self._simulation_write_held = True
+                raise
 
     def _apply_locked(self, kind: ChangeKind, payload_bytes: bytes, target_ref: str | None,
                       expected_version: str | None, *, change_id: str | None = None,

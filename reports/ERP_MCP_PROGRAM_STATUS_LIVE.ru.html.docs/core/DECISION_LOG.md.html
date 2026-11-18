@@ -2458,4 +2458,8 @@ The approved offline S14 port uses a private live-instance binding in its ticket
 
 The governed simulation now stores the change identity and approved digest on the new draft under the same clone-owned lock as the write. The marker survives the injected post-write failure path and prevents a later call for the same change from creating a second document. Under that lock, check the full receipt business key for different proposals; a permitted override does not bypass the change marker. Preserve legacy simulation entry points, exact call identity semantics and public result shapes. Formal CT14 qualification remains external and is recorded in the backlog. Named verification is NOT_RUN pending S14 source assembly.
 
+## 2026-11-18 - Hold the TEST clone after an unresolved write invocation
+
+The governed simulation retains consumed call identity and holds the live clone under its write lock when the call outcome becomes unknown. New calls are refused before their identity is consumed. Prior call classification and reads remain available. A definite pre-write refusal leaves the clone available. The separate physical call ownership and completion proof is in the backlog. Named verification is NOT_RUN pending S14 source assembly.
+
 </pre></main></body></html>
