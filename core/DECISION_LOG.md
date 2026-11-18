@@ -2767,3 +2767,7 @@ Regenerate the standard Russian live report after the reconciliation event and S
 ## 2026-11-18 — Recheck Admin source role before S17 ledger disclosure
 
 `AdminContext.bindings` is a request-start snapshot. The S17 change-status routes already re-resolve the exact company grant and ledger identity after the PostgreSQL read, but the source role was checked against that stale snapshot. `ledger_scope_for_company` now reloads active role bindings by the verified token subject and groups on every call; because routes call it before and after the ledger read, revocation during the read prevents disclosure. Preserve fixed not-found responses and the same exact-company allow/deny checks. Add a named revoke-during-read case; execution remains NOT_RUN.
+
+## 2026-11-18 — Refresh S17 report after live role revalidation
+
+After source commit `98fc9109`, update the plan with the role-revocation guard, reconcile project-document status against the plan and Git refs, then regenerate the standard live report. Keep S17-05 in progress and its named tests NOT_RUN; this report snapshot documents implementation state only.
