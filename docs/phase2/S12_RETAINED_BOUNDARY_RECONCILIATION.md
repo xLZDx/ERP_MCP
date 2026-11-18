@@ -1,6 +1,6 @@
 # S12 retained contract reconciliation
 
-Status: bounded TEST-lane design candidate. Continuation base 5f9a824.
+Status: GPT-PM approved bounded synthetic TEST-lane implementation at 1ac5bdf (request 974f286e-724a-4e02-ac17-bacd68839510). Continuation base 5f9a824.
 S12 test-only entry is approved under GPT-PM request 9f9d197a-c24c-42a6-abac-a40025e9801d. It covers synthetic engineering. G8, real identity/runtime qualification, deployment and production remain separate.
 
 PR #54 is open to main at 2629aa2a20f6e40641a5ece7de42a1587a2748a1. Main and the PR diverge. Prior snapshots accept seven bounded S12 stories in that line. The current main retains most code, but these historical receipts do not establish equivalent behavior for every fixture and boundary.

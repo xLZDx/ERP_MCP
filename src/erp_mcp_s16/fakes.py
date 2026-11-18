@@ -262,10 +262,15 @@ class FakeProposalPort:
         self.principals = principals
 
     def build(self, requester, raw_request, *, now, expires_at, preview_digest, change_id):
-        from .contracts import PrincipalRole, TokenClass
+        from .contracts import FROZEN_V2_PROPOSAL_KINDS, PrincipalRole, TokenClass
         if (requester.token_class is not TokenClass.CHAT_WRITE or PrincipalRole.REQUESTER not in requester.roles
                 or requester.scope is None):
             return ErrorCode.NOT_ENTITLED
+        if type(raw_request) is not dict:
+            return ErrorCode.SCHEMA_INVALID
+        kind = raw_request.get("kind")
+        if type(kind) is not str or kind not in FROZEN_V2_PROPOSAL_KINDS:
+            return ErrorCode.SCHEMA_INVALID
         target = self.targets.current(requester.scope)
         principal = self.principals.current(requester.principal_id)
         if target is None or not target.allowed or principal is None or principal.revoked:
