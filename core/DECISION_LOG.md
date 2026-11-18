@@ -2724,3 +2724,5 @@ After `428427b1`, run the standard report generator so the committed live report
 
 S17-03 accepts caller-controlled extraction and resolution objects, including malformed values. Slotted dataclass instances can exist without all initialized fields, so direct reads before a guard can leak `AttributeError` instead of the adapter's fixed refusal. Snapshot the required fields inside guarded access, validate candidate and suggestion containers, and use only those validated snapshots for ambiguity confirmation. Preserve company scope, source-cell provenance, human confirmation, review-required status, and `proposal_allowed == false`; do not add persistence, identity authentication, proposals, or 1C calls. Add the malformed-record case to the named S17 reviewer plan. Verification remains NOT_RUN until the agreed S17 test stage.
 
+After implementation commit `235ceca1`, regenerate `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` so its snapshot and commit log include the code. The generator did not change the task's acceptance state or program numerator; S17 verification remains pending.
+
