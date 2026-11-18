@@ -886,3 +886,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: S16-05 replay fixtures now instantiate their environment and fake server according to the actual helper return contract. Rule: keep acceptance evidence tied to the committed fixture version by rerunning after test-only corrections are committed.
 
+- 2026-11-18 SHORTCOMING: S16's inbound listener probe was described as writer-target route proof even though it only receives the ASGI server address and the S14 writer remains `NotWired`. Rule: keep ingress and egress evidence separate; enforce DNS/redirect/proxy policy at the actual outbound connect boundary and never invent a disconnected probe abstraction.
+

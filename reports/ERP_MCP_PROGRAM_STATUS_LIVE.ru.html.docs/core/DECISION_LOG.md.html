@@ -2604,4 +2604,8 @@ At HEAD `107a6f2174bfd1dbf8e29df6ffbcdd2ddf68b2f9`, the assigned functional revi
 
 The first S16-05 replay test draft unpacked `build_env()` as though it returned a pair, while it returns one `S16Environment`. Correct both setup sites to create `Server()` explicitly. The assigned E2E runner passed the corrected working-tree file, but that result must be repeated after the test-only correction is committed before it is recorded as exact-HEAD verification.
 
+## 2026-11-18 — Keep S16 ingress and writer egress as separate boundaries
+
+Architecture review of E16-4 found that `RouteProbePort` is called with the ASGI listener address, not an outbound 1C target. The S16 plan also explicitly keeps the apply port fake-only and forbids gateway/listener binding, while S14 `write_port.py` is still a `NotWired` skeleton. Finding: `MAJOR | S16_SPRINT_PLAN §5/§E16-4; src/erp_mcp_s16/ingress.py; src/business_ai_gateway/phase2/change_ledger/write_port.py | the current route check cannot prove writer-target SSRF or DNS-rebinding safety | an ASGI listener address is checked but an eventual writer connects elsewhere | do not add an unconsumed S16 target-probe port or claim S16 acceptance for egress | put source-registry selection, pinned DNS through connect, redirect/proxy refusal and route enumeration in the writer adapter when it is separately in scope; retain S16-04 as PARTIAL.` The read-only `OneCReadClient` is not reused as a writer. No listener, network, or 1C call was started.
+
 </pre></main></body></html>
