@@ -2376,3 +2376,8 @@ Request an independent decision on the local acceptance order so that missing ex
 
 Record PMG-20261118-9c7b097d and its correlated reply: ordered S13-04 and S13-05 disposable work may follow bounded S13-03 acceptance even while external production qualification remains open. Update the plan and operational backlog accordingly. The generated receipt displays the historical FIN sprint identifier; the actual correlated verdict identifies ERP_MCP, S13, and the exact reviewed documentation head. Treat the verdict only as a decision on this S13 documentation sequence, never as a FIN or S13 code approval.
 
+
+## 2026-11-18 - Enforce separate development checkpoint and authority keys
+
+The approved S13-03 design requires distinct signing material, but the split-authority service accepted checkpoint registration without comparing the authority pins. Enforce byte-level separation before registration and reject conflicting persisted registrations on replay. Reject conflicting CLI config before provider or database I/O. Existing stores with such registrations now fail closed on restart and require distinct material in a separate dev store. Preserve their original event history. This change does not enable readiness or affect production composition.
+

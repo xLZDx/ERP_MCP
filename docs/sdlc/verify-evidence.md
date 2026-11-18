@@ -964,3 +964,8 @@ Named test_change_offline.py on clean 9a33cc086d2a212bf6e5d13e02ee5f031436eb94 r
 ## 2026-11-18 - S12 bounded closure
 
 On a70c03da6f53808703989fe697520cb8c4940b66 the named proposal, change, simulation, review-resolution and literal-oracle files reported 742 passed. The named kill-switch, crash-window and CT14 files reported 61 passed and 43 subtests passed. Code, Python and silent-failure reviews reported no actionable findings. Live 1C, deployment, external identity and disposable database tests were NOT_RUN in the final verification.
+
+## S13 verification stage disposition
+
+On eafe7ac496d255ae5ac144e3da9cf31adaec72dc the assigned e2e-runner inspected the clean tree and live ledger. S13-01/02 targeted PostgreSQL scenarios were NOT_RUN because S13-03 was partial and S13-04/05 had not reached source assembly. No PostgreSQL fixture was started. This is a stage restriction, not evidence of a database failure. The follow-up S13-03 development key separation change also remains NOT_RUN pending the named sprint verification.
+

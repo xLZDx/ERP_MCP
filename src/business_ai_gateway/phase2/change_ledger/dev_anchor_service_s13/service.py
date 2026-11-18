@@ -397,6 +397,18 @@ class SQLiteAnchorStore:
             if not _verify_signed_hash(signer.public_key_bytes, domain, expected_hash,
                                        row["authority_signature"]):
                 raise AnchorServiceError("ANCHOR_HISTORY_CORRUPT")
+            if row["event_type"] == "KEY_REGISTERED":
+                public_key_hex = payload.get("public_key_hex")
+                if (type(public_key_hex) is not str
+                        or re.fullmatch(r"[0-9a-f]{64}", public_key_hex) is None):
+                    raise AnchorServiceError("ANCHOR_HISTORY_CORRUPT")
+                registered_key = bytes.fromhex(public_key_hex)
+                if any(hmac.compare_digest(registered_key, authority_key)
+                       for authority_key in (
+                           self._latestness_signer.public_key_bytes,
+                           self._key_authority_signer.public_key_bytes,
+                       )):
+                    raise AnchorServiceError("ANCHOR_HISTORY_CORRUPT")
             event = dict(core)
             event["event_hash"] = expected_hash
             events.append(event)
@@ -612,7 +624,12 @@ class SQLiteAnchorStore:
                 or role != "checkpoint_signer"):
             raise AnchorServiceError("KEY_REGISTRATION_INVALID")
         public_key = bytes.fromhex(public_key_hex)
-        if not _valid_public_key(public_key):
+        if (not _valid_public_key(public_key)
+                or any(hmac.compare_digest(public_key, authority_key)
+                       for authority_key in (
+                           self._latestness_signer.public_key_bytes,
+                           self._key_authority_signer.public_key_bytes,
+                       ))):
             raise AnchorServiceError("KEY_REGISTRATION_INVALID")
         with self._lock, self._connection() as connection:
             try:
