@@ -940,3 +940,7 @@ The release migration, rollback and SQL text modules passed 356 tests in 1.57s, 
 ## 2026-11-18 - First S10 retained capture run
 
 At 43ebd6bd372965fef6528f8bc5c5b349ca374c3b, the e2e-runner executed the named test_capture_runtime.py, test_capture_runtime_e2e.py and test_capture_loop.py modules on the registered checkout. Result: 51 passed, 1 failed. The inherited capture-loop assertion expected the exception class to be appended to WORK_EXCEPTION. Current scheduler source deliberately emits the fixed code and the scheduler's named tests already assert it. Align the stale assertion/docstring with that fail-closed redaction behavior and repeat the exact module set. No real 1C, MCP or network used.
+
+## 2026-11-18 - Exact S10 retained capture rerun
+
+The e2e-runner executed the same three named capture modules at 2124b5bd6fee9d506aeeb9160b9b3bd63ada9512 in clean D:/Repo/ERP_MCP with checkout source/root on PYTHONPATH and its .venv interpreter. Result: 52 passed in 6.35s, exit 0. The fixed failure code omits exception type and text. The group verifies development/test scope, production refusal, queued/running cancellation and drain in synthetic fixtures. Product canary and real comparison remain NOT_RUN.

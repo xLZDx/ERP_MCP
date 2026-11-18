@@ -2271,3 +2271,7 @@ After bounded S9 closure through PR #64, verify S10 dev/test capture and manifes
 ### 2026-11-18 - Align S10 capture failure documentation and regression
 
 The first S10 capture run found one stale inherited expectation. The scheduler emits only WORK_EXCEPTION on an unexpected failure, preventing the exception text and type from entering persisted job details. Keep that behavior, correct the capture-loop docstring and named assertion, and rerun. Separately traced the historical S10 manifest digest: converting the Git blob of 4445dd2c5d84 to its Windows checkout line endings yields C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE, as recorded in the S11 exit package. The later integration merge carries different bytes, and the artifact is absent from current main, so the historical match does not establish current release evidence.
+
+### 2026-11-18 - Verify S10 manifest assembly after capture acceptance checks
+
+The capture module rerun passed 52 cases at 2124b5b. Proceed to the existing R2-US-048 manifest validator and CLI fixtures, which use a local bare Git repository and a fake GitHub response. Preserve the release builder's NO-GO ceiling and independent acceptance roles. Store native canary and product release evidence in the backlog until actual runtime proofs exist.
