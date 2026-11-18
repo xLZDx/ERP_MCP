@@ -16,6 +16,7 @@ from .business_policy import CapabilityPolicy
 from .capability_client import CapabilityObserverClient
 from .company_scope import CompanyScopeResolver
 from .db import Database
+from .phase2.change_ledger.workbench_reader import WorkbenchLedgerReader
 from .evidence_index import ApprovedEvidenceProvider
 from .evidence_store import PrivateEvidenceStore
 from .fixture_profiles import (
@@ -43,6 +44,11 @@ class Runtime:
         self.admin_db = (
             Database(settings.admin_control_database_url)
             if settings.admin_control_database_url
+            else None
+        )
+        self.change_ledger_reader = (
+            WorkbenchLedgerReader(settings.change_ledger_database_url.get_secret_value())
+            if settings.change_ledger_database_url
             else None
         )
         self.capability_observer = CapabilityObserverClient(
@@ -207,6 +213,8 @@ class Runtime:
                 await self.admin_db.assert_schema()
                 if self.settings.environment == "production":
                     await self.admin_db.assert_control_api_role()
+            if self.change_ledger_reader is not None:
+                await self.change_ledger_reader.start()
             if self.settings.admin_mutations_enabled and self.admin_db is None:
                 raise RuntimeError("admin mutation database is not configured")
             if not await self.redis.ping():
@@ -216,11 +224,15 @@ class Runtime:
     async def ready(self) -> bool:
         await self.start()
         admin_ready = self.admin_db is None or await self.admin_db.ping()
+        ledger_ready = (
+            self.change_ledger_reader is None or await self.change_ledger_reader.ready()
+        )
         capability_ready = (
             self.settings.environment != "production"
             and self.settings.capability_observer_url is None
         ) or await self.capability_observer.ready()
-        return await self.db.ping() and admin_ready and capability_ready and bool(await self.redis.ping())
+        return (await self.db.ping() and admin_ready and ledger_ready and capability_ready
+                and bool(await self.redis.ping()))
 
     async def close(self):
         if self._phase2_capture_runtime is not None:
@@ -234,6 +246,8 @@ class Runtime:
         await self.redis.aclose()
         if self.admin_db is not None:
             await self.admin_db.close()
+        if self.change_ledger_reader is not None:
+            await self.change_ledger_reader.close()
         await self.capability_observer.close()
         await self.db.close()
         self._started = False

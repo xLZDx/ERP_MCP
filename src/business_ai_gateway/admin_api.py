@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -37,6 +38,7 @@ from .models import source_from_record
 from .principal import claim_groups
 from .rate_limit import RateLimitExceeded
 from .settings import Settings
+from .phase2.change_ledger._common import LedgerError, Scope
 from .phase2.intake_extraction import (
     ExtractionResult,
     UploadFormat,
@@ -335,23 +337,21 @@ class AdminRepository:
         return row["tenant_id"] if row is not None else None
 
     async def ledger_scope_for_company(
-        self, ctx: AdminContext, source_id: str, company_id: UUID
+        self, ctx: AdminContext, company_id: UUID
     ) -> tuple[str, str] | None:
         """Resolve explicit keys only after the current exact-company allow/deny check."""
-        if (not ctx.can_admin_source(
-                source_id, "PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"
-        ) or not isinstance(ctx.token.subject, str) or not ctx.token.subject):
+        if not isinstance(ctx.token.subject, str) or not ctx.token.subject:
             return None
         row = await self.db.require_pool().fetchrow(
-            """SELECT s.tenant_id, c.ledger_company_id,
+            """SELECT s.source_id, s.tenant_id, c.ledger_company_id,
                       EXISTS (
                         SELECT 1 FROM bag.access_grants a
                         WHERE a.effect='allow' AND a.revoked_at IS NULL
                           AND (a.expires_at IS NULL OR a.expires_at>now())
                           AND (a.source_id=s.source_id OR a.all_sources)
                           AND (a.company_id IS NULL OR a.company_id=c.company_id)
-                          AND ((a.principal_kind='subject' AND a.principal_id=$3)
-                            OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                          AND ((a.principal_kind='subject' AND a.principal_id=$2)
+                            OR (a.principal_kind='group' AND a.principal_id=ANY($3::text[])))
                       ) AS has_allow,
                       EXISTS (
                         SELECT 1 FROM bag.access_grants a
@@ -359,18 +359,21 @@ class AdminRepository:
                           AND (a.expires_at IS NULL OR a.expires_at>now())
                           AND (a.source_id=s.source_id OR a.all_sources)
                           AND (a.company_id IS NULL OR a.company_id=c.company_id)
-                          AND ((a.principal_kind='subject' AND a.principal_id=$3)
-                            OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                          AND ((a.principal_kind='subject' AND a.principal_id=$2)
+                            OR (a.principal_kind='group' AND a.principal_id=ANY($3::text[])))
                       ) AS has_deny
                FROM bag.sources AS s
                JOIN bag.companies AS c ON c.source_id=s.source_id
-               WHERE s.source_id=$1 AND c.company_id=$2
+               WHERE c.company_id=$1
                  AND s.enabled=true AND c.enabled=true""",
-            source_id,
             company_id,
             ctx.token.subject,
             sorted(ctx.groups),
         )
+        if (row is not None and not ctx.can_admin_source(
+                row["source_id"], "PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"
+        )):
+            return None
         if (row is None or not row["has_allow"] or row["has_deny"]
                 or row["tenant_id"] is None or row["ledger_company_id"] is None):
             return None
@@ -1353,6 +1356,90 @@ class AdminAPI:
             return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
         return JSONResponse(item)
 
+    async def company_changes(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        reader = self.runtime.change_ledger_reader
+        if reader is None:
+            return JSONResponse({"error": "LEDGER_NOT_CONFIGURED"}, status_code=503)
+        try:
+            company_id = UUID(request.path_params["company_id"])
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+        try:
+            limit_text = request.query_params.get("limit", "50")
+            offset_text = request.query_params.get("offset", "0")
+            if (not re.fullmatch(r"[0-9]{1,3}", limit_text)
+                    or not re.fullmatch(r"[0-9]{1,5}", offset_text)):
+                raise ValueError
+            limit = int(limit_text)
+            offset = int(offset_text)
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "INVALID_PAGINATION"}, status_code=400)
+        if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+            return JSONResponse({"error": "INVALID_PAGINATION"}, status_code=400)
+        try:
+            scope = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope is None:
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+
+        try:
+            items = await reader.list_inflight(Scope(*scope), limit=limit, offset=offset)
+        except Exception:  # noqa: BLE001 - the ledger failure details are not a public API
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        try:
+            scope_after = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope_after != scope:
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+        return JSONResponse({"items": items})
+
+    async def company_change_status(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        reader = self.runtime.change_ledger_reader
+        if reader is None:
+            return JSONResponse({"error": "LEDGER_NOT_CONFIGURED"}, status_code=503)
+        try:
+            company_id = UUID(request.path_params["company_id"])
+            change_id = UUID(request.path_params["change_id"])
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+        try:
+            scope = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope is None:
+            return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+
+        try:
+            status = await reader.operator_status(Scope(*scope), change_id)
+        except LedgerError as exc:
+            if exc.code == "CHANGE_NOT_FOUND":
+                return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        except Exception:  # noqa: BLE001 - the ledger failure details are not a public API
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        if type(status) is not dict:
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        try:
+            scope_after = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope_after != scope:
+            return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+        visible_fields = {
+            "change_id", "kind", "lifecycle", "authorization", "execution", "verification",
+            "call_ownership", "reservation", "dispatch", "claim_generation", "expires_at",
+            "created_at", "updated_at",
+        }
+        return JSONResponse({key: status[key] for key in visible_fields if key in status})
+
     async def source_update(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
@@ -2026,6 +2113,8 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ("/admin/v1/intake/preview", ["POST"], api.intake_preview),
         ("/admin/v1/intake/manual-preview", ["POST"], api.intake_manual_preview),
         ("/admin/v1/companies/{company_id}", ["GET"], api.company_detail_view),
+        ("/admin/v1/companies/{company_id}/changes", ["GET"], api.company_changes),
+        ("/admin/v1/companies/{company_id}/changes/{change_id}", ["GET"], api.company_change_status),
         ("/admin/v1/capabilities", ["GET"], api.capabilities),
         ("/admin/v1/grants", ["GET"], api.grants),
         (

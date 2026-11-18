@@ -1,4 +1,4 @@
-const state={me:null,csrf:null,page:'overview',intakeSources:[],intakeCompanies:[]};
+const state={me:null,csrf:null,page:'overview',intakeSources:[],intakeCompanies:[],changeOffset:0,changeListRequest:0,changeDetailRequest:0};
 const pages={
  overview:['Overview','Live control-plane status and administrative activity.'],
  sources:['1C sources','Registered read-only 1C endpoints and capability health.'],
@@ -8,6 +8,7 @@ const pages={
  roles:['Roles & capabilities','Platform roles and business capability templates.'],
  profiles:['Semantic profiles','Evidence-backed semantic profile lifecycle.'],
  intake:['Intake preview','Authenticated, non-persisted document and manual-field review.'],
+ changes:['Change status','Read-only status from the durable change ledger.'],
  audit:['Audit & evidence','Immutable runtime and administration evidence.']
 };
 async function api(path,opts={}){
@@ -137,6 +138,15 @@ render=async function(){
     document.getElementById('intake_source').addEventListener('change',fillCompanies);fillCompanies();
    }catch(e){content.innerHTML='<div class="banner warn" role="alert">Intake preview is unavailable. No data was saved.</div><button class="btn" data-act="render">Retry</button>'}
   }
+ if(state.page==='changes'){
+  try{
+   const x=await api('/admin/v1/companies');
+   const companies=(x.items||[]).filter(i=>i.enabled);
+   const options=companies.map(i=>'<option value="'+esc(i.company_id)+'">'+esc(i.display_name)+' · '+esc(i.company_id)+'</option>').join('');
+   content.innerHTML='<div class="banner">Status view only. It cannot approve, retry, roll back, or write to 1C. Company and access bindings are verified by the server for each request.</div><section class="card change-status"><div class="cardhead"><div><h2>Company change records</h2><small>Up to 100 in-flight records per page</small></div></div><div class="form"><div class="field"><label for="changes_company">Registered company</label><select id="changes_company"><option value="">'+(companies.length?'Select a company':'No enabled companies available')+'</option>'+options+'</select></div><div id="changes_list" role="status" aria-live="polite" class="sr-status">Select a company to load change status.</div><div id="changes_paging" class="actions"></div></div></section><section class="card change-status" style="margin-top:14px"><div class="cardhead"><div><h2>Selected change</h2><small>Minimized status fields</small></div></div><div id="change_detail" role="status" aria-live="polite" class="form sr-status">Choose a record to see its current status.</div></section>';
+   document.getElementById('changes_company').addEventListener('change',()=>{state.changeOffset=0;state.changeDetailRequest++;loadChangeList()});
+  }catch(e){content.innerHTML='<div class="banner warn" role="alert">Change status is unavailable. '+esc(e.message)+'</div><button class="btn" data-act="render">Retry</button>'}
+ }
  if(state.page==='roles'){
   const disabled=!state.me.business_capability_enforcement_enabled;
   content.insertAdjacentHTML('afterbegin','<div class="banner warn">'+(disabled?'Business capability enforcement is OFF. Assignment controls are disabled until backend enforcement is active.':'Business capability enforcement is ON. Roles and overrides never widen data scope.')+' '+(!state.me.platform_role_step_up_configured?'Platform role changes require configured IdP step-up; browser changes are disabled.':'Platform role changes require an approved authentication level from the last five minutes.')+'</div>');
@@ -223,6 +233,46 @@ async function explainAccess(offset){const out=document.getElementById('access_e
  const x=await api('/admin/v1/effective-access?'+params);
  out.innerHTML='<p>Identity mode: '+esc(x.mode)+'; group membership: '+esc(x.group_membership)+'. Capability authorization and live metadata checks remain separate runtime gates.</p>'+baseTable('Company policy results',x.items,[{h:'Company',f:i=>esc(i.display_name)},{h:'ACL',f:i=>tag(i.data_acl)},{h:'Why',f:i=>esc(i.detail_code)},{h:'Grant evidence',f:i=>i.matching_grants.map(g=>esc(g.grant_id)+' / '+esc(g.effect)+' / '+esc(g.inheritance)+' / '+esc(g.scope)).join('<br>')+(i.grant_evidence_truncated?'<br>Evidence limited to 50; all '+esc(i.matching_grant_count)+' grants were evaluated. Denies are prioritized.':'')},{h:'Company operation',f:i=>esc(i.company_operation)}])+(x.next_offset!==null?'<button class="btn" data-act="explainAccess" data-offset="'+esc(x.next_offset)+'">Next results</button>':'');
  }catch(e){out.textContent=e.message}}
+async function loadChangeList(){
+ const company=document.getElementById('changes_company'),out=document.getElementById('changes_list'),detail=document.getElementById('change_detail');
+ if(!company||!out||!detail)return;
+ const request=++state.changeListRequest;
+ const companyId=company.value;
+ detail.textContent='Choose a record to see its current status.';
+ if(!companyId){out.textContent='Select a company to load change status.';document.getElementById('changes_paging').innerHTML='';return}
+ out.textContent='Loading in-flight change status…';
+ try{
+  const x=await api('/admin/v1/companies/'+encodeURIComponent(companyId)+'/changes?limit=100&offset='+state.changeOffset);
+  if(request!==state.changeListRequest||company.value!==companyId)return;
+  const items=Array.isArray(x.items)?x.items:[];
+  out.innerHTML=table('In-flight change records',items,[
+   {h:'Change ID',f:i=>'<code>'+esc(i.change_id)+'</code>'},
+   {h:'Kind',f:i=>esc(i.kind)},
+   {h:'Lifecycle',f:i=>esc(i.lifecycle)},
+   {h:'Authorization',f:i=>esc(i.authorization_state)},
+   {h:'Execution',f:i=>esc(i.execution_state)},
+   {h:'Verification',f:i=>esc(i.verification_state)},
+   {h:'Updated',f:i=>esc(i.updated_at)},
+   {h:'Status',f:i=>'<button class="btn" data-act="changeDetails" data-company="'+esc(companyId)+'" data-change="'+esc(i.change_id)+'" aria-label="View status for change '+esc(i.change_id)+'">View</button>'}
+  ]);
+  const paging=document.getElementById('changes_paging');
+  paging.innerHTML=(state.changeOffset?'<button class="btn" data-act="changesPrevious">Previous</button>':'')+
+   (items.length===100&&state.changeOffset<10000?'<button class="btn" data-act="changesNext">Next</button>':'')+
+   '<span class="muted">Offset '+state.changeOffset+'</span>';
+ }catch(e){if(request!==state.changeListRequest||company.value!==companyId)return;out.innerHTML='<p class="error" role="alert">Could not load change status: '+esc(e.message)+'</p><button class="btn" data-act="changesRetry">Retry read</button>';document.getElementById('changes_paging').innerHTML=''}
+}
+async function loadChangeDetails(el){
+ const out=document.getElementById('change_detail');if(!out)return;
+ const request=++state.changeDetailRequest,company=document.getElementById('changes_company'),companyId=el.dataset.company;
+ if(!company||company.value!==companyId){out.textContent='Select this company before viewing its status.';return}
+ out.textContent='Loading change status…';
+ try{
+  const x=await api('/admin/v1/companies/'+encodeURIComponent(companyId)+'/changes/'+encodeURIComponent(el.dataset.change));
+  if(request!==state.changeDetailRequest||company.value!==companyId)return;
+  const fields=[['Change ID','change_id'],['Kind','kind'],['Lifecycle','lifecycle'],['Authorization','authorization'],['Execution','execution'],['Verification','verification'],['Call ownership','call_ownership'],['Reservation','reservation'],['Dispatch','dispatch'],['Claim generation','claim_generation'],['Created','created_at'],['Updated','updated_at']];
+  out.innerHTML='<dl>'+fields.filter(([,key])=>x[key]!==undefined&&x[key]!==null).map(([label,key])=>'<dt>'+esc(label)+'</dt><dd>'+esc(x[key])+'</dd>').join('')+'</dl>';
+ }catch(e){if(request!==state.changeDetailRequest||company.value!==companyId)return;out.innerHTML='<p class="error" role="alert">Could not load this change status: '+esc(e.message)+'</p>'}
+}
 function intakeQuery(){const source=document.getElementById('intake_source'),company=document.getElementById('intake_company');if(!source?.value||!company?.value)throw new Error('Choose an active registered source and company.');return new URLSearchParams({source_id:source.value,company_id:company.value})}
 function renderIntakeResult(x){const out=document.getElementById('intake_result');if(!out)return;const directory=x.entity_directory?.state==='NOT_CONFIGURED'?'<p class="muted">Entity matching is not configured for this company. No entity matches or suggestions were applied.</p>':'';out.innerHTML='<p><b>'+esc(x.state)+'</b> · '+esc(x.code)+' · '+(x.source_sha256?'SHA-256 <code>'+esc(x.source_sha256)+'</code>':'No source digest')+'</p><p>All values require review. Materiality is unclassified. Proposal allowed: no. Apply allowed: no.</p>'+directory+(!x.fields?.length?'<p class="muted">No field values were extracted; use manual review or correct the input.</p>':baseTable('Review-required values',x.fields,[{h:'Value',f:i=>esc(i.value)},{h:'Field key',f:i=>esc(i.provenance.field_key||'—')},{h:'Sheet',f:i=>esc(i.provenance.sheet_name||'—')},{h:'Row',f:i=>esc(i.provenance.row_number)},{h:'Column',f:i=>esc(i.provenance.column_number)},{h:'Status',f:i=>esc(i.state+' · '+i.materiality)}]));}
 async function intakeFilePreview(){const out=document.getElementById('intake_result');if(!out)return;out.textContent='Preparing a review-only preview…';try{const file=document.getElementById('intake_file').files[0];if(!file)throw new Error('Choose a file first.');if(file.size>2_000_000)throw new Error('File exceeds the 2 MB limit.');const params=intakeQuery();params.set('format',document.getElementById('intake_format').value);const bytes=new Uint8Array(await file.arrayBuffer());const x=await api('/admin/v1/intake/preview?'+params,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:bytes});renderIntakeResult(x)}catch(e){out.textContent=e.message==='INTAKE_SCOPE_DENIED'?'You cannot preview data for this company.':'Preview refused. Check the selected scope and input, then retry.'}}
@@ -244,6 +294,10 @@ const ACTIONS={
  createCompany:()=>createCompany(),createGrant:()=>createGrant(),
  revokeGrant:el=>revokeGrant(el.dataset.id,Number(el.dataset.version)),
  explainAccess:el=>explainAccess(Number(el.dataset.offset)),
+ changeDetails:el=>loadChangeDetails(el),
+ changesRetry:()=>loadChangeList(),
+ changesPrevious:()=>{state.changeOffset=Math.max(0,state.changeOffset-100);loadChangeList()},
+ changesNext:()=>{state.changeOffset=Math.min(10000,state.changeOffset+100);loadChangeList()},
  intakeFilePreview:()=>intakeFilePreview(),intakeManualPreview:()=>intakeManualPreview()
 };
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;const fn=ACTIONS[el.dataset.act];if(fn)fn(el)});
