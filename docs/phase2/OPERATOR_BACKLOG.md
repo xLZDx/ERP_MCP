@@ -1886,3 +1886,8 @@ The bounded code supports a synthetic development/test capture and an evidence m
 ## R2-US-047 additional data provider follow-on
 
 Resume when a concrete additional Personal Data Control Center provider and its permitted data corpus are identified. Pin an immutable upstream revision with license and digest evidence, then verify the existing connector SDK's scoped result and provenance contract against that revision (TC139). Refuse any expansion to a personal corpus outside the approved scope (TC140). Invalidate qualification and rerun the mapped tests when the pin changes (TC141). The owner of the provider/corpus decision is unassigned. No additional provider is installed or admitted, and the frozen release scope is unaffected.
+
+## S13-03 operational checkpoint and physical-writer qualification
+
+Deferred from the bounded S13 sequence by documentation approval PMG-20261118-9c7b097d. Resume operational acceptance with a named actual checkpoint provider, an authenticated freshness and retention proof, a pinned trust root, evidence of signer custody and revocation, and a shared physical-writer fence qualified on an authorized 1C clone. Capture each result against the exact provider, signer and writer revision. No individuals are assigned for provider ownership or operational qualification. These dependencies keep the operational gate open; proceed with the approved disposable engineering sequence independently.
+

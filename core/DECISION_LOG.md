@@ -2371,3 +2371,8 @@ Merge the exact PR 58 source head 9bd6d3840437a811db4f3f8ad7e12619e102c57b into 
 
 Request an independent decision on the local acceptance order so that missing external trust and physical-writer proof do not silently close an operational gate or block independent disposable checks. Keep the current ordered dependency until a genuine verdict supersedes it. This proposal contains no runtime code or test-result changes.
 
+
+## 2026-11-18 - Accept the bounded S13 documentation sequence
+
+Record PMG-20261118-9c7b097d and its correlated reply: ordered S13-04 and S13-05 disposable work may follow bounded S13-03 acceptance even while external production qualification remains open. Update the plan and operational backlog accordingly. The generated receipt displays the historical FIN sprint identifier; the actual correlated verdict identifies ERP_MCP, S13, and the exact reviewed documentation head. Treat the verdict only as a decision on this S13 documentation sequence, never as a FIN or S13 code approval.
+
