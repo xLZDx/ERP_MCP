@@ -770,3 +770,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The S13 documentation reviewer approved separate source assembly and verification orders. Rule: keep source disposition, test execution, and acceptance as independently evidenced states.
 
+
+- 2026-11-18 SUCCESS: Traced target and epoch adapter routes through effective SQL permissions before changing them. Rule: qualify the complete bridge family before pointing a candidate adapter at the previously granted entry names.
+

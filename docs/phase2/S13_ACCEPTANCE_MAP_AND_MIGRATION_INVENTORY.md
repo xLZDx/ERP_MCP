@@ -114,3 +114,8 @@ The candidate source already includes scoped target registration and observation
 
 PMG-20261118-f4c5bcee approved the amendment against f4c5bcee687470a40c922298940313bc7a3bbadb, request f2c983ec-b865-44a9-ab6b-627eeee053d2, reply 52a706ec-b062-5c2d-8180-af7c2a71299c. Assemble bounded source in task order. Execute only the permitted named scenarios after source assembly, then adjudicate S13-01 through S13-05 in order. The retained S13-03 dev checkpoint, authority, diagnostic and refusal code is assembled, with exact-head tests and acceptance pending. No production grant, operational readiness, publication or code approval follows.
 
+
+### S13-04 source assembly boundary
+
+Migration 027 preserves the granted register_target, bump_epoch, and observe_target signatures as fenced bridges into ungranted v1 routines; migration 030 retains the updated target registration lock plan. The adapter's candidate observe route uses the granted bridge. Candidate registration and epoch bump currently point to the directly ungranted routines and therefore remain unavailable under normal operator grants. Do not change that routing or grant those routines before qualification of the complete registry bridge family under S13-REGISTRY-LEGACY-BRIDGE-01. This is an explicit withheld cutover, not an accepted or portable production capability. The existing SQL source is assembled for the isolated bridge qualification. Continue S13-05 source assembly under PMG-20261118-f4c5bcee and keep S13-04 acceptance NOT_RUN.
+
