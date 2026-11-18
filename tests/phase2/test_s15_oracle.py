@@ -47,11 +47,27 @@ def test_oracle_version_is_recorded_in_a_red_result_too():
     assert result.oracle_version == ORACLE_VERSION
 
 
-def test_changing_the_oracle_version_changes_the_recorded_value(monkeypatch):
-    monkeypatch.setattr(verifier, "ORACLE_VERSION", "s15-oracle-TEST-2")
-    result = verify_receipt(FakeReader(), "ref", make_expected(), SUPPORTED_SHAPE)
-    assert result.oracle_version == "s15-oracle-TEST-2"
-    assert result.oracle_version != ORACLE_VERSION
+def test_selected_typing_table_version_is_recorded_in_matching_and_early_results():
+    selected_version = "s15-oracle-test-2"
+    selected_table = TypingTable(RECEIPT_TYPING_TABLE.rules, version=selected_version)
+
+    matching = verify_receipt(
+        FakeReader(), "r", make_expected(), SUPPORTED_SHAPE,
+        writer_declared_types=full_declared_types(), table=selected_table)
+    assert matching.status is VerificationStatus.VERIFIED
+    assert matching.oracle_version == selected_version
+
+    unsupported = verify_receipt(
+        FakeReader(), "r", make_expected(), verifier.OperationShape("POST", "RECEIPT", 1),
+        table=selected_table)
+    assert unsupported.status is VerificationStatus.UNSUPPORTED_SHAPE
+    assert unsupported.oracle_version == selected_version
+
+    inconclusive = verify_receipt(
+        FakeReader(read_error=RuntimeError("read unavailable")), "r", make_expected(),
+        SUPPORTED_SHAPE, table=selected_table)
+    assert inconclusive.status is VerificationStatus.INCONCLUSIVE
+    assert inconclusive.oracle_version == selected_version
 
 
 def test_oracle_version_is_recorded_for_unsupported_shape_and_divergence():
@@ -137,10 +153,10 @@ def test_reference_rule_requires_a_catalog_and_others_forbid_it():
 
 def test_table_rejects_empty_and_duplicate_paths():
     with pytest.raises(ValueError, match="ORACLE_TABLE_INVALID"):
-        TypingTable(())
+        TypingTable((), version="invalid-empty-table")
     rule = FieldRule("a", Scope.HEADER, FieldType.NUMBER)
     with pytest.raises(ValueError, match="ORACLE_TABLE_INVALID"):
-        TypingTable((rule, rule))
+        TypingTable((rule, rule), version="invalid-duplicate-table")
 
 
 def test_divergence_between_writer_types_and_oracle_table_is_red():
@@ -191,7 +207,7 @@ def test_oracle_table_is_used_not_the_writer_table_for_comparison():
     rules = tuple(
         FieldRule(r.path, r.scope, FieldType.NUMBER) if r.path == "header.incoming_number" else r
         for r in RECEIPT_TYPING_TABLE.rules)
-    custom = TypingTable(rules)
+    custom = TypingTable(rules, version="s15-oracle-altered-incoming-number")
     expected = make_expected(header__incoming_number="123")
     stored = make_stored(header={"header.incoming_number": 123})
     custom_result = verify_receipt(FakeReader(stored), "r", expected, SUPPORTED_SHAPE,
@@ -199,6 +215,7 @@ def test_oracle_table_is_used_not_the_writer_table_for_comparison():
     default_result = verify_receipt(FakeReader(stored), "r", expected, SUPPORTED_SHAPE,
                                     writer_declared_types=full_declared_types())
     assert custom_result.status is VerificationStatus.VERIFIED
+    assert custom_result.oracle_version == "s15-oracle-altered-incoming-number"
     assert default_result.status is VerificationStatus.MISMATCH
 
 

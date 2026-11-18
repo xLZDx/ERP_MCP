@@ -108,7 +108,7 @@ to CREATE_DRAFT; how document version is read back (UNKNOWN, A14).
 ### Epic E15-2 Independent versioned oracle (V2-S15-02)
 
 Assertions:
-1. Each verification result carries the oracle version; changing the version changes the recorded value.
+1. Each verification result carries the version of the typing table actually supplied to the verifier, including unsupported, inconclusive, and mismatch results. The default table retains `s15-oracle-1`; alternate reviewed tables supply an explicit version.
 2. An import-graph check shows that verifier and oracle modules do not import preview or normalization modules (plan S15).
 3. The oracle's total rule takes the includes-VAT flag and the approved `vat_amount` as inputs; with the flag false the expected total is amount plus
    VAT (20 + 1.82 = 21.82), with true it equals the amount (A5).

@@ -15,7 +15,6 @@ from enum import Enum
 from .labels import LABEL_MACHINE_VERIFIED
 from .oracle import (
     AMOUNT_PATH,
-    ORACLE_VERSION,
     RECEIPT_TYPING_TABLE,
     VAT_AMOUNT_PATH,
     FieldRule,
@@ -92,10 +91,10 @@ class VerificationResult:
     typing_checked: bool = False
 
 
-def _result(status: VerificationStatus, findings: list[Finding] | None = None,
+def _result(table: TypingTable, status: VerificationStatus, findings: list[Finding] | None = None,
             unverified: list[str] | None = None, typing_checked: bool = False
             ) -> VerificationResult:
-    return VerificationResult(status, ORACLE_VERSION, LABEL_MACHINE_VERIFIED,
+    return VerificationResult(status, table.version, LABEL_MACHINE_VERIFIED,
                               tuple(findings or ()), tuple(unverified or ()), typing_checked)
 
 
@@ -247,7 +246,7 @@ def verify_receipt(
     ``ReadIncomplete``) is inconclusive like INCOMPLETE, never red and never a pass.
     """
     if shape != SUPPORTED_SHAPE:
-        return _result(VerificationStatus.UNSUPPORTED_SHAPE)
+        return _result(table, VerificationStatus.UNSUPPORTED_SHAPE)
     oracle_types = table.types_by_path()
     typing_checked = (writer_declared_types is not None
                       and all(p in writer_declared_types for p in oracle_types))
@@ -255,19 +254,19 @@ def verify_receipt(
         divergent = [Finding(p, oracle_types.get(p, "unknown"), "TYPING_DIVERGENCE")
                      for p, t in writer_declared_types.items() if oracle_types.get(p) != t]
         if divergent:
-            return _result(VerificationStatus.TYPING_DIVERGENCE, divergent,
+            return _result(table, VerificationStatus.TYPING_DIVERGENCE, divergent,
                            typing_checked=False)
     try:
         stored = reader.read_document(document_ref)
     except ReadIncomplete:
-        return _result(VerificationStatus.INCONCLUSIVE,
+        return _result(table, VerificationStatus.INCONCLUSIVE,
                        [Finding("document", "read", "INCOMPLETE")], typing_checked=typing_checked)
     except Exception as exc:  # noqa: BLE001 - any failed read is incomplete data, never a pass
-        return _result(VerificationStatus.INCONCLUSIVE,
+        return _result(table, VerificationStatus.INCONCLUSIVE,
                        [Finding("document", "read", "READ_ERROR", type(exc).__name__)],
                        typing_checked=typing_checked)
     if type(stored) is not StoredDocument:
-        return _result(VerificationStatus.INCONCLUSIVE,
+        return _result(table, VerificationStatus.INCONCLUSIVE,
                        [Finding("document", "read", "INCOMPLETE")], typing_checked=typing_checked)
     checker = _Checker(reader, stored)
     try:
@@ -282,12 +281,12 @@ def verify_receipt(
     unverified_sorted = sorted(unverified)
     red = [f for f in checker.findings if f.code not in ("INCOMPLETE", "READ_ERROR")]
     if red:
-        return _result(VerificationStatus.MISMATCH, checker.findings, unverified_sorted,
+        return _result(table, VerificationStatus.MISMATCH, checker.findings, unverified_sorted,
                        typing_checked)
     if checker.findings:
-        return _result(VerificationStatus.INCONCLUSIVE, checker.findings, unverified_sorted,
+        return _result(table, VerificationStatus.INCONCLUSIVE, checker.findings, unverified_sorted,
                        typing_checked)
     if unverified_sorted or not typing_checked:
-        return _result(VerificationStatus.PARTIAL_UNVERIFIED, [], unverified_sorted,
+        return _result(table, VerificationStatus.PARTIAL_UNVERIFIED, [], unverified_sorted,
                        typing_checked)
-    return _result(VerificationStatus.VERIFIED, typing_checked=True)
+    return _result(table, VerificationStatus.VERIFIED, typing_checked=True)

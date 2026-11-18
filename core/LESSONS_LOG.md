@@ -824,3 +824,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Existing S15 implementation and its original review history were located before new coding. Rule: resolve stale plan assumptions against current source and refresh evidence where the implementation already exists.
 
+- 2026-11-18 SHORTCOMING: An oracle test changed the global version label and another changed the table, but neither checked that a different table carried its own label. Rule: pair each ruleset with its version and assert both together in verification results.
+
+- 2026-11-18 FAILURE: The S15-02 test runner first used system Python and failed loading the project's MCP dependency during collection. Rule: invoke the repository virtual environment explicitly for named test runs.
+

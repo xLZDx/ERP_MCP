@@ -2490,4 +2490,10 @@ GPT-PM approved the exact head `1eb298cca27e4ca919110f609d42e9eab41c4d64` for bo
 
 The current branch already contains the independent oracle and receipt verifier. Start with the existing S15-01 acceptance cases and use the current project-plan order. CR-390 and CR-391 establish prior fixes and historical synthetic evidence, while the current candidate needs its own bounded review. Carry native reader qualification and catalogue reconciliation in the backlog.
 
+## 2026-11-18 - Record S15 verifier evidence and bind oracle version provenance
+
+At `0a503615a3169df65dbeb089c9b1be4472ba9322`, nine named S15-01 verifier nodes expanded to 54 passing cases in 0.38s. This is offline evidence for one-line receipt drafts. During S15-02 source review, found that an injected typing table could change a result while the result still named the default version. Bind the result to the selected ruleset&#x27;s version on all outcomes.
+
+The functional test owner selected version, decimal total, type divergence, unverified-path, and import independence tests. The first attempt failed before test collection with the system interpreter, which lacks the project&#x27;s MCP dependency. The same selection passed through the project virtual environment: 38 passed in 3.21s.
+
 </pre></main></body></html>

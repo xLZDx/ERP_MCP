@@ -78,8 +78,11 @@ class FieldRule:
 @dataclass(frozen=True, slots=True)
 class TypingTable:
     rules: tuple[FieldRule, ...]
+    version: str
 
     def __post_init__(self) -> None:
+        if type(self.version) is not str or not self.version.strip():
+            raise ValueError("ORACLE_VERSION_INVALID")
         paths = [r.path for r in self.rules]
         if not self.rules or len(paths) != len(set(paths)):
             raise ValueError("ORACLE_TABLE_INVALID")
@@ -108,7 +111,7 @@ RECEIPT_TYPING_TABLE = TypingTable((
     FieldRule(AMOUNT_PATH, Scope.LINE, FieldType.NUMBER),
     FieldRule("line.vat_rate", Scope.LINE, FieldType.ENUMERATION),
     FieldRule(VAT_AMOUNT_PATH, Scope.LINE, FieldType.NUMBER),
-))
+), version=ORACLE_VERSION)
 
 
 def _real_day(text: str) -> bool:
