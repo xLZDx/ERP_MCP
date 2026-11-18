@@ -95,6 +95,14 @@ class ApproverSession:
     idle_expires_at: datetime
     expires_at: datetime
     csrf_secret: str
+    credential_generation: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CredentialGenerationEvidence:
+    """Non-secret evidence binding a TEST login to one credential generation."""
+    principal_id: str
+    generation: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -310,6 +318,12 @@ class PrincipalRegistryPort(Protocol):
     def current(self, principal_id: str) -> PrincipalRecord | None: ...
     def epochs_current(self, dependencies: tuple[tuple[str, int], ...]) -> bool: ...
     def are_independent(self, requester_person_id: str, approver_person_id: str) -> bool: ...
+
+
+class TestCredentialGenerationPort(Protocol):
+    """TEST-only credential boundary; production credentials remain with SecretProvider."""
+    def verify(self, principal_id: str, credential: str) -> CredentialGenerationEvidence | None: ...
+    def current_generation(self, principal_id: str) -> int | None: ...
 
 
 class TargetRegistryPort(Protocol):

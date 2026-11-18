@@ -2574,4 +2574,12 @@ The isolated identity provider checked the stored session lifetime on validation
 
 At exact `15536d0c`, the assigned tester ran five named nodes for successful and concurrent rotation, expiry, registry revocation/epoch/unavailability and the page revocation regression. Seven parameterized cases passed in 1.23s, exit 0. The existing gateway SecretProvider resolves values by reference but does not expose an authenticated credential generation to S16. Preserve that value-access boundary and define credential-generation proof and its binding to derived sessions as a separate acceptance requirement.
 
+## 2026-11-18 - Reconcile the live program status from the current plan
+
+Refreshed the ledger&#x27;s project reconciliation against the current project plan, detailed task ledger, decision/lessons logs and all fetched local, remote and archive refs. The report had shown 42 tasks in review because it was using stale/unreconciled legacy harness `verified` states. The current plan and evidence register resolve those records as bounded-accepted or as other explicit project states; native harness test/review evidence remains unchanged. Updated the report renderer to derive the sprint-level closure note from current reconciled sprint records rather than an obsolete hard-coded count. No product/runtime acceptance or test evidence was added.
+
+## 2026-11-18 — Bind TEST approver sessions to credential generation
+
+Keep the configured S16 identity credential seam fail-closed: issuing a TEST approver session requires a credential accepted by the TEST-only authority; the session records only the authority&#x27;s positive generation, and validation checks that generation on every access. Rotation or revocation therefore invalidates sessions derived from the prior credential. The in-memory test authority stores a salted keyed digest, not credential values. Do not treat this fake as a production IdP or SecretProvider qualification; the existing operational backlog entry for the configured provider and owner remains open. Six assigned named functional cases passed at source HEAD `e6e5ececc4c4817a48538e5ed6156437098cf02f`; only the synthetic path was exercised.
+
 </pre></main></body></html>

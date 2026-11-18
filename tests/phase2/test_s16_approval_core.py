@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import timedelta
+import secrets
 from threading import Barrier
 
 import pytest
@@ -293,7 +294,8 @@ def test_cross_session_decision_reference_and_exact_nonce_expiry_are_refused():
     snap = propose(env)
     page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
     assert page.error is None
-    second_session = env.idp.issue(env.approver, NOW + timedelta(seconds=1))
+    second_session = env.idp.issue(env.approver, NOW + timedelta(seconds=1),
+                                   credential=env.test_credential)
     assert second_session is not None
     cross_session = env.approval_service.submit_decision(second_session.principal, second_session,
         page.value.decision_ref, "APPROVE", confirmation_text="", csrf_token=page.value.csrf_token,
@@ -393,6 +395,82 @@ def test_registry_revocation_epoch_change_or_unavailability_invalidates_session(
 
     assert env.idp.validate_session(env.session, NOW + timedelta(minutes=1)) is None
     assert env.idp.rotate_session(env.session, NOW + timedelta(minutes=1)) is None
+
+
+def test_test_credential_authority_verifies_only_current_credential_and_hides_value(caplog):
+    env = build_env()
+    credential = secrets.token_urlsafe(32)
+    assert env.credential_authority.rotate(env.approver.principal_id, credential)
+
+    evidence = env.credential_authority.verify(env.approver.principal_id, credential)
+    rejected = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential="invalid-test-credential")
+    accepted = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential)
+
+    assert evidence is not None
+    assert evidence.principal_id == env.approver.principal_id
+    assert evidence.generation == 2
+    assert env.credential_authority.verify(env.approver.principal_id, "invalid-test-credential") is None
+    assert rejected is None
+    assert accepted is not None
+    assert accepted.credential_generation == evidence.generation
+    assert credential not in repr(evidence)
+    assert credential not in repr(accepted)
+    assert credential not in caplog.text
+
+
+def test_configured_test_credential_authority_refuses_login_without_credential():
+    env = build_env()
+
+    assert env.idp.issue(env.approver, NOW + timedelta(seconds=1)) is None
+
+
+def test_test_credential_rotation_rejects_old_credential_and_invalidates_derived_session():
+    env = build_env()
+    old_credential = secrets.token_urlsafe(32)
+    new_credential = secrets.token_urlsafe(32)
+    assert env.credential_authority.rotate(env.approver.principal_id, old_credential)
+    session = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=old_credential)
+    assert session is not None
+    assert session.credential_generation == 2
+
+    assert env.credential_authority.rotate(env.approver.principal_id, new_credential)
+
+    current = env.credential_authority.verify(env.approver.principal_id, new_credential)
+    assert current is not None and current.generation == 3
+    assert env.credential_authority.verify(env.approver.principal_id, old_credential) is None
+    assert env.idp.validate_session(session, NOW + timedelta(seconds=2)) is None
+
+
+def test_test_credential_revocation_rejects_credential_and_derived_session():
+    env = build_env()
+    credential = secrets.token_urlsafe(32)
+    assert env.credential_authority.rotate(env.approver.principal_id, credential)
+    session = env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential)
+    assert session is not None
+
+    env.credential_authority.revoke(env.approver.principal_id)
+
+    assert env.credential_authority.verify(env.approver.principal_id, credential) is None
+    assert env.credential_authority.current_generation(env.approver.principal_id) is None
+    assert env.idp.validate_session(session, NOW + timedelta(seconds=2)) is None
+
+
+def test_test_credential_authority_unavailable_or_malformed_fails_closed(monkeypatch):
+    env = build_env()
+    credential = secrets.token_urlsafe(32)
+
+    def unavailable(*_args, **_kwargs):
+        raise OSError("credential authority unavailable")
+
+    monkeypatch.setattr(env.credential_authority, "verify", unavailable)
+    assert env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential) is None
+
+    monkeypatch.setattr(env.credential_authority, "verify", lambda *_args, **_kwargs: object())
+    assert env.idp.issue(env.approver, NOW + timedelta(seconds=1), credential=credential) is None
+
+    monkeypatch.setattr(env.credential_authority, "verify", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(env.credential_authority, "current_generation", unavailable)
+    assert env.idp.validate_session(env.session, NOW + timedelta(seconds=1)) is None
 
 
 def test_missing_begin_apply_reader_fails_closed_before_apply_port():

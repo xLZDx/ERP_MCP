@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import secrets
 
 from business_ai_gateway.phase2.change.errors import ErrorCode
 from business_ai_gateway.phase2.change.killswitch import SWITCH_OFF
@@ -17,7 +18,9 @@ from erp_mcp_s16.fakes import (
     FakeApplyPort, FakeBeginApplyEvidencePort, FakeClock, FakeKillSwitch, FakeNonceSource, FakeProposalPort,
     FakeVerifyPort, InMemoryChangeStore,
 )
-from erp_mcp_s16.registries import InMemoryPrincipalRegistry, InMemoryTargetRegistry, TestIdP
+from erp_mcp_s16.registries import (
+    InMemoryPrincipalRegistry, InMemoryTargetRegistry, InMemoryTestCredentialAuthority, TestIdP,
+)
 from erp_mcp_s16.services import ApprovalService, ChangeService
 
 NOW = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
@@ -56,6 +59,8 @@ class S16Environment:
     requester: AuthenticatedPrincipal
     approver: AuthenticatedPrincipal
     session: object
+    credential_authority: InMemoryTestCredentialAuthority
+    test_credential: str
 
 
 def positive_begin_apply_evidence():
@@ -102,12 +107,17 @@ def build_env(*, permissive=False, switch=None, positive_begin_apply=True,
     proposal_port = FakeProposalPort(targets, principals)
     change_service = ChangeService(core, store, proposal_port, nonce_source, clock)
     approval_service = ApprovalService(core, store, nonce_source, clock, origin=ORIGIN)
-    idp = TestIdP(principals, nonce_source=nonce_source)
-    session = idp.issue(app, NOW)
+    credential_authority = InMemoryTestCredentialAuthority()
+    fixture_credential = secrets.token_urlsafe(32)
+    assert credential_authority.enroll(app.principal_id, fixture_credential)
+    idp = TestIdP(principals, nonce_source=nonce_source,
+                  credential_authority=credential_authority)
+    session = idp.issue(app, NOW, credential=fixture_credential)
     assert session is not None
     return S16Environment(store, principals, targets, apply_port, verify_port, kill_switch,
                           clock, nonce_source, core, change_service, approval_service,
-                          idp, req, session.principal, session)
+                          idp, req, session.principal, session, credential_authority,
+                          fixture_credential)
 
 
 def raw_create(**overrides):

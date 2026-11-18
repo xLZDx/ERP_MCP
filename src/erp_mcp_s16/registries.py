@@ -1,14 +1,16 @@
 """Registry contracts and deliberately in-memory fakes; no production identity source is wired."""
 from __future__ import annotations
 
+import hashlib
+import hmac
+import secrets
 import threading
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-import secrets
 
 from .contracts import (
     AuthenticatedPrincipal, PrincipalRecord, PrincipalRegistryPort, TargetRecord,
-    TargetRegistryPort, TargetScope,
+    CredentialGenerationEvidence, TargetRegistryPort, TargetScope, TestCredentialGenerationPort,
 )
 
 
@@ -79,16 +81,88 @@ class InMemoryTargetRegistry(TargetRegistryPort):
                 self._records[scope.as_tuple()] = replace(record, version=version)
 
 
+class InMemoryTestCredentialAuthority(TestCredentialGenerationPort):
+    """Isolated TEST credential verifier; stores keyed digests, never credential values."""
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._key = secrets.token_bytes(32)
+        self._records: dict[str, tuple[bytes, bytes, int, bool]] = {}
+
+    def enroll(self, principal_id: str, credential: str) -> bool:
+        return self._set_credential(principal_id, credential, rotate=False)
+
+    def rotate(self, principal_id: str, credential: str) -> bool:
+        return self._set_credential(principal_id, credential, rotate=True)
+
+    def _set_credential(self, principal_id: str, credential: str, *, rotate: bool) -> bool:
+        if (type(principal_id) is not str or not principal_id
+                or type(credential) is not str or not credential):
+            return False
+        try:
+            salt = secrets.token_bytes(16)
+            digest = hmac.new(self._key, salt + credential.encode("utf-8"), hashlib.sha256).digest()
+        except Exception:
+            return False
+        with self._lock:
+            current = self._records.get(principal_id)
+            if ((current is None and rotate) or (current is not None and not rotate)
+                    or (current is not None and current[3])):
+                return False
+            generation = 1 if current is None else current[2] + 1
+            self._records[principal_id] = (salt, digest, generation, False)
+        return True
+
+    def verify(self, principal_id: str, credential: str) -> CredentialGenerationEvidence | None:
+        if type(principal_id) is not str or not principal_id or type(credential) is not str:
+            return None
+        with self._lock:
+            record = self._records.get(principal_id)
+            if (type(record) is not tuple or len(record) != 4
+                    or type(record[0]) is not bytes or type(record[1]) is not bytes
+                    or type(record[2]) is not int or record[2] <= 0
+                    or type(record[3]) is not bool or record[3]):
+                return None
+            salt, expected, generation, _ = record
+            try:
+                candidate = hmac.new(self._key, salt + credential.encode("utf-8"), hashlib.sha256).digest()
+            except Exception:
+                return None
+            if not hmac.compare_digest(candidate, expected):
+                return None
+            return CredentialGenerationEvidence(principal_id, generation)
+
+    def current_generation(self, principal_id: str) -> int | None:
+        if type(principal_id) is not str or not principal_id:
+            return None
+        with self._lock:
+            record = self._records.get(principal_id)
+            if (type(record) is not tuple or len(record) != 4
+                    or type(record[0]) is not bytes or type(record[1]) is not bytes
+                    or type(record[2]) is not int or record[2] <= 0
+                    or type(record[3]) is not bool or record[3]):
+                return None
+            return record[2]
+
+    def revoke(self, principal_id: str) -> None:
+        with self._lock:
+            current = self._records.get(principal_id)
+            if current is not None:
+                self._records[principal_id] = (current[0], current[1], current[2] + 1, True)
+
+
 class TestIdP:
     """Minimal fixture issuer; it accepts only a registry-authenticated approver principal."""
-    def __init__(self, principals: PrincipalRegistryPort, *, nonce_source=None) -> None:
+    def __init__(self, principals: PrincipalRegistryPort, *, nonce_source=None,
+                 credential_authority: TestCredentialGenerationPort | None = None) -> None:
         self.principals = principals
         self.nonce_source = nonce_source
+        self.credential_authority = credential_authority
         self._revoked_sessions: set[str] = set()
         self._sessions: dict[str, object] = {}
         self._lock = threading.RLock()
 
-    def issue(self, principal: AuthenticatedPrincipal, now):
+    def issue(self, principal: AuthenticatedPrincipal, now, *, credential: str | None = None):
         from .contracts import ApproverSession, PrincipalRole, TokenClass
         if (type(principal) is not AuthenticatedPrincipal or principal.token_class is not TokenClass.APPROVER_SESSION
                 or PrincipalRole.APPROVER not in principal.roles or principal.mfa_authenticated is not True
@@ -97,6 +171,33 @@ class TestIdP:
                 or principal.scope.target_class != "TEST"
                 or not self.authenticate(principal)):
             return None
+        credential_generation = None
+        if self.credential_authority is not None:
+            try:
+                if credential is None:
+                    return None
+                evidence = self.credential_authority.verify(principal.principal_id, credential)
+                if (type(evidence) is not CredentialGenerationEvidence
+                        or evidence.principal_id != principal.principal_id
+                        or type(evidence.generation) is not int or evidence.generation <= 0):
+                    return None
+                credential_generation = evidence.generation
+                if type(credential_generation) is not int or credential_generation <= 0:
+                    return None
+            except Exception:
+                return None
+        return self._issue_for_generation(principal, now, credential_generation)
+
+    def _issue_for_generation(self, principal: AuthenticatedPrincipal, now, generation: int | None):
+        from .contracts import ApproverSession
+        if self.credential_authority is not None:
+            try:
+                current_generation = self.credential_authority.current_generation(principal.principal_id)
+                if (type(generation) is not int or generation <= 0
+                        or type(current_generation) is not int or current_generation != generation):
+                    return None
+            except Exception:
+                return None
         secret = self.nonce_source.issue() if self.nonce_source else secrets.token_urlsafe(32)
         with self._lock:
             sid = None
@@ -109,7 +210,8 @@ class TestIdP:
                 return None
             expiry = now + timedelta(minutes=15)
             session_principal = replace(principal, session_id=sid, expires_at=expiry)
-            session = ApproverSession(sid, session_principal, now, now, expiry, expiry, secret)
+            session = ApproverSession(sid, session_principal, now, now, expiry, expiry, secret,
+                                      generation)
             self._sessions[sid] = session
         return session
 
@@ -126,6 +228,7 @@ class TestIdP:
                 if (current != session or session_id in self._revoked_sessions
                         or not self._session_metadata_valid(session)
                         or not self._session_time_valid(session, now)
+                        or not self._credential_generation_current(session)
                         or not self.authenticate(session.principal)):
                     return None
             except Exception:
@@ -142,7 +245,9 @@ class TestIdP:
             if current is None:
                 return None
             try:
-                replacement = self.issue(current.principal, now)
+                replacement = self._issue_for_generation(
+                    current.principal, now, current.credential_generation
+                )
             except Exception:
                 return None
             from .contracts import ApproverSession
@@ -185,6 +290,17 @@ class TestIdP:
                     and all(type(role) is PrincipalRole for role in record.roles)
                     and PrincipalRole.APPROVER in record.roles
                     and type(record.lane) is str and record.lane == "TEST")
+        except Exception:
+            return False
+
+    def _credential_generation_current(self, session) -> bool:
+        if self.credential_authority is None:
+            return session.credential_generation is None
+        try:
+            generation = session.credential_generation
+            current_generation = self.credential_authority.current_generation(session.principal.principal_id)
+            return (type(generation) is int and generation > 0
+                    and type(current_generation) is int and current_generation == generation)
         except Exception:
             return False
 
