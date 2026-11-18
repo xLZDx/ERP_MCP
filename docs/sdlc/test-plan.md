@@ -137,6 +137,7 @@ The assigned functional-test-reviewer and e2e-runner own these named cases after
 The assigned functional-test-reviewer owns these named cases after all S17 story code is complete; do not run them before then. Use `h3_scorecard.py` only to aggregate a pre-frozen evidence record; its `PASS` is a metric result, not by itself sprint acceptance.
 
 - Require exactly 30 invoices with unique source SHA-256 values and timezone-aware freeze timestamps earlier than extraction start. Duplicate hashes or malformed evidence return a fixed invalid code without document content.
+- Incomplete exact slotted `H3InvoiceEvidence` or `H3FieldEvidence` records fail with fixed `INVALID` / `INVOICE_EVIDENCE_INVALID`; no `AttributeError` or malformed-field detail escapes.
 - Count only human semantic corrections to fields marked material; formatting-only changes are not corrections. Compute the ratio by integer counts so exactly 10% passes and any larger ratio fails without rounding.
 - Report per-format strata separately. A zero material-field denominator is `NOT_READY`, not a zero correction rate.
 - Every material field must have a human-review record regardless of confidence; any unreviewed material field in a qualified test-lane sample fails.

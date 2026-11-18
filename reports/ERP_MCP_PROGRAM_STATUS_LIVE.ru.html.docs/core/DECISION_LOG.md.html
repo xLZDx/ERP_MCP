@@ -2793,4 +2793,8 @@ A code review found that `_valid_parse_result` type-checked slotted parser datac
 ## 2026-11-18 — Bind S17-03 confirmation to queued source provenance
 
 Independent code review found that a caller could copy a real ambiguity queue ID and candidates into a fresh `IntakeEntityResolution`, substitute another valid source-cell provenance, and receive a HUMAN-confirmed result carrying that unrelated provenance. Keep the stable scope/candidate queue ID, but record a SHA-256 fingerprint of each validated source-cell provenance in the resolver&#x27;s in-memory queue context when the intake adapter creates or reuses that ambiguity. Confirmation now requires an exact previously registered context fingerprint. The fingerprint contains the source digest, format, sheet, row, column, and field key; no file path or extracted value is retained. The named substituted-provenance regression is recorded; S17-03 remains IN_PROGRESS and its tests are NOT_RUN.
+
+## 2026-11-18 — Fail closed on malformed S17-06 scorecard records
+
+Code inspection found that `_invoice_valid` and `_field_valid` read slots directly on exact `H3InvoiceEvidence` and `H3FieldEvidence` instances. A partially initialized slotted instance could therefore escape `evaluate_h3` as an `AttributeError` instead of the fixed `INVALID` result. Both validators now contain malformed field-access exceptions and return `False`; the public evaluator maps that to `INVOICE_EVIDENCE_INVALID`. Named partial-record regression cases were added to the test plan; tests remain pending at final S17 verification.
 </pre></main></body></html>

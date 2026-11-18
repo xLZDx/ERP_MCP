@@ -290,6 +290,8 @@ S17-02 implementation follow-up (2026-11-18): a code review found that partially
 
 S17-03 implementation follow-up (2026-11-18): review found that `confirm_ambiguous_entity` trusted any well-formed provenance attached to a caller-constructed resolution. The adapter now fingerprints validated source-cell provenance, records those fingerprints in the resolver&#x27;s in-memory queue item, and refuses confirmation unless the exact provenance fingerprint is already bound to that scoped item. A stable queue item may collect contexts from multiple independently resolved source cells. The test plan names the substituted-provenance refusal case. Tests and final S17 review remain NOT_RUN; S17-03 stays IN_PROGRESS.
 
+S17-06 implementation follow-up (2026-11-18): code inspection found that malformed exact slotted `H3InvoiceEvidence` and `H3FieldEvidence` instances could leak missing-slot errors from the scorecard. Validators now fail closed on malformed field access, and the test plan names both partial-record cases. Focused acceptance tests and final S17 review remain pending; S17-06 stays IN_PROGRESS.
+
 ## Sprint S18 - Reliability and security
 Goal: Reliability and security.
 

@@ -142,24 +142,32 @@ def evaluate_h3(evidence: object) -> H3Scorecard:
 
 
 def _invoice_valid(row: H3InvoiceEvidence) -> bool:
-    if (type(row.source_sha256) is not str or _SHA256.fullmatch(row.source_sha256) is None
-            or type(row.file_format) is not H3FileFormat
-            or type(row.evidence_class) is not H3EvidenceClass
-            or not _aware(row.frozen_at) or not _aware(row.extraction_started_at)
-            or row.frozen_at >= row.extraction_started_at
-            or (row.test_lane_run_id is not None
-                and (type(row.test_lane_run_id) is not str or not row.test_lane_run_id.strip()))
-            or type(row.fields) is not tuple
-            or any(not _field_valid(field) for field in row.fields)):
+    try:
+        if (type(row.source_sha256) is not str or _SHA256.fullmatch(row.source_sha256) is None
+                or type(row.file_format) is not H3FileFormat
+                or type(row.evidence_class) is not H3EvidenceClass
+                or not _aware(row.frozen_at) or not _aware(row.extraction_started_at)
+                or row.frozen_at >= row.extraction_started_at
+                or (row.test_lane_run_id is not None
+                    and (type(row.test_lane_run_id) is not str
+                         or not row.test_lane_run_id.strip()))
+                or type(row.fields) is not tuple
+                or any(not _field_valid(field) for field in row.fields)):
+            return False
+    except Exception:  # noqa: BLE001 - malformed slotted evidence must fail closed
         return False
     return True
 
 
 def _field_valid(field: object) -> bool:
-    return (type(field) is H3FieldEvidence
-            and all(type(value) is bool for value in (
-                field.material, field.semantic_correction, field.confidently_wrong,
-                field.human_reviewed, field.approved)))
+    if type(field) is not H3FieldEvidence:
+        return False
+    try:
+        return all(type(value) is bool for value in (
+            field.material, field.semantic_correction, field.confidently_wrong,
+            field.human_reviewed, field.approved))
+    except Exception:  # noqa: BLE001 - malformed slotted evidence must fail closed
+        return False
 
 
 def _aware(value: object) -> bool:
