@@ -2682,6 +2682,8 @@ Implement only the frozen calculation and evidence-shape guard in `h3_scorecard.
 
 The standard pre-commit report snapshot is generated before the new commit exists. Regenerate the required live report after `7a94afc` so the visible HEAD and commit history include the H3 scorecard. This is a reporting correction only; no task status, acceptance evidence, or test result is promoted.
 
+After S17-05 redaction commit `877bf5f`, refresh the program report again and update this plan's task commit pointers. The snapshot must show the implementation HEAD while preserving S17-05 and S17-06 as in progress; the missing authenticated API/UI, named tests, and qualified H3 dataset remain open.
+
 ## 2026-11-18 — Keep S17 intake values out of default object representations
 
 Review objects must expose extracted values to the explicitly authorized renderer, but their default `repr()` is not an intended disclosure interface. Redact values, source-coordinate metadata and entity suggestions from field representations to reduce accidental log leakage; leave the authenticated response contract unchanged.
