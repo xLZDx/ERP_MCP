@@ -334,6 +334,48 @@ class AdminRepository:
         )
         return row["tenant_id"] if row is not None else None
 
+    async def ledger_scope_for_company(
+        self, ctx: AdminContext, source_id: str, company_id: UUID
+    ) -> tuple[str, str] | None:
+        """Resolve explicit keys only after the current exact-company allow/deny check."""
+        if (not ctx.can_admin_source(
+                source_id, "PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"
+        ) or not isinstance(ctx.token.subject, str) or not ctx.token.subject):
+            return None
+        row = await self.db.require_pool().fetchrow(
+            """SELECT s.tenant_id, c.ledger_company_id,
+                      EXISTS (
+                        SELECT 1 FROM bag.access_grants a
+                        WHERE a.effect='allow' AND a.revoked_at IS NULL
+                          AND (a.expires_at IS NULL OR a.expires_at>now())
+                          AND (a.source_id=s.source_id OR a.all_sources)
+                          AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                          AND ((a.principal_kind='subject' AND a.principal_id=$3)
+                            OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                      ) AS has_allow,
+                      EXISTS (
+                        SELECT 1 FROM bag.access_grants a
+                        WHERE a.effect='deny' AND a.revoked_at IS NULL
+                          AND (a.expires_at IS NULL OR a.expires_at>now())
+                          AND (a.source_id=s.source_id OR a.all_sources)
+                          AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                          AND ((a.principal_kind='subject' AND a.principal_id=$3)
+                            OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                      ) AS has_deny
+               FROM bag.sources AS s
+               JOIN bag.companies AS c ON c.source_id=s.source_id
+               WHERE s.source_id=$1 AND c.company_id=$2
+                 AND s.enabled=true AND c.enabled=true""",
+            source_id,
+            company_id,
+            ctx.token.subject,
+            sorted(ctx.groups),
+        )
+        if (row is None or not row["has_allow"] or row["has_deny"]
+                or row["tenant_id"] is None or row["ledger_company_id"] is None):
+            return None
+        return row["tenant_id"], row["ledger_company_id"]
+
     async def source_model(self, ctx: AdminContext, source_id: str):
         if not ctx.can_admin_source(source_id):
             return None
@@ -1391,6 +1433,35 @@ class AdminAPI:
         except Exception as exc:  # noqa: BLE001 - redact API boundary failures
             return self._mutation_error(exc)
 
+    async def company_ledger_binding(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if self.mutations is None:
+            return self._disabled()
+        # The cross-service company key is a global scope boundary and is bound
+        # only by an unscoped platform administrator after recent step-up.
+        if ctx.source_scope("PLATFORM_ADMIN") is not None:
+            return self._denied()
+        guard = self._step_up_guard(ctx)
+        if guard is not None:
+            return guard
+        try:
+            company_id = UUID(request.path_params["company_id"])
+            body = await _json_body(request)
+            result = await self.mutations.bind_company_ledger_identity(
+                actor=self._actor(ctx),
+                company_id=company_id,
+                ledger_company_id=body.get("ledger_company_id"),
+                expected_version=body.get("expected_version"),
+                reason=str(body.get("reason", "")),
+                request_id=_request_id(request),
+                idempotency_key=request.headers.get("idempotency-key", ""),
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            return self._mutation_error(exc)
+
     async def company_update(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
@@ -1950,6 +2021,7 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ("/admin/v1/sources", ["GET"], api.sources),
         ("/admin/v1/sources/{source_id}", ["GET"], api.source_detail_view),
         ("/admin/v1/sources/{source_id}/tenant-binding", ["PUT"], api.source_tenant_bind),
+        ("/admin/v1/companies/{company_id}/ledger-binding", ["PUT"], api.company_ledger_binding),
         ("/admin/v1/companies", ["GET"], api.companies),
         ("/admin/v1/intake/preview", ["POST"], api.intake_preview),
         ("/admin/v1/intake/manual-preview", ["POST"], api.intake_manual_preview),
