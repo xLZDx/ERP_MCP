@@ -2751,3 +2751,7 @@ Regenerate the standard Russian live report after `d5223044` so its provenance a
 ## 2026-11-18 — Keep S17 company change status distinct from source queue jobs
 
 The Admin workbench status route reads the durable `change_ledger` projections; it is not a `living.jobs` queue browser. The queue row identity is `(tenant_id, source_id, job_id)` and does not carry `company_id`, while one registered source may contain multiple companies. `JobRecord` has company ownership for the existing known-ID user-session read contract, but its visible `FakeJobDispatcher` is not a production Admin list service. Do not infer company ownership from a queue row, payload, source key, or job id and do not expose a source-wide queue to one company. A future job list needs a durable company binding or a reviewed company-scoped projection, a read-only database function and exact-company authorization rechecked after the read. Until that separate contract exists, the UI calls its existing view “Change status” and reports only change-ledger state. No migration, runtime qualification, or test was performed for this decision.
+
+## 2026-11-18 — Refresh S17 report after the queue-scope clarification
+
+Regenerate the standard live report and its browsable document copies after `f9d5e58f`. The report records the bounded acceptance numerator from the project reconciliation, and its snapshot names the source HEAD `f9d5e58f`; generation does not promote S17-05 beyond implementation or change test/runtime qualification.
