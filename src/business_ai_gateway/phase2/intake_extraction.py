@@ -102,6 +102,12 @@ _PLAIN_DECIMAL = re.compile(r"(?:0|[1-9][0-9]{0,17})(?:\.[0-9]{1,6})?\Z", re.ASC
 MAX_EXTRACTED_VALUES = 50_000
 MAX_TOTAL_COMPONENTS = 50_000
 MAX_MANUAL_FIELDS = 500
+# A sum can gain carry digits across both line and VAT component arrays.
+_MAX_TOTAL_INTEGER_DIGITS = 18 + len(str(2 * MAX_TOTAL_COMPONENTS)) - 1
+_PLAIN_TOTAL_DECIMAL = re.compile(
+    rf"(?:0|[1-9][0-9]{{0,{_MAX_TOTAL_INTEGER_DIGITS - 1}}})(?:\.[0-9]{{1,6}})?\Z",
+    re.ASCII,
+)
 # Each amount coefficient has at most 24 digits. The sum may contain up to twice
 # MAX_TOTAL_COMPONENTS amounts; add the base-10 carry width for that term count.
 _TOTAL_ARITHMETIC_PRECISION = 18 + 6 + len(str(2 * MAX_TOTAL_COMPONENTS - 1))
@@ -286,7 +292,7 @@ def cross_check_explicit_total(
 
     amount_values = tuple(_parse_exact_amount(value) for value in line_amounts)
     vat_values = tuple(_parse_exact_amount(value) for value in vat_amounts)
-    stated_value = _parse_exact_amount(stated_total)
+    stated_value = _parse_exact_amount(stated_total, total=True)
     if stated_value is None or any(value is None for value in (*amount_values, *vat_values)):
         return TotalCheckResult(TotalCheckState.UNCOMPUTABLE_REVIEW, "TOTAL_INPUT_UNSUPPORTED")
 
@@ -305,8 +311,9 @@ def cross_check_explicit_total(
     )
 
 
-def _parse_exact_amount(value: str) -> Decimal | None:
-    if len(value) > 26 or not _PLAIN_DECIMAL.fullmatch(value):
+def _parse_exact_amount(value: str, *, total: bool = False) -> Decimal | None:
+    pattern = _PLAIN_TOTAL_DECIMAL if total else _PLAIN_DECIMAL
+    if not pattern.fullmatch(value):
         return None
     try:
         amount = Decimal(value)

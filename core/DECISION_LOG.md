@@ -2795,3 +2795,7 @@ Independent code review found that a caller could copy a real ambiguity queue ID
 ## 2026-11-18 — Fail closed on malformed S17-06 scorecard records
 
 Code inspection found that `_invoice_valid` and `_field_valid` read slots directly on exact `H3InvoiceEvidence` and `H3FieldEvidence` instances. A partially initialized slotted instance could therefore escape `evaluate_h3` as an `AttributeError` instead of the fixed `INVALID` result. Both validators now contain malformed field-access exceptions and return `False`; the public evaluator maps that to `INVOICE_EVIDENCE_INVALID`. Named partial-record regression cases were added to the test plan; tests remain pending at final S17 verification.
+
+## 2026-11-18 — Allow bounded carry width in S17-02 stated totals
+
+The max-cardinality exact-arithmetic case showed that `_parse_exact_amount` applied the component's 18-integer-digit input bound to the stated total too. Up to 100,000 separately bounded line/VAT inputs may sum to a valid 23-integer-digit result. Keep the original 18-digit bound on each component and derive a separate 23-digit total bound from `MAX_TOTAL_COMPONENTS`; do not relax individual amount validation. The focused regression rerun is pending.

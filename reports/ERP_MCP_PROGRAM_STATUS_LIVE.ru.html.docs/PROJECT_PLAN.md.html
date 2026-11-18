@@ -292,6 +292,8 @@ S17-03 implementation follow-up (2026-11-18): review found that `confirm_ambiguo
 
 S17-06 implementation follow-up (2026-11-18): code inspection found that malformed exact slotted `H3InvoiceEvidence` and `H3FieldEvidence` instances could leak missing-slot errors from the scorecard. Validators now fail closed on malformed field access, and the test plan names both partial-record cases. Focused acceptance tests and final S17 review remain pending; S17-06 stays IN_PROGRESS.
 
+S17-02 implementation follow-up (2026-11-18): the final max-cardinality test exposed a mismatch between the 18-integer-digit component bound and a valid stated total carrying up to 23 integer digits after summing 100,000 bounded line/VAT amounts. Component parsing retains its 18-digit limit; stated totals now use the derived carry bound. Focused functional rerun remains pending; S17-02 stays IN_PROGRESS.
+
 ## Sprint S18 - Reliability and security
 Goal: Reliability and security.
 
