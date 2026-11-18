@@ -2722,4 +2722,8 @@ The explicit S17 `includes_vat` check accepts up to 50,000 line/VAT pairs, with 
 
 After `428427b1`, run the standard report generator so the committed live report snapshot includes the exact arithmetic fix and reconciled project counts. Preserve the documented 91/111 bounded-acceptance total; no review, test, or task acceptance is inferred by report generation.
 
+# 2026-11-18 — Fail closed on incomplete entity-resolution records
+
+S17-03 accepts caller-controlled extraction and resolution objects, including malformed values. Slotted dataclass instances can exist without all initialized fields, so direct reads before a guard can leak `AttributeError` instead of the adapter&#x27;s fixed refusal. Snapshot the required fields inside guarded access, validate candidate and suggestion containers, and use only those validated snapshots for ambiguity confirmation. Preserve company scope, source-cell provenance, human confirmation, review-required status, and `proposal_allowed == false`; do not add persistence, identity authentication, proposals, or 1C calls. Add the malformed-record case to the named S17 reviewer plan. Verification remains NOT_RUN until the agreed S17 test stage.
+
 </pre></main></body></html>

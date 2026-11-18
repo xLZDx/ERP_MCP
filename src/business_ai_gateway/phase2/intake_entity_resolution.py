@@ -68,37 +68,41 @@ def resolve_extracted_entity(
     reference: Reference | None = None,
 ) -> IntakeEntityResolution:
     """Resolve one extracted display value strictly inside the selected company scope."""
-    if (type(resolver) is not AliasResolver or not _valid_scope(scope)
-            or type(extracted) is not ExtractedValue
-            or type(extracted.provenance) is not SourceProvenance
-            or not _valid_provenance(extracted.provenance)
-            or type(extracted.text) is not str
-            or type(extracted.state) is not ExtractionState
-            or extracted.state not in (ExtractionState.REVIEW_REQUIRED, ExtractionState.BEST_EFFORT_REVIEW)):
+    if type(resolver) is not AliasResolver or not _valid_scope(scope) or type(extracted) is not ExtractedValue:
         return _refused()
     try:
-        result = resolver.resolve(scope, ResolveQuery(reference=reference, name=extracted.text))
+        provenance = extracted.provenance
+        text = extracted.text
+        state = extracted.state
+    except Exception:  # noqa: BLE001 - partially built instances fail closed
+        return _refused(scope)
+    if (type(provenance) is not SourceProvenance or not _valid_provenance(provenance)
+            or type(text) is not str or type(state) is not ExtractionState
+            or state not in (ExtractionState.REVIEW_REQUIRED, ExtractionState.BEST_EFFORT_REVIEW)):
+        return _refused(scope, _safe_provenance_value(provenance))
+    try:
+        result = resolver.resolve(scope, ResolveQuery(reference=reference, name=text))
     except Exception:  # noqa: BLE001 - malformed or failing resolver fails closed
-        return _refused(scope, extracted.provenance)
+        return _refused(scope, provenance)
 
     if result.outcome is AliasOutcome.RESOLVED and result.entity_id is not None:
         return IntakeEntityResolution(
             EntityResolutionState.MATCH_REVIEW_REQUIRED, "EXACT_REFERENCE_MATCH_REVIEW",
-            scope, extracted.provenance, candidate_ids=(result.entity_id,),
+            scope, provenance, candidate_ids=(result.entity_id,),
             selected_entity_id=result.entity_id,
         )
     if result.outcome is AliasOutcome.AMBIGUOUS:
         return IntakeEntityResolution(
             EntityResolutionState.AMBIGUOUS_REVIEW, "AMBIGUOUS_CANDIDATES_REVIEW",
-            scope, extracted.provenance, candidate_ids=result.candidate_ids,
+            scope, provenance, candidate_ids=result.candidate_ids,
             suggestions=result.suggestions, queue_item_id=result.queue_item_id,
         )
     if result.outcome is AliasOutcome.NOT_FOUND:
         return IntakeEntityResolution(
             EntityResolutionState.UNMATCHED_REVIEW, "MANUAL_MAPPING_REQUIRED",
-            scope, extracted.provenance, suggestions=result.suggestions,
+            scope, provenance, suggestions=result.suggestions,
         )
-    return _refused(scope, extracted.provenance)
+    return _refused(scope, provenance)
 
 
 def confirm_ambiguous_entity(
@@ -116,29 +120,44 @@ def confirm_ambiguous_entity(
     Unmatched values cannot use this path; they need an explicit in-scope mapping
     before they can become a candidate.
     """
-    if (type(resolver) is not AliasResolver or type(resolution) is not IntakeEntityResolution
-            or resolution.state is not EntityResolutionState.AMBIGUOUS_REVIEW
-            or not _valid_scope(scope) or not _valid_scope(resolution.scope)
-            or resolution.scope != scope
-            or type(resolution.queue_item_id) is not str
-            or not _valid_provenance(resolution.provenance)):
-        return _refused(_safe_scope(scope), _safe_provenance(resolution))
+    safe_scope = _safe_scope(scope)
+    if type(resolver) is not AliasResolver or type(resolution) is not IntakeEntityResolution:
+        return _refused(safe_scope)
+    try:
+        state = resolution.state
+        resolution_scope = resolution.scope
+        queue_item_id = resolution.queue_item_id
+        provenance = resolution.provenance
+        candidate_ids = resolution.candidate_ids
+        suggestions = resolution.suggestions
+    except Exception:  # noqa: BLE001 - partially built instances fail closed
+        return _refused(safe_scope)
+    if (state is not EntityResolutionState.AMBIGUOUS_REVIEW
+            or safe_scope is None or not _valid_scope(resolution_scope)
+            or resolution_scope != safe_scope
+            or type(queue_item_id) is not str
+            or type(candidate_ids) is not tuple
+            or not all(type(item) is str for item in candidate_ids)
+            or type(suggestions) is not tuple
+            or not all(type(item) is str for item in suggestions)
+            or not _valid_provenance(provenance)):
+        return _refused(safe_scope, _safe_provenance_value(provenance))
     try:
         decision = resolver.resolve_ambiguity(
-            scope, resolution.queue_item_id, chosen_entity_id, approver, reason,
+            safe_scope, queue_item_id, chosen_entity_id, approver, reason,
         )
     except Exception:  # noqa: BLE001 - confirmation failures do not authorize a proposal
-        return _refused(scope, resolution.provenance)
+        return _refused(safe_scope, provenance)
     if decision.outcome is not AliasOutcome.DECIDED or decision.decision is None:
         return IntakeEntityResolution(
             EntityResolutionState.AMBIGUOUS_REVIEW, decision.code or "HUMAN_DECISION_REQUIRED",
-            scope, resolution.provenance, candidate_ids=resolution.candidate_ids,
-            suggestions=resolution.suggestions, queue_item_id=resolution.queue_item_id,
+            safe_scope, provenance, candidate_ids=candidate_ids,
+            suggestions=suggestions, queue_item_id=queue_item_id,
         )
     return IntakeEntityResolution(
         EntityResolutionState.HUMAN_CONFIRMED_REVIEW_REQUIRED,
-        "HUMAN_CHOICE_RECORDED_REVIEW_REQUIRED", scope, resolution.provenance,
-        candidate_ids=resolution.candidate_ids,
+        "HUMAN_CHOICE_RECORDED_REVIEW_REQUIRED", safe_scope, provenance,
+        candidate_ids=candidate_ids,
         selected_entity_id=decision.decision.chosen_entity_id,
     )
 
@@ -180,6 +199,5 @@ def _safe_scope(scope: object) -> AliasScope | None:
     return scope if _valid_scope(scope) else None  # type: ignore[return-value]
 
 
-def _safe_provenance(resolution: IntakeEntityResolution) -> SourceProvenance | None:
-    provenance = resolution.provenance
+def _safe_provenance_value(provenance: object) -> SourceProvenance | None:
     return provenance if _valid_provenance(provenance) else None  # type: ignore[return-value]

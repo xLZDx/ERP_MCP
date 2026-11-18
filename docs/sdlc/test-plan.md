@@ -83,6 +83,7 @@ The assigned functional-test-reviewer owns these named cases after all S17 story
 - A valid explicit HUMAN choice for an ambiguity is recorded through the existing resolver; invalid/non-human approvers, out-of-set choices, foreign-scope queue items, conflicting replay choices, and missing reason fail closed.
 - An exact namespaced reference may identify one in-scope candidate, but intake still returns `MATCH_REVIEW_REQUIRED`; every result has `proposal_allowed == false`.
 - Malformed scope, extracted value, provenance, reference or resolver failure returns a fixed refusal without echoing extracted text or exception details.
+- Incomplete slotted `ExtractedValue` and `IntakeEntityResolution` instances fail closed with the same fixed refusal; no missing-field exception escapes the adapter.
 - This adapter does not authenticate the asserted human identity, persist alias decisions, create proposals, or call 1C; those remain outside this bounded in-memory story.
 
 ## S17-04 hostile-file corpus and per-file oracle
