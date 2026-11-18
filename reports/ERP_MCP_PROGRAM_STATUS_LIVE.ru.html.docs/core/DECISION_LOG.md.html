@@ -2714,7 +2714,7 @@ The installed ignored `ledger_sync.py` reopens a sprint after plan reconciliatio
 
 ## 2026-11-18 — Keep S17 workbench state on an explicit company-bound service
 
-Do not back a live S17 change list with `living.jobs` or the offline `jobs_api.FakeJobDispatcher`: the former exposes tenant/source scope without a company binding, while the latter is in-memory and not composed into `Runtime`. The real runtime separates PostgreSQL control-plane state from read-only 1C clients, so PostgreSQL queue state must not be described as accounting state. S17-05 remains open until an authenticated company-bound application service provides current status and retry/rollback-proposal state; keep intake preview transient and values out of persistence. This turn only recorded the verified composition boundary in `docs/phase2/OPERATOR_BACKLOG.md`; no schema, migration, service binding, or runtime behavior changed.
+Do not back a live S17 change list with `living.jobs` or the offline `jobs_api.FakeJobDispatcher`: the former exposes tenant/source scope without a company binding, while the latter is in-memory and not composed into `Runtime`. Reuse the existing durable `SqlChangeLedger.list_inflight`/`read_status` path once an explicit trusted Admin `source_id` to ledger `tenant_id` mapping is available; current Admin context and `bag.companies` do not supply that mapping. Keep the exact-company allow/deny recheck, transient intake preview and read-only 1C boundary. The mapping gap is recorded in `docs/phase2/OPERATOR_BACKLOG.md`; no schema, migration, service binding, or runtime behavior changed.
 
 ## 2026-11-18 — Preserve exact S17 total arithmetic at configured bounds
 
