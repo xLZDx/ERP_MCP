@@ -2710,4 +2710,6 @@ The authenticated S17 preview API has no persistent company-scoped entity-direct
 
 The remaining S17-05 service composition is recorded in `docs/phase2/OPERATOR_BACKLOG.md`: keep preview transient, and implement the authenticated list/retry/rollback-proposal workflow through the application service rather than claiming the offline `WorkbenchSession` is wired. Current preview slice is committed as `420747fe`.
 
+The installed ignored `ledger_sync.py` reopens a sprint after plan reconciliation when its task-level harness states remain `verified`, even when the independent project reconciliation says `CLOSED_BOUNDED_SPRINT`. The installed ignored `ledger.py` now excludes only project-closed sprints and fully blocked sprint containers from active-task selection; task verification/review evidence and project status are unchanged. This is a machine-local harness correction, not a repository-distributed tool change.
+
 </pre></main></body></html>

@@ -940,3 +940,4 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: An authenticated preview without a configured entity directory must expose that limitation at both API and UI boundaries. Rule: return a fixed NOT_CONFIGURED marker, never infer a match or fabricate suggestions, and keep preview values review-required.
 - 2026-11-18 SUCCESS: The offline `WorkbenchSession` is not the running Admin API. Rule: before adding a workbench list or retry button, trace the real authenticated service and durable state path; keep unpersisted intake preview separate from persisted jobs/proposals.
+- 2026-11-18 SHORTCOMING: The local ledger selector let historical tasks from a `CLOSED_BOUNDED_SPRINT` block the next active sprint because their harness verification state was still open. Rule: honor the separate project-reconciliation closure when selecting the active sprint without changing test or review evidence.
