@@ -921,3 +921,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: S17-02 can cross-check exact line/VAT totals only under the explicitly recorded `includes_vat` rule and same-currency input. Rule: preserve each source cell, use exact decimal arithmetic without inferred rates or rounding, keep every result under human review, and send unsupported accounting shapes to `UNCOMPUTABLE_REVIEW`.
 
 - 2026-11-18 SUCCESS: S17 entity resolution can reuse the existing scoped alias registry without making display-name similarity authoritative. Rule: bind every lookup and human ambiguity decision to the selected company, preserve source provenance, and keep unmatched or confirmed identities unable to authorize a financial proposal.
+
+- 2026-11-18 SHORTCOMING: The legacy S11 file oracle accepted “matching digest or no proposal” and called the parser a sandbox with no child process, while current source uses an expected bounded XLSX child and can return no data for every input. Rule: specify a per-file denial/review outcome plus a non-empty clean positive twin, and describe process limits separately from sandbox isolation.

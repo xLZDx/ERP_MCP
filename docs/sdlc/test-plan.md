@@ -84,6 +84,28 @@ The assigned functional-test-reviewer owns these named cases after all S17 story
 - Malformed scope, extracted value, provenance, reference or resolver failure returns a fixed refusal without echoing extracted text or exception details.
 - This adapter does not authenticate the asserted human identity, persist alias decisions, create proposals, or call 1C; those remain outside this bounded in-memory story.
 
+## S17-04 hostile-file corpus and per-file oracle
+
+The assigned functional-test-reviewer and e2e-runner own these named cases after all S17 story code is complete; do not run them before then. The source-derived per-file outcomes below replace the older vacuous “clean digest or no proposal” oracle for the current parser path. `safe_parser.py` is a resource-limited parser process, not a sandbox: its intended parser child may run, but uploaded content must not cause another process, privilege change, filesystem write or network connection.
+
+| Case | Input | Required parser/intake outcome | Positive twin / boundary |
+|---|---|---|---|
+| H-01 | Clean supported CSV and XLSX | Parser `OK`; extraction is non-empty `REVIEW_REQUIRED`; each value carries source SHA-256 and source coordinates; `proposal_allowed == false`. | Required positive twin for the hostile inputs below. |
+| H-02 | XLSX formula cell | Formula is not evaluated and formula text is not returned; cached value or `None` may be present and remains review-required. | Clean literal cell with the same visible scalar stays literal and review-required. |
+| H-03 | CSV cell beginning with `=`, `+`, `-`, `@`, tab or carriage return | Parser preserves the text as literal data and records the leading-formula counter; extraction remains review-required and cannot authorize a proposal. | Same string in an ordinary text field is preserved after UTF-8 decoding. |
+| H-04 | XLSX external relationship/link, embedded object or connection part | `DENIED` with fixed `EXTERNAL_LINK`; no sheets or partial extraction. | Clean twin without the external part parses normally. |
+| H-05 | Macro-enabled package, VBA project or macro sheet | `DENIED` with fixed `MACRO_PRESENT`; no sheets or partial extraction. | Clean `.xlsx` twin parses normally. |
+| H-06 | ZIP member with traversal/absolute/drive-qualified path | `DENIED` with fixed `PATH_TRAVERSAL_MEMBER`; parser never extracts the member to disk. | Clean package member path parses normally. |
+| H-07 | Encrypted ZIP member | `DENIED` with fixed `ENCRYPTED_MEMBER`; no partial extraction. | Unencrypted twin parses normally. |
+| H-08a | Member exceeds configured uncompressed member limit | `DENIED` with fixed `MEMBER_TOO_LARGE`; no partial sheets. | Same document below the limit parses normally. |
+| H-08b | Compression ratio or total decompression exceeds configured ratio/total bound | `DENIED` with fixed `ZIP_BOMB_RATIO`; no partial sheets. | Same content under the configured bound parses normally. |
+| H-09 | Malformed XML or package structure | Fixed denial (`MALFORMED_XML`, `UNSUPPORTED_FORMAT`, or `NOT_A_ZIP` according to the failing boundary); no source bytes or parser exception text in output. | Minimal valid package with equivalent ordinary cell data parses normally. |
+| H-10 | Hidden worksheet/row/column content | Any extracted value remains review-required and includes its source coordinates. Current `SheetValues` does not carry hidden-state metadata; S17-05 must expose that limitation in review or refuse hidden content before proposal. | Visible clean twin confirms the ordinary extraction path. |
+| H-11 | Hostile uploaded filename | Not a parser input: `safe_parser` accepts bytes, not a path or filename. Do not claim filename traversal is covered here; S17-05 must keep filename handling inert and never use a supplied name as a filesystem path. | Ordinary filename and hostile-name metadata must produce the same byte-parser result. |
+| H-12 | Canary listener and sentinel outside the parser process | E2E observation records zero outbound connections and an unchanged sentinel; no content-triggered process or privilege change. The parser's own bounded XLSX child is expected and is not sandbox evidence. | H-01 positive twin still yields non-empty review-only extraction. |
+
+Per-file results must record case ID, exact input hash, parser status/code, extraction state/count, proposal-disabled result, and E2E I/O/sentinel observations where applicable. Do not compare only the clean digest: an implementation that ignores every file must fail H-01.
+
 ## Required final verification selections
 
 The post-code phase must include (a) the specifically required S12 SQL code parity test and exhausted-budget SQL behavior; (b) the finisher brief's required slow SQL/E2E selected set, including the relevant producer/list-status integration paths; and (c) the required selected S15 suites from `docs/phase2/S15_SPRINT_PLAN_2026-10-27.md` §9. Test owners resolve exact existing test paths and run commands from those source documents after implementation. This plan does not expand the requirement to `pytest` without selection or a full repository suite. If exact suite selection conflicts across records, preserve the source and resolve it in the execution report rather than silently choosing a smaller set.

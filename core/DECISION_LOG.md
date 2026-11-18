@@ -2666,3 +2666,7 @@ Adapt only the existing in-memory XLSX/CSV parser output into per-cell candidate
 
 S17-03 adapts extracted values to the existing in-memory `AliasResolver` under an explicit tenant/company scope. Only exact namespaced references may identify a unique candidate; a display-name suggestion remains unmatched, and multiple matches stay queued until an explicit HUMAN choice. Preserve the source cell with each result. The adapter never authorizes a proposal, authenticates the caller-asserted human, persists a choice, or contacts 1C. Unmatched values remain blocked from proposal until a separately curated in-scope mapping exists. Named tests are recorded but NOT_RUN until all S17 story code is complete.
 
+## 2026-11-18 — Make S17 hostile-file outcomes explicit per corpus case
+
+Replace the S11 I8 digest-equality disjunction with the source-derived per-file parser outcomes in `docs/sdlc/test-plan.md` §S17-04. Include a non-empty clean positive twin, exact fixed parser outcomes for formula/external/macro/path/encryption/bound cases, and a canary/sentinel observation. The legacy “sandbox/no child process” wording does not match the current parser: its XLSX resource-control child is expected, but it is not an OS sandbox and uploaded content must not initiate another process, change privilege, write files or connect outward. Hostile filename handling belongs to the S17-05 upload boundary because the parser accepts bytes only. Hidden-state visibility remains an explicit S17-05 dependency. All corpus cases remain NOT_RUN until S17 code is complete.
+
