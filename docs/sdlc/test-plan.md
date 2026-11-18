@@ -61,6 +61,17 @@ Use `tests/phase2/test_safe_parser.py` for the existing parser boundary; the ass
 - Exercise isolated XLSX timeout/child failure and memory-cap setup. POSIX uses `RLIMIT_AS`; Windows uses the Job Object per-process memory cap. If the applicable cap cannot be established, parsing must fail closed (`BOUND_MEMORY`) instead of continuing unbounded. Do not skip Windows memory-cap evidence on the obsolete claim that Windows has no cap.
 - These tests prove the byte-parser contract only. They do not prove an upload endpoint, browser flow, Office safety, OS sandboxing, changed privileges, or workbench integration.
 
+## S17-02 extraction and field provenance
+
+The assigned functional-test-reviewer owns these named cases after all S17 story code is complete; do not run them before then. Keep S17-02 extraction-contract evidence separate from S17-05 workbench integration and H3 accuracy evidence.
+
+- XLSX/CSV nonblank cell candidates retain the source byte SHA-256, file kind, one-based row and column, and XLSX sheet identity where present. A manually assigned field label remains tied to the same cell provenance.
+- Malformed parser result shapes, invalid caller field-label mappings, missing source bytes, or candidate-count overflow fail closed without returning a partial candidate set or a proposal.
+- Every extracted candidate starts `REVIEW_REQUIRED`; parsing or exact text extraction never means business approval.
+- For the measured explicit `includes_vat` rule, exact same-currency decimal values produce `MATCH_REVIEW` or `MISMATCH_REVIEW` (`false`: sum lines plus explicitly supplied VAT; `true`: sum lines). Both outcomes require review and `proposal_allowed` stays false. Use independent synthetic values and the recorded CT14 example `20 + 1.82 = 21.82`; do not infer VAT from a rate or apply rounding/tolerance.
+- Mixed currencies, unknown `includes_vat`, discounts, credit notes, unsupported rounding/precision or other undefined accounting shapes remain `UNCOMPUTABLE_REVIEW`; no unsupported proposal or guessed tolerance is emitted.
+- PDF/image input before qualified H3 extraction returns manual-review-only status and cannot produce a proposal or bypass human review.
+
 ## Required final verification selections
 
 The post-code phase must include (a) the specifically required S12 SQL code parity test and exhausted-budget SQL behavior; (b) the finisher brief's required slow SQL/E2E selected set, including the relevant producer/list-status integration paths; and (c) the required selected S15 suites from `docs/phase2/S15_SPRINT_PLAN_2026-10-27.md` §9. Test owners resolve exact existing test paths and run commands from those source documents after implementation. This plan does not expand the requirement to `pytest` without selection or a full repository suite. If exact suite selection conflicts across records, preserve the source and resolve it in the execution report rather than silently choosing a smaller set.

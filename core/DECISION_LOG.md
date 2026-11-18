@@ -2658,3 +2658,7 @@ The live report ran from an S17 feature branch with no configured upstream, even
 
 Reconcile the 111 planned task placements against 115 fetched local, remote, and archive refs while preserving native harness verification/review fields. Keep bounded project task status as its own overlay: 91 accepted, 1 in review, 2 blocked, 2 active/partial, and 15 not started after recording S17-02's existing ledger start event in the project plan. The 44 accepted harness review records remain evidence-level counts, not 44 tasks currently awaiting review. Do not claim product/runtime completion from these engineering statuses.
 
+## 2026-11-18 — Add bounded S17-02 field provenance and explicit total check
+
+Adapt only the existing in-memory XLSX/CSV parser output into per-cell candidates identified by source-byte SHA-256 and one-based coordinates. Every value and arithmetic match remains for human review; parser state never creates or authorizes a proposal. Reuse the recorded CT14 `includes_vat` arithmetic (`false`: explicit line plus explicit VAT; `true`: line amount) as a narrow exact-decimal diagnostic for same-currency inputs, with no rounding, inferred VAT rate, or tolerance. Leave unsupported accounting shapes `UNCOMPUTABLE_REVIEW` and tracked in the backlog. PDF/image remain manual-review-only until H3 qualifies extraction. S17-02 focused tests are specified but NOT_RUN until all S17 story code is complete.
+
