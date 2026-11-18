@@ -796,3 +796,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The new S13 SQL tests established actual migration-036 state and grants separately from diagnostic preflight. Rule: report observed full-chain behavior at named entry points and leave uncovered integration requirements explicit.
 
+
+- 2026-11-18 SUCCESS: Independent S13 reviewers agreed on the isolated source boundary and identified one separately actionable test gap. Rule: keep untested replay branches and production cutover requirements separate from the tested local behavior.
+

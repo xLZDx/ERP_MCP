@@ -1896,3 +1896,8 @@ Deferred from the bounded S13 sequence by documentation approval PMG-20261118-9c
 
 The existing S13 operator adapter selects directly ungranted versioned registration and epoch routines. Migration 027 preserves scoped SQL bridges with the historical caller ACL, and migration 030 retains the target-registration lock plan. Resume the adapter cutover after S13-REGISTRY-LEGACY-BRIDGE-01 verifies the whole bridge family on the disposable migration chain. The eventual routing must refuse absent or incompatible migration state and leave direct versioned execution ungranted. No runtime activation or production privilege change is authorized by local source assembly.
 
+
+## S13-03 development key-role replay regression
+
+The scoped code review of fc25b8f identified one MINOR coverage gap. Registration and client pin configuration refuse a checkpoint signer colliding with either receipt authority, and startup checks retained key registrations. Add a focused legacy fixture proving startup refuses an otherwise valid historical role collision. This is test coverage work; no current functional defect was established.
+

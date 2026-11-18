@@ -1071,3 +1071,20 @@ S13-05, tests/phase2/test_s13_base_recovery_begin_sql.py:
 
 Result: 4 passed in 27.80s; exit 0. This proves the owner-only migration 036 boundary, exact single-scope manifest and monotonic repeat, and rejection of overlap and over-limit plans without fence changes. Normal owned fixture teardown completed. Live 1C skew, shared physical-writer fencing, active recovery orchestration and operational admission remain NOT_RUN. Post-run HEAD matched and the worktree was clean.
 
+
+## 2026-11-18 - Retained recovery scenarios and independent S13 review
+
+On clean fc25b8f8128117318e9161c7b9e14805e657aa27, the designated e2e-runner invoked .venv/Scripts/python.exe -m pytest -q -s with the following node IDs, requiring owned disposable PostgreSQL and an absent inherited DSN:
+
+- tests/phase2/test_s13_anchor_gap_cosign_legacy_bridge_e2e.py::test_anchor_gap_cosign_exact_retry_changed_evidence_and_distinct_witness
+- tests/phase2/test_s13_witness_cosign_legacy_bridge_e2e.py::test_s13_witness_cosign_exact_retry_after_consumption_and_distinct_session
+- tests/phase2/test_s13_record_evidence_legacy_bridge_e2e.py::test_s13_record_evidence_exact_natural_replay_and_changed_tuple_no_delta
+- tests/phase2/test_s13_budget_revoke_scoped_replay_e2e.py::test_s13_budget_revoke_outer_rollback_is_atomic
+- tests/phase2/test_s13_t16_evidence_verifier_e2e.py::test_s13_t16_evidence_verifier_checks_five_signed_envelopes
+- tests/phase2/test_s13_t16_evidence_verifier_e2e.py::test_s13_t16_resolver_loads_and_verifies_five_signed_envelopes
+- tests/phase2/test_s13_completion_outcome_e2e.py::test_s13_completion_outcome_repair_pre_write_hands_target_lock_back_to_parent
+
+Result: 7 passed in 48.89s; exit 0. Fixture teardown reported no error. No unrelated container inspection, live 1C, or existing database was used. Exact HEAD remained clean.
+
+The independent reviewers chosen for the sprint diff were code-reviewer, silent-failure-hunter, python-reviewer, and database-reviewer. They reviewed fc25b8f statically. No BLOCKER or MAJOR was reported. The code reviewer reported one MINOR: current tests cover role-collision refusal at registration and CLI configuration, while historic replay rejection has source evidence only. Track the focused replay regression in the backlog. Database review independently inspected the test fixture and SQL scope but did not run the migrations or tests. The reviewed source remains diagnostic/TEST only; the complete registry race matrix, adapter cutover, operational trust, physical-writer fencing and live recovery remain open.
+
