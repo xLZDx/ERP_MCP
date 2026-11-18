@@ -1878,3 +1878,7 @@ After the bounded runner contract, qualify the exact 1C configuration, report ob
 ## S9 live operations and recovery qualification
 
 The S9 decision modules do not execute migrations, rollback, backup restore, export delivery or deletion. Keep the authorized Release 1 rehearsal and production cutover, authenticated restore with measured recovery time and recovery point, external export-key management and legal-hold enforcement, real load and delivery alarms, and G6-pre in the backlog. Evidence must bind the respective deployed schema, scoped runtime authority and test dataset. No runtime qualification owners are assigned for this entry. Proceed with the remaining technical sprint tasks using the bounded offline contracts.
+
+## S10 product canary and release acceptance
+
+The bounded code supports a synthetic development/test capture and an evidence manifest that preserves NO-GO. For a live canary, qualify the exact R2 entrypoint, source and company, report and comparison profile, accountable operator and rollback owner, permitted window and budgets, and the scope-bound kill switch before issuing separate source-specific authorization. Collect actual capture/comparison and independent user, administrator and production acceptance evidence. The release owner then reviews the exact candidate manifest and unresolved predecessor gates. None of those live actions were performed by the bounded continuation. Roles are required by the product process; no individuals are assigned in this backlog entry.

@@ -2261,4 +2261,28 @@ The 352 named release compatibility tests passed at d748a3d. Advance in order to
 ### 2026-11-18 - Exercise retained migration checksum refusals
 
 Current plan_rehearsal binds an applied version to the recorded file checksum and rejects changed checksums within a repeat of one version. The named S9 release tests cover matching checksums and idempotent replay but did not explicitly assert the checksum mismatch result. Add the missing named regression without changing the decision implementation. Recovery verification ran separately and its source and tests remain unchanged.
+
+### 2026-11-18 - Close bounded S9 on main
+
+PR #64 merged exact GPT-PM-approved head 2531847f08dbd2cb31741967a25c6d232f0b8921 into main as dfb0205aa84a52e39f0b847de9282abb597d8bac (request 75e3f0db-cb39-44b1-96eb-bfca5a576172, reply 905a7bcc-6c55-5be9-83ca-45c584a1d87c). Close S9 as 4/4 bounded, preserve the separate 356 and 376 evidence receipts and leave G6-pre/live qualification in the backlog. The historical integration PR #49 was already merged. Project plan and native ledger now reflect the bounded scope.
+
+### 2026-11-18 - Reverify the retained S10 engineering contracts
+
+After bounded S9 closure through PR #64, verify S10 dev/test capture and manifest assembly in order. The historical PR #53 merge lives on its integration branch; the current main code retains the capture runtime and its focused tests but has later loop/composition and manifest changes. Use exact current named synthetic results before recording bounded acceptance. Release 2 remains NO-GO; no real canary, UAT, or release artifact is fabricated.
+
+### 2026-11-18 - Align S10 capture failure documentation and regression
+
+The first S10 capture run found one stale inherited expectation. The scheduler emits only WORK_EXCEPTION on an unexpected failure, preventing the exception text and type from entering persisted job details. Keep that behavior, correct the capture-loop docstring and named assertion, and rerun. Separately traced the historical S10 manifest digest: converting the Git blob of 4445dd2c5d84 to its Windows checkout line endings yields C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE, as recorded in the S11 exit package. The later integration merge carries different bytes, and the artifact is absent from current main, so the historical match does not establish current release evidence.
+
+### 2026-11-18 - Verify S10 manifest assembly after capture acceptance checks
+
+The capture module rerun passed 52 cases at 2124b5b. Proceed to the existing R2-US-048 manifest validator and CLI fixtures, which use a local bare Git repository and a fake GitHub response. Preserve the release builder&#x27;s NO-GO ceiling and independent acceptance roles. Store native canary and product release evidence in the backlog until actual runtime proofs exist.
+
+### 2026-11-18 - Restore the retained capture epoch guard
+
+The routed review found that the main capture loop no longer verifies the live scope epoch after leasing and before submitting a connector call, although the historical integration merge 900a3d0 did. Its snapshot completion check also runs after local baseline updates. Restore the pre-dispatch guard and require a current epoch before publishing a successful observation. Test refusal independently before dispatch and after an in-flight epoch change. Keep actual scope authority, production and deployment outside this change.
+
+### 2026-11-18 - Keep the first resnapshot reason on a late authority failure
+
+Correct the inherited test for an already-required snapshot: admit the matching epoch, then make its post-call verification unavailable. Require the outcome to be refused, with existing CURSOR_LOST evidence intact and no published observation. Preserve the reviewed source guard from aa6b98e.
 </pre></main></body></html>

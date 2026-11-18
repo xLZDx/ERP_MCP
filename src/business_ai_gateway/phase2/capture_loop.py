@@ -21,7 +21,7 @@ Rules
 - An SDK-invalid response (``ValidationError`` or wrong type) is the failure
   ``WORK_RETURNED_INVALID`` (work returns a non-outcome), never drift, never a hash.
 - Typed connector failures are raised as ``ConnectorFailure(kind)``; ``TimeoutError`` is a TIMEOUT;
-  any other exception is an OUTAGE recorded by the scheduler as ``WORK_EXCEPTION:<ClassName>``.
+  any other exception is an OUTAGE recorded by the scheduler as the fixed ``WORK_EXCEPTION`` reason.
   Raw exception text is never stored or returned.
 - The response ``content_digest`` is used as the structural hash handed to ``drift.classify`` ONLY for
   an ``OK_COMPLETE`` outcome; a partial/unknown capture carries no hash (drift rejects one).
@@ -209,9 +209,23 @@ class CaptureLoop:
             return self._result(CaptureStatus.RESNAPSHOT_REQUIRED, connection_id)
         state: dict[str, Any] = {"invalid": False, "refused": False}
 
+        async def require_current_epoch() -> int:
+            try:
+                live_epoch = await self._ledger.scope_epoch(self._scope)
+            except PortError:
+                live_epoch = None
+            if type(live_epoch) is not int or live_epoch != request.scope_epoch:
+                reason = (ResnapshotReason.SCOPE_EPOCH_UNVERIFIED if type(live_epoch) is not int
+                          else ResnapshotReason.SCOPE_EPOCH_CHANGED)
+                self._tracker.require(connection_id, reason, request.scope_epoch)
+                state["refused"] = True
+                raise _Refused
+            return live_epoch
+
         async def work(handle: LeaseHandle) -> CaptureOutcomeKind:
             await handle.ensure_fresh()
-            # re-check with no await between here and the connector call
+            await require_current_epoch()
+            # No await between the final scope/epoch checks and submitting connector work.
             if self._tracker.is_required(connection_id) and not snapshot:
                 state["refused"] = True
                 raise _Refused
@@ -221,10 +235,13 @@ class CaptureLoop:
             if kind is None:  # SDK-invalid response
                 state["invalid"] = True
                 return None  # type: ignore[return-value]  # scheduler: WORK_RETURNED_INVALID
+            if kind not in _FAILURE_KINDS:
+                state["live_epoch"] = await require_current_epoch()
             state["kind"] = kind
             decision = classify(CaptureOutcome(kind, digest), self._accepted.get(connection_id))
             state["decision"] = decision
-            self._tracker.observe_decision(connection_id, decision, request.scope_epoch)
+            if kind in _FAILURE_KINDS:
+                self._tracker.observe_decision(connection_id, decision, request.scope_epoch)
             return kind
 
         run = await self._sched.run_job(job_id, work)
@@ -238,9 +255,11 @@ class CaptureLoop:
             status = (CaptureStatus.FAILED if kind in _FAILURE_KINDS or
                       run.status in (RunStatus.RETRY_SCHEDULED, RunStatus.POISONED)
                       else CaptureStatus.NOT_RUN)
-            return self._result(status, connection_id, kind=kind, decision=decision, run=run)
+            failure_decision = decision if kind in _FAILURE_KINDS else None
+            return self._result(status, connection_id, kind=kind, decision=failure_decision, run=run)
         cleared = False
         if decision is not None:
+            self._tracker.observe_decision(connection_id, decision, request.scope_epoch)
             if self._accepted.get(connection_id) is None and decision.candidate_hash is not None:
                 self._pending_baselines[connection_id] = (
                     decision.candidate_hash, request.scope_epoch)
@@ -250,15 +269,7 @@ class CaptureLoop:
             if decision.accepted_hash is not None:
                 self._accepted[connection_id] = decision.accepted_hash
             if snapshot and state.get("token") is not None:
-                try:
-                    live = await self._ledger.scope_epoch(self._scope)
-                except PortError:
-                    # A complete response is not enough to clear a snapshot requirement when
-                    # the live scope epoch cannot be verified. Preserve this as visible state.
-                    self._tracker.require(
-                        connection_id, ResnapshotReason.SCOPE_EPOCH_UNVERIFIED,
-                        request.scope_epoch)
-                    live = None
+                live = state.get("live_epoch")
                 if type(live) is int:
                     cleared = self._tracker.complete(
                         connection_id, kind, request.scope_epoch, live,

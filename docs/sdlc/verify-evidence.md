@@ -932,3 +932,19 @@ At d748a3d72bf454d9c3305801a74b5797588d9e3f the e2e-runner ran test_release_migr
 ## 2026-11-18 - S9 retained restore, export and retention modules
 
 At b20e6a1e6200d5fb4884c678dc31f433d4cdda98 the e2e-runner ran test_restore_verify.py, test_export_safety.py and test_retention_hold.py with the S9 scratch source and root on PYTHONPATH. Result: 376 passed in 3.02s, exit 0. These are in-memory behavioral cases. No actual backup restore, export delivery, deletion or external authority was tested.
+
+## 2026-11-18 - Final S9 bounded acceptance
+
+The release migration, rollback and SQL text modules passed 356 tests in 1.57s, exit 0, at clean 2531847f08dbd2cb31741967a25c6d232f0b8921. Run location D:/Repo/ERP_MCP with checkout root and source on PYTHONPATH using its .venv interpreter. The initial expanded-run attempt in the unregistered scratch checkout was refused before test execution. GPT-PM approved the documentation contract on the registered checkout (request b60fba4e-93a6-4fe1-97d2-21d0e8c83dc3), and the exact rerun succeeded. Recovery modules passed 376 at b20e6a1 with all six source and test files unchanged through final head, as verified by Git. Four routed roles found no actionable issue in reviewed scope; database review of restore was limited to supplied excerpts, with no database execution. GPT-PM final APPROVE (request 75e3f0db-cb39-44b1-96eb-bfca5a576172, reply 905a7bcc-6c55-5be9-83ca-45c584a1d87c) authorized exact merge and bounded S9 4/4. PR #64 merged as dfb0205aa84a52e39f0b847de9282abb597d8bac. Live operations NOT_RUN.
+
+## 2026-11-18 - First S10 retained capture run
+
+At 43ebd6bd372965fef6528f8bc5c5b349ca374c3b, the e2e-runner executed the named test_capture_runtime.py, test_capture_runtime_e2e.py and test_capture_loop.py modules on the registered checkout. Result: 51 passed, 1 failed. The inherited capture-loop assertion expected the exception class to be appended to WORK_EXCEPTION. Current scheduler source deliberately emits the fixed code and the scheduler's named tests already assert it. Align the stale assertion/docstring with that fail-closed redaction behavior and repeat the exact module set. No real 1C, MCP or network used.
+
+## 2026-11-18 - Exact S10 retained capture rerun
+
+The e2e-runner executed the same three named capture modules at 2124b5bd6fee9d506aeeb9160b9b3bd63ada9512 in clean D:/Repo/ERP_MCP with checkout source/root on PYTHONPATH and its .venv interpreter. Result: 52 passed in 6.35s, exit 0. The fixed failure code omits exception type and text. The group verifies development/test scope, production refusal, queued/running cancellation and drain in synthetic fixtures. Product canary and real comparison remain NOT_RUN.
+
+## 2026-11-18 - First S10 post-review scope guard regression
+
+Capture group at aa6b98e5f07dba9c34996993cc6015ee9e42b364: 55 passed, 1 failed in 5.85s. The additional inherited post-connector epoch test still expected CAPTURED and configured a failing port before dispatch. Update its fixture to reach the post-call guard and retain the existing CURSOR_LOST requirement when the later epoch read fails. The named manifest group was not run in this round because the capture group failed. Retain the first outcome separately from the next exact-head attempt.

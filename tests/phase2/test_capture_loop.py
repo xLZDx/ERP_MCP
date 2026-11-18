@@ -163,8 +163,12 @@ async def test_guard_snapshot_at_older_epoch_keeps_requirement():
     conn = FakeConnector((Completeness.COMPLETE, H1))
     living, sched, tracker, loop = await build(conn, epoch=2)
     tracker.require(CONN, ResnapshotReason.SCOPE_EPOCH_CHANGED, 1)
-    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)  # ran under epoch 1, live 2
-    assert res.status is CaptureStatus.CAPTURED and not res.cleared
+    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)  # requested epoch 1, live 2
+    assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert res.resnapshot_reason is ResnapshotReason.SCOPE_EPOCH_CHANGED
+    assert conn.calls == 0
+    assert res.events == () and res.candidate_hash is None
+    assert res.accepted_hash == H1 and loop.accepted_hash(CONN) == H1
     assert tracker.is_required(CONN)
 
 
@@ -200,11 +204,12 @@ async def test_guard_exception_text_is_never_persisted_or_returned():
     living, sched, tracker, loop = await build(conn)
     res = await loop.capture_step(job(), CONN, req())
     assert res.status is CaptureStatus.FAILED
-    assert res.run.detail == "WORK_EXCEPTION:RuntimeError"
+    assert res.run.detail == "WORK_EXCEPTION"
     assert res.outcome_kind is CaptureOutcomeKind.OUTAGE
     view = await living.get_job(WORKER, SCOPE, job())
     for text in (repr(res), repr(view), repr(sched.export_state())):
         assert "hunter2" not in text and "secret.example" not in text
+        assert "RuntimeError" not in text
 
 
 async def test_guard_drift_on_complete_does_not_advance_accepted_hash():
@@ -275,24 +280,86 @@ async def test_concurrent_duplicate_baseline_approval_consumes_candidate_once():
     assert CONN not in loop._pending_baselines
 
 
-async def test_snapshot_scope_epoch_failure_requires_resnapshot_with_reason():
+@pytest.mark.parametrize("epoch_case,reason", [
+    ("unavailable", ResnapshotReason.SCOPE_EPOCH_UNVERIFIED),
+    ("malformed", ResnapshotReason.SCOPE_EPOCH_UNVERIFIED),
+    ("mismatch", ResnapshotReason.SCOPE_EPOCH_CHANGED),
+])
+async def test_snapshot_scope_epoch_invalid_before_connector_requires_resnapshot(epoch_case, reason):
+    """A lease-time epoch failure refuses dispatch and cannot produce an observation."""
     from business_ai_gateway.phase2.ports import PortError
 
     conn = FakeConnector((Completeness.COMPLETE, H1))
     living, sched, tracker, loop = await build(conn)
-    assert not tracker.is_required(CONN)
 
-    async def unavailable_scope_epoch(_scope):
-        raise PortError("SQL_08006")
+    async def invalid_scope_epoch(_scope):
+        if epoch_case == "unavailable":
+            raise PortError("SQL_08006")
+        if epoch_case == "malformed":
+            return True  # bool is not an epoch integer
+        return 1
 
-    living.scope_epoch = unavailable_scope_epoch
+    living.scope_epoch = invalid_scope_epoch
     result = await loop.capture_step(job(), CONN, req(), snapshot=True)
 
-    assert result.status is CaptureStatus.CAPTURED
+    assert result.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert result.resnapshot_required and result.resnapshot_reason is reason
+    assert tracker.reason(CONN) is reason
+    assert conn.calls == 0
+    assert result.events == () and result.candidate_hash is None
+    assert result.accepted_hash == H1 and loop.accepted_hash(CONN) == H1
+    assert CONN not in loop._pending_baselines
+
+
+async def test_snapshot_scope_epoch_failure_after_connector_discards_observation():
+    from business_ai_gateway.phase2.ports import PortError
+
+    conn = FakeConnector((Completeness.COMPLETE, H1))
+    living, sched, tracker, loop = await build(conn)
+    epoch_reads = 0
+
+    async def unavailable_after_connector(_scope):
+        nonlocal epoch_reads
+        epoch_reads += 1
+        if epoch_reads == 1:
+            return 0  # permit connector dispatch at the request's epoch
+        raise PortError("SQL_08006")
+
+    living.scope_epoch = unavailable_after_connector
+    result = await loop.capture_step(job(), CONN, req(), snapshot=True)
+
+    assert result.status is CaptureStatus.RESNAPSHOT_REQUIRED
     assert not result.cleared
     assert result.resnapshot_required
     assert result.resnapshot_reason is ResnapshotReason.SCOPE_EPOCH_UNVERIFIED
     assert tracker.reason(CONN) is ResnapshotReason.SCOPE_EPOCH_UNVERIFIED
+    assert conn.calls == 1 and epoch_reads == 2
+    assert result.events == () and result.candidate_hash is None
+    assert result.accepted_hash == H1 and loop.accepted_hash(CONN) == H1
+    assert CONN not in loop._pending_baselines
+
+
+async def test_snapshot_finish_fence_loss_discards_successful_observation():
+    """A successful connector reply is not exposed if fenced completion fails."""
+    from business_ai_gateway.phase2.ports import PortError
+
+    conn = FakeConnector((Completeness.COMPLETE, H2))
+    living, sched, tracker, loop = await build(conn)
+
+    async def lose_finish_fence(*_args, **_kwargs):
+        raise PortError("STALE_JOB_FENCE")
+
+    living.finish_job = lose_finish_fence
+    result = await loop.capture_step(job(), CONN, req(), snapshot=True)
+
+    assert conn.calls == 1
+    assert result.status is CaptureStatus.NOT_RUN
+    assert result.run.status is RunStatus.LEASE_LOST
+    assert result.events == () and result.candidate_hash is None
+    assert result.accepted_hash == H1 and loop.accepted_hash(CONN) == H1
+    assert not result.cleared and not result.resnapshot_required
+    assert not tracker.is_required(CONN)
+    assert CONN not in loop._pending_baselines
 
 
 @pytest.mark.parametrize("step,kind", [
@@ -382,9 +449,21 @@ async def test_ledger_error_after_success_keeps_requirement_and_returns_typed_re
     conn = FakeConnector((Completeness.COMPLETE, H1))
     living, sched, tracker, loop = await build(conn)
     tracker.require(CONN, ResnapshotReason.CURSOR_LOST, 0)
+    epoch_reads = 0
 
-    async def boom(_scope):
+    async def boom_after_success(_scope):
+        nonlocal epoch_reads
+        epoch_reads += 1
+        if epoch_reads == 1:
+            return 0  # allow the connector to run at the request's epoch
         raise PortError("SQL_08006")
-    living.scope_epoch = boom
+    living.scope_epoch = boom_after_success
     res = await loop.capture_step(job(), CONN, req(), snapshot=True)
-    assert res.status is CaptureStatus.CAPTURED and not res.cleared and res.resnapshot_required
+    assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED and not res.cleared
+    assert res.resnapshot_required
+    assert res.resnapshot_reason is ResnapshotReason.CURSOR_LOST
+    assert tracker.reason(CONN) is ResnapshotReason.CURSOR_LOST
+    assert conn.calls == 1 and epoch_reads == 2
+    assert res.events == () and res.candidate_hash is None
+    assert res.accepted_hash == H1 and loop.accepted_hash(CONN) == H1
+    assert CONN not in loop._pending_baselines
