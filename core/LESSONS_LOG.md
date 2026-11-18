@@ -840,3 +840,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: The first oracle change still let different rules claim an existing release label. The silent-failure reviewer found the collision. Rule: derive alternate result identities from immutable rules as well as the supplied label.
 
+- 2026-11-18 SUCCESS: Keeping the configured label separate from the computed result identity preserves normal table reconstruction. Rule: recompute the identifier from its inputs and retain the constructor label unchanged.
+

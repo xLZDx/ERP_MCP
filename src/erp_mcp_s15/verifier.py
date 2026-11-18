@@ -94,7 +94,9 @@ class VerificationResult:
 def _result(table: TypingTable, status: VerificationStatus, findings: list[Finding] | None = None,
             unverified: list[str] | None = None, typing_checked: bool = False
             ) -> VerificationResult:
-    return VerificationResult(status, table.version, LABEL_MACHINE_VERIFIED,
+    # Every exit, including unsupported-shape and read failures, records the ruleset-bound
+    # version normalized by TypingTable at construction.
+    return VerificationResult(status, table.result_version, LABEL_MACHINE_VERIFIED,
                               tuple(findings or ()), tuple(unverified or ()), typing_checked)
 
 

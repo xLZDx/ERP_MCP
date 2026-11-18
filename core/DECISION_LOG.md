@@ -2518,3 +2518,5 @@ The Python review on `cf2ea8a` identified that a source can switch during a read
 
 The silent-failure review independently confirmed the snapshot gap and found that a caller could claim the canonical oracle version with changed rules. Preserve the canonical version for the exact default table and qualify every alternate release label with a deterministic rules digest. Keep the result bound to the selected table on early exits.
 
+The rules digest covers the ordered field path, scope, field type and reference catalog. The configured release label remains an independent constructor field. Result identities stay within the existing 128-character printable ASCII response contract.
+

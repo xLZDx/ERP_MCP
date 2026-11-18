@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
+import json
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
@@ -31,6 +34,15 @@ def _rule(kind: FieldType, catalog: str | None = None) -> FieldRule:
     return FieldRule("x.path", Scope.LINE, kind, catalog)
 
 
+def _expected_result_version(label: str, rules: tuple[FieldRule, ...]) -> str:
+    """Independently calculate the specified label@SHA-256 result identity."""
+    payload = json.dumps(
+        [(rule.path, rule.scope.value, rule.field_type.value, rule.catalog) for rule in rules],
+        ensure_ascii=True, separators=(",", ":"),
+    ).encode("ascii")
+    return f"{label}@{hashlib.sha256(payload).hexdigest()}"
+
+
 # --- versioning (assertion 1) ---------------------------------------------------------------
 
 def test_oracle_version_is_recorded_in_a_verified_result():
@@ -50,24 +62,66 @@ def test_oracle_version_is_recorded_in_a_red_result_too():
 def test_selected_typing_table_version_is_recorded_in_matching_and_early_results():
     selected_version = "s15-oracle-test-2"
     selected_table = TypingTable(RECEIPT_TYPING_TABLE.rules, version=selected_version)
+    expected_version = _expected_result_version(selected_version, selected_table.rules)
+    assert selected_table.result_version == expected_version
 
     matching = verify_receipt(
         FakeReader(), "r", make_expected(), SUPPORTED_SHAPE,
         writer_declared_types=full_declared_types(), table=selected_table)
     assert matching.status is VerificationStatus.VERIFIED
-    assert matching.oracle_version == selected_version
+    assert matching.oracle_version == expected_version
 
     unsupported = verify_receipt(
         FakeReader(), "r", make_expected(), verifier.OperationShape("POST", "RECEIPT", 1),
         table=selected_table)
     assert unsupported.status is VerificationStatus.UNSUPPORTED_SHAPE
-    assert unsupported.oracle_version == selected_version
+    assert unsupported.oracle_version == expected_version
 
     inconclusive = verify_receipt(
         FakeReader(read_error=RuntimeError("read unavailable")), "r", make_expected(),
         SUPPORTED_SHAPE, table=selected_table)
     assert inconclusive.status is VerificationStatus.INCONCLUSIVE
-    assert inconclusive.oracle_version == selected_version
+    assert inconclusive.oracle_version == expected_version
+
+
+def test_canonical_label_on_changed_immutable_rulesets_is_digest_bound():
+    # Reusing the release label cannot make modified catalog rules claim the release oracle.
+    counterparty_rules = tuple(
+        replace(rule, catalog="AlternateCounterparties")
+        if rule.path == "header.counterparty" else rule
+        for rule in RECEIPT_TYPING_TABLE.rules
+    )
+    nomenclature_rules = tuple(
+        replace(rule, catalog="AlternateNomenclature")
+        if rule.path == "line.nomenclature" else rule
+        for rule in RECEIPT_TYPING_TABLE.rules
+    )
+    counterparty_table = TypingTable(counterparty_rules, version=ORACLE_VERSION)
+    nomenclature_table = TypingTable(nomenclature_rules, version=ORACLE_VERSION)
+
+    assert counterparty_table.version == nomenclature_table.version == ORACLE_VERSION
+    assert counterparty_table.result_version == _expected_result_version(
+        ORACLE_VERSION, counterparty_rules)
+    assert nomenclature_table.result_version == _expected_result_version(
+        ORACLE_VERSION, nomenclature_rules)
+    assert counterparty_table.result_version != ORACLE_VERSION
+    assert nomenclature_table.result_version != ORACLE_VERSION
+    assert counterparty_table.result_version != nomenclature_table.result_version
+    assert counterparty_table.result_version == TypingTable(
+        counterparty_rules, version=ORACLE_VERSION).result_version
+
+    expected = make_expected()
+    counterparty_result = verify_receipt(
+        FakeReader(), "r", expected, SUPPORTED_SHAPE,
+        writer_declared_types=full_declared_types(), table=counterparty_table)
+    nomenclature_result = verify_receipt(
+        FakeReader(), "r", expected, SUPPORTED_SHAPE,
+        writer_declared_types=full_declared_types(), table=nomenclature_table)
+    assert counterparty_result.oracle_version == counterparty_table.result_version
+    assert nomenclature_result.oracle_version == nomenclature_table.result_version
+    assert counterparty_result.oracle_version != ORACLE_VERSION
+    assert nomenclature_result.oracle_version != ORACLE_VERSION
+    assert counterparty_result.oracle_version != nomenclature_result.oracle_version
 
 
 def test_oracle_version_is_recorded_for_unsupported_shape_and_divergence():
@@ -215,7 +269,8 @@ def test_oracle_table_is_used_not_the_writer_table_for_comparison():
     default_result = verify_receipt(FakeReader(stored), "r", expected, SUPPORTED_SHAPE,
                                     writer_declared_types=full_declared_types())
     assert custom_result.status is VerificationStatus.VERIFIED
-    assert custom_result.oracle_version == "s15-oracle-altered-incoming-number"
+    assert custom_result.oracle_version == _expected_result_version(
+        "s15-oracle-altered-incoming-number", rules)
     assert default_result.status is VerificationStatus.MISMATCH
 
 
