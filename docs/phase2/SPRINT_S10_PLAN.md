@@ -10,3 +10,11 @@ Scope: S10 in `PLAN_PHASE2_RU.md` is "Source-specific prod canary under a separa
 Out of scope: any code, any production or real-data action, any gate closure. Status ceiling stays `IMPLEMENTED_UNVERIFIED`; Release 2 stays NO-GO; R2-US-042 and R2-US-048 stay NOT_STARTED (no exact-head acceptance proof exists).
 
 Exit: the handoff document is reviewed against its source documents; the canary starts only after the operator grants permission with recipe, identity, window and budget.
+
+## 2026-11-18 retained bounded engineering verification
+
+The original plan below describes the October handoff. PR #53 later recorded bounded development/test capture and manifest assembly acceptance on the historical integration branch. Its merge 900a3d0 is not an ancestor of main. Current main retains the scoped capture runtime and both named runtime test files byte-for-byte at that merge. Capture-loop and runtime composition changed in subsequent integration, and the manifest implementation and tests have additional head-binding and bounded Git-read changes. Historical runtime and manifest reports are not exact-current evidence.
+
+1. R2-US-042: verify retained development/test capture scope, denial of production binding, and cancellation/drain ownership on the current commit. Use existing named test_capture_runtime.py, test_capture_runtime_e2e.py and test_capture_loop.py. Tests use in-memory inputs. Native capture/comparison and live canary permission are outside the bounded verification.
+2. R2-US-048: verify the current manifest and CLI on a disposable Git fixture only, including exact source/test/PR head binding, complete case IDs, and strict handling of skipped results and separate user/admin/production UAT. Use test_s10_release_manifest.py and test_s10_release_manifest_cli_e2e.py.
+3. Record the two results separately. Retain product canary, actual signed release evidence, independent UAT and release-owner acceptance as backlog. A synthetic example manifest never grants production approval.
