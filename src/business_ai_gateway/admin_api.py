@@ -37,6 +37,25 @@ from .models import source_from_record
 from .principal import claim_groups
 from .rate_limit import RateLimitExceeded
 from .settings import Settings
+from .phase2.intake_extraction import (
+    ExtractionResult,
+    UploadFormat,
+    extract_manual_fields,
+    extract_upload,
+)
+from .phase2.safe_parser import ParseLimits
+
+_INTAKE_LIMITS = ParseLimits(
+    max_input_bytes=2_000_000,
+    max_members=100,
+    max_member_uncompressed=8_000_000,
+    max_total_uncompressed=16_000_000,
+    max_rows=20_000,
+    max_cells=5_000,
+    max_total_text_chars=250_000,
+    deadline_seconds=3.0,
+)
+_INTAKE_MAX_BODY_BYTES = 2_000_000
 
 ADMIN_ROLES = frozenset(
     {"PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "PROFILE_ADMIN", "AUDITOR"}
@@ -107,6 +126,52 @@ async def _json_body(request: Request) -> dict[str, Any]:
     ):
         raise AdminValidationError("invalid expected version")
     return body
+
+
+async def _bounded_body(request: Request, limit: int) -> bytes:
+    """Read one bounded request body; callers authenticate and authorize first."""
+    declared = request.headers.get("content-length")
+    if declared is not None:
+        try:
+            if int(declared) < 0 or int(declared) > limit:
+                raise AdminValidationError("request body exceeds configured limit")
+        except ValueError as exc:
+            raise AdminValidationError("invalid content length") from exc
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(chunk) > limit - len(body):
+            raise AdminValidationError("request body exceeds configured limit")
+        body.extend(chunk)
+    return bytes(body)
+
+
+def _intake_result(result: ExtractionResult) -> dict[str, Any]:
+    """Serialize only the explicit review fields; dataclass reprs remain redacted."""
+    return {
+        "state": result.state.value,
+        "code": result.code,
+        "source_sha256": result.source_sha256,
+        "source_format": result.source_format.value,
+        "fields": [
+            {
+                "value": value.text,
+                "state": value.state.value,
+                "materiality": "UNCLASSIFIED",
+                "review_required": True,
+                "provenance": {
+                    "source_sha256": value.provenance.source_sha256,
+                    "source_format": value.provenance.source_format.value,
+                    "sheet_name": value.provenance.sheet_name,
+                    "row_number": value.provenance.row_number,
+                    "column_number": value.provenance.column_number,
+                    "field_key": value.provenance.field_key,
+                },
+            }
+            for value in result.values
+        ],
+        "proposal_allowed": False,
+        "apply_allowed": False,
+    }
 
 
 def _boolean(body, key, default):
@@ -968,6 +1033,108 @@ class AdminAPI:
             return ctx
         return JSONResponse({"items": await self.repository.list_companies(ctx)})
 
+    async def _intake_scope_allowed(self, ctx: AdminContext, source_id: str, company_id: UUID) -> bool:
+        """Require source-scoped admin authority and the actor's current business allow grant."""
+        if (not source_id or len(source_id) > 128
+                or any(not (char.isascii() and (char.isalnum() or char in "._-")) for char in source_id)
+                or not ctx.can_admin_source(source_id, "PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR")):
+            return False
+        subject = ctx.token.subject
+        if not isinstance(subject, str) or not subject:
+            return False
+        row = await self.repository.db.require_pool().fetchrow(
+            """
+            SELECT c.enabled AND s.enabled AS active,
+                   EXISTS (
+                     SELECT 1 FROM bag.access_grants a
+                     WHERE a.effect='allow' AND a.revoked_at IS NULL
+                       AND (a.expires_at IS NULL OR a.expires_at>now())
+                       AND (a.source_id=s.source_id OR a.all_sources)
+                       AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                       AND ((a.principal_kind='subject' AND a.principal_id=$3)
+                         OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                   ) AS has_allow,
+                   EXISTS (
+                     SELECT 1 FROM bag.access_grants a
+                     WHERE a.effect='deny' AND a.revoked_at IS NULL
+                       AND (a.expires_at IS NULL OR a.expires_at>now())
+                       AND (a.source_id=s.source_id OR a.all_sources)
+                       AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                       AND ((a.principal_kind='subject' AND a.principal_id=$3)
+                         OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                   ) AS has_deny
+            FROM bag.companies c JOIN bag.sources s ON s.source_id=c.source_id
+            WHERE c.company_id=$1 AND c.source_id=$2
+            """,
+            company_id, source_id, subject, sorted(ctx.groups),
+        )
+        return bool(row and row["active"] and row["has_allow"] and not row["has_deny"])
+
+    async def intake_preview(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        source_id = request.query_params.get("source_id", "")
+        raw_company_id = request.query_params.get("company_id", "")
+        try:
+            company_id = UUID(raw_company_id)
+            source_format = UploadFormat(request.query_params.get("format", ""))
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+        if source_format not in {UploadFormat.XLSX, UploadFormat.CSV, UploadFormat.PDF, UploadFormat.IMAGE}:
+            return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+        try:
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+            if content_type not in {"", "application/octet-stream"}:
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=415)
+            body = await _bounded_body(request, _INTAKE_MAX_BODY_BYTES)
+            if not body:
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            result = await asyncio.to_thread(extract_upload, body, source_format, limits=_INTAKE_LIMITS)
+            # Do not disclose parsed values if access was revoked while parsing.
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            return JSONResponse(_intake_result(result))
+        except Exception as exc:  # noqa: BLE001 - no parser or database detail crosses the boundary
+            return self._mutation_error(exc)
+
+    async def intake_manual_preview(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        source_id = request.query_params.get("source_id", "")
+        try:
+            company_id = UUID(request.query_params.get("company_id", ""))
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+        try:
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            body = await _bounded_body(request, 256_000)
+            try:
+                payload = json.loads(body)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            if not isinstance(payload, dict) or set(payload) != {"fields"} or not isinstance(payload["fields"], list):
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            fields = payload["fields"]
+            if len(fields) > 500 or any(
+                not isinstance(item, dict) or set(item) != {"key", "value"}
+                or not isinstance(item["key"], str) or not isinstance(item["value"], str)
+                for item in fields
+            ):
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            result = await asyncio.to_thread(
+                extract_manual_fields, tuple((item["key"], item["value"]) for item in fields)
+            )
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            return JSONResponse(_intake_result(result))
+        except Exception as exc:  # noqa: BLE001 - no submitted values in logs or boundary errors
+            return self._mutation_error(exc)
+
     async def capabilities(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
@@ -1738,6 +1905,8 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ("/admin/v1/sources", ["GET"], api.sources),
         ("/admin/v1/sources/{source_id}", ["GET"], api.source_detail_view),
         ("/admin/v1/companies", ["GET"], api.companies),
+        ("/admin/v1/intake/preview", ["POST"], api.intake_preview),
+        ("/admin/v1/intake/manual-preview", ["POST"], api.intake_manual_preview),
         ("/admin/v1/companies/{company_id}", ["GET"], api.company_detail_view),
         ("/admin/v1/capabilities", ["GET"], api.capabilities),
         ("/admin/v1/grants", ["GET"], api.grants),

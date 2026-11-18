@@ -934,4 +934,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The S17 report can include newly committed task work without overstating acceptance. Rule: refresh after the implementation commit and record code presence, UI/API wiring, named-test execution, and external H3 evidence as separate facts.
 - 2026-11-18 SUCCESS: Hidden XLSX dimensions cannot be displayed reliably when parser results omit visibility metadata. Rule: fail closed on hidden sheets, rows, and columns with a fixed denial code before producing any values; malformed visibility flags are malformed input, not visible content.
+- 2026-11-18 SUCCESS: An offline intake facade is not an authenticated application feature. Rule: bridge it only through the existing session/CSRF boundary and the live exact-company allow/deny policy; submit bytes without filenames, recheck access before disclosure, and keep the preview unable to create proposals or call 1C.
 

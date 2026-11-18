@@ -1,4 +1,4 @@
-const state={me:null,csrf:null,page:'overview'};
+const state={me:null,csrf:null,page:'overview',intakeSources:[],intakeCompanies:[]};
 const pages={
  overview:['Overview','Live control-plane status and administrative activity.'],
  sources:['1C sources','Registered read-only 1C endpoints and capability health.'],
@@ -7,11 +7,12 @@ const pages={
  access:['Access policies','Subject/group grants. Explicit deny overrides allow.'],
  roles:['Roles & capabilities','Platform roles and business capability templates.'],
  profiles:['Semantic profiles','Evidence-backed semantic profile lifecycle.'],
+ intake:['Intake preview','Authenticated, non-persisted document and manual-field review.'],
  audit:['Audit & evidence','Immutable runtime and administration evidence.']
 };
 async function api(path,opts={}){
  const headers={'Accept':'application/json',...(opts.headers||{})};
- if(opts.body){headers['Content-Type']='application/json'}
+ if(typeof opts.body==='string'){headers['Content-Type']='application/json'}
  if(state.csrf && (opts.method||'GET')!=='GET'){headers['X-CSRF-Token']=state.csrf}
  if((opts.method||'GET')!=='GET' && !headers['Idempotency-Key']){headers['Idempotency-Key']=crypto.randomUUID()}
  const res=await fetch(path,{credentials:'same-origin',...opts,headers});
@@ -124,6 +125,18 @@ render=async function(){
  if(state.page==='sources'){
   try{const x=await api('/admin/v1/capabilities');content.insertAdjacentHTML('beforeend','<div style="height:14px"></div>'+table('Metadata & drift',x.items,[{h:'Source',f:i=>esc(i.source_id)},{h:'Fingerprint',f:i=>esc(i.metadata_fingerprint)},{h:'State',f:i=>tag(i.drift_status,i.drift_status==='DRIFTED'?'warn':'ok')},{h:'Adapter',f:i=>esc(i.adapter_profile)}]))}catch(e){content.insertAdjacentHTML('beforeend','<p role="alert">Metadata dependency unavailable: '+esc(e.message)+'</p>')}
  }
+  if(state.page==='intake'){
+   try{
+    const loadScopes=async path=>{const items=[];let offset=0;for(let page=0;page<100;page++){const x=await api(path+'?limit=200&offset='+offset);items.push(...(x.items||[]));if(x.next_offset===null||x.next_offset===undefined)break;offset=x.next_offset}return items};
+    const [sources,companies]=await Promise.all([loadScopes('/admin/v1/sources'),loadScopes('/admin/v1/companies')]);
+    state.intakeSources=sources.filter(x=>x.enabled&&x.read_only);
+    state.intakeCompanies=companies.filter(x=>x.enabled);
+    const sourceOptions=state.intakeSources.map(x=>'<option value="'+esc(x.source_id)+'">'+esc(x.display_name)+' · '+esc(x.source_id)+'</option>').join('');
+    content.innerHTML='<div class="banner">Preview only. Values remain review-required and are not saved. This screen cannot create a proposal, approve a change, or write to 1C.</div><div class="grid"><section class="card"><div class="cardhead"><div><h2>File preview</h2><small>Bytes only; filename is not sent</small></div></div><div class="form"><div class="field"><label for="intake_source">Registered source</label><select id="intake_source">'+sourceOptions+'</select></div><div class="field"><label for="intake_company">Company scope</label><select id="intake_company"></select></div><div class="row2"><div class="field"><label for="intake_format">File format</label><select id="intake_format"><option value="xlsx">Excel workbook (.xlsx)</option><option value="csv">Comma-separated values (.csv)</option><option value="pdf">PDF (manual review only)</option><option value="image">Image (manual review only)</option></select></div><div class="field"><label for="intake_file">Choose file (2 MB maximum)</label><input id="intake_file" type="file" accept=".xlsx,.csv,.pdf,image/*"></div></div><button class="btn primary" data-act="intakeFilePreview">Prepare review preview</button></div></section><section class="card"><div class="cardhead"><div><h2>Manual fields</h2><small>Ordered JSON key/value pairs</small></div></div><div class="form"><p class="muted">Enter an array such as [{"key":"invoice_number","value":"INV-1"}]. Blank values are omitted. The input is capped at 256 KB.</p><label for="intake_manual">Fields JSON</label><textarea id="intake_manual" rows="8" aria-describedby="intake_manual_help">[]</textarea><small id="intake_manual_help" class="muted">Each field remains unclassified and requires human review.</small><button class="btn" data-act="intakeManualPreview">Prepare manual preview</button></div></section></div><section class="card"><div class="cardhead"><div><h2>Preview result</h2><small>No proposal or write path</small></div></div><div id="intake_result" class="form sr-status" role="status" aria-live="polite">Select a registered source and company, then prepare a preview.</div></section>';
+    const fillCompanies=()=>{const source=document.getElementById('intake_source').value;const options=state.intakeCompanies.filter(x=>x.source_id===source).map(x=>'<option value="'+esc(x.company_id)+'">'+esc(x.display_name)+' · '+esc(x.company_id)+'</option>').join('');document.getElementById('intake_company').innerHTML=options||'<option value="">No active company in this source</option>'};
+    document.getElementById('intake_source').addEventListener('change',fillCompanies);fillCompanies();
+   }catch(e){content.innerHTML='<div class="banner warn" role="alert">Intake preview is unavailable. No data was saved.</div><button class="btn" data-act="render">Retry</button>'}
+  }
  if(state.page==='roles'){
   const disabled=!state.me.business_capability_enforcement_enabled;
   content.insertAdjacentHTML('afterbegin','<div class="banner warn">'+(disabled?'Business capability enforcement is OFF. Assignment controls are disabled until backend enforcement is active.':'Business capability enforcement is ON. Roles and overrides never widen data scope.')+' '+(!state.me.platform_role_step_up_configured?'Platform role changes require configured IdP step-up; browser changes are disabled.':'Platform role changes require an approved authentication level from the last five minutes.')+'</div>');
@@ -210,6 +223,10 @@ async function explainAccess(offset){const out=document.getElementById('access_e
  const x=await api('/admin/v1/effective-access?'+params);
  out.innerHTML='<p>Identity mode: '+esc(x.mode)+'; group membership: '+esc(x.group_membership)+'. Capability authorization and live metadata checks remain separate runtime gates.</p>'+baseTable('Company policy results',x.items,[{h:'Company',f:i=>esc(i.display_name)},{h:'ACL',f:i=>tag(i.data_acl)},{h:'Why',f:i=>esc(i.detail_code)},{h:'Grant evidence',f:i=>i.matching_grants.map(g=>esc(g.grant_id)+' / '+esc(g.effect)+' / '+esc(g.inheritance)+' / '+esc(g.scope)).join('<br>')+(i.grant_evidence_truncated?'<br>Evidence limited to 50; all '+esc(i.matching_grant_count)+' grants were evaluated. Denies are prioritized.':'')},{h:'Company operation',f:i=>esc(i.company_operation)}])+(x.next_offset!==null?'<button class="btn" data-act="explainAccess" data-offset="'+esc(x.next_offset)+'">Next results</button>':'');
  }catch(e){out.textContent=e.message}}
+function intakeQuery(){const source=document.getElementById('intake_source'),company=document.getElementById('intake_company');if(!source?.value||!company?.value)throw new Error('Choose an active registered source and company.');return new URLSearchParams({source_id:source.value,company_id:company.value})}
+function renderIntakeResult(x){const out=document.getElementById('intake_result');if(!out)return;out.innerHTML='<p><b>'+esc(x.state)+'</b> · '+esc(x.code)+' · '+(x.source_sha256?'SHA-256 <code>'+esc(x.source_sha256)+'</code>':'No source digest')+'</p><p>All values require review. Materiality is unclassified. Proposal allowed: no. Apply allowed: no.</p>'+(!x.fields?.length?'<p class="muted">No field values were extracted; use manual review or correct the input.</p>':baseTable('Review-required values',x.fields,[{h:'Value',f:i=>esc(i.value)},{h:'Field key',f:i=>esc(i.provenance.field_key||'—')},{h:'Sheet',f:i=>esc(i.provenance.sheet_name||'—')},{h:'Row',f:i=>esc(i.provenance.row_number)},{h:'Column',f:i=>esc(i.provenance.column_number)},{h:'Status',f:i=>esc(i.state+' · '+i.materiality)}]));}
+async function intakeFilePreview(){const out=document.getElementById('intake_result');if(!out)return;out.textContent='Preparing a review-only preview…';try{const file=document.getElementById('intake_file').files[0];if(!file)throw new Error('Choose a file first.');if(file.size>2_000_000)throw new Error('File exceeds the 2 MB limit.');const params=intakeQuery();params.set('format',document.getElementById('intake_format').value);const bytes=new Uint8Array(await file.arrayBuffer());const x=await api('/admin/v1/intake/preview?'+params,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:bytes});renderIntakeResult(x)}catch(e){out.textContent=e.message==='INTAKE_SCOPE_DENIED'?'You cannot preview data for this company.':'Preview refused. Check the selected scope and input, then retry.'}}
+async function intakeManualPreview(){const out=document.getElementById('intake_result');if(!out)return;out.textContent='Preparing a manual review preview…';try{const fields=JSON.parse(document.getElementById('intake_manual').value);if(!Array.isArray(fields))throw new Error('Fields must be a JSON array.');const params=intakeQuery();const x=await api('/admin/v1/intake/manual-preview?'+params,{method:'POST',body:JSON.stringify({fields})});renderIntakeResult(x)}catch(e){out.textContent=e.message==='INTAKE_SCOPE_DENIED'?'You cannot preview data for this company.':'Manual preview refused. Check the fields and retry.'}}
 let previousFocus=null;
 modal=function(title,body,submit){previousFocus=document.activeElement;baseModal(title,body,submit);const d=document.querySelector('.modal');d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.querySelector('h2').id='dialog_title';d.setAttribute('aria-labelledby','dialog_title');d.querySelector('.modalh button').setAttribute('aria-label','Close dialog');labelForms();d.querySelector('input,select,textarea,button')?.focus()};
 closeModal=function(){if(state.workflow?.busy)return;document.getElementById('overlay').innerHTML='';state.workflow=null;previousFocus?.focus()};
@@ -226,6 +243,7 @@ const ACTIONS={
  closeModal:()=>closeModal(),saveWorkflow:()=>saveWorkflow(),createSource:()=>createSource(),
  createCompany:()=>createCompany(),createGrant:()=>createGrant(),
  revokeGrant:el=>revokeGrant(el.dataset.id,Number(el.dataset.version)),
- explainAccess:el=>explainAccess(Number(el.dataset.offset))
+ explainAccess:el=>explainAccess(Number(el.dataset.offset)),
+ intakeFilePreview:()=>intakeFilePreview(),intakeManualPreview:()=>intakeManualPreview()
 };
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;const fn=ACTIONS[el.dataset.act];if(fn)fn(el)});

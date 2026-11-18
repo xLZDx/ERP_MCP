@@ -2698,4 +2698,8 @@ After commit `acdcab4b`, regenerate the standard live report so it includes the 
 
 The refreshed report exposed stale reconciliation coverage: 42 tasks fell back to the legacy harness `verified` state despite recorded project-plan statuses. Run the supported `ledger.py reconcile-project` against the current `PROJECT_PLAN.md` and 115 branch refs; all 111 task records now have document/Git reconciliation, with harness verify/review evidence preserved. The project distribution is 91 bounded accepted, 5 in progress, 2 externally blocked, 1 partial, 1 in review, and 11 not started. No test or reviewer result was changed.
 
+## 2026-11-18 — Connect S17 review-only intake to the authenticated Admin Control Center
+
+Add two bounded Admin API preview routes under the existing OIDC/session and CSRF boundary. A request needs both source-scoped platform administration authority and the caller&#x27;s active company allow grant; a matching active deny wins. The routes authorize before consuming the body, cap file/manual input, parse file bytes without a filename/path, and recheck scope before returning values. The UI submits raw file bytes, renders only escaped review-required fields, and exposes no proposal or 1C operation. Do not wire the offline alias resolver or claim persisted workbench/entity semantics: the runtime has no authenticated tenant-scoped alias composition. This is an implementation slice only; S17-05 remains open for named tests and the wider change-list/retry/rollback-proposal flow.
+
 </pre></main></body></html>
