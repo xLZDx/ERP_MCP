@@ -53,3 +53,11 @@ An instance label and a deterministic state fingerprint describe configuration a
 
 The named verification should confirm that two adapters on the same live clone remain compatible, an unbound authority refuses issuance, and independently allocated clones never share the same TEST permit identity even when their display labels and state fingerprints match. Treat those identity checks as simulation evidence only.
 
+
+## S14-02 marked receipt draft creation
+
+For the governed TEST port, create the draft and store a private marker carrying the change identity and approved digest in the same clone-owned mutation. Keep the marker on an accepted draft after a simulated response loss or crash. Reject another create for the same marked change while retaining the existing exact-call replay classification. Recheck the canonical receipt business key under the same lock. The clone instance and receipt kind are implicit; compare organization, counterparty, contract, supplier document number and date, and currency. An explicitly approved duplicate override can allow a separate proposal to use the same business key; it cannot bypass the same-change marker. Use the clone's existing TEST data for verification and keep the marker out of public fingerprints, results, and operational evidence. Existing reference-writer behavior and the COM privilege/retention contract stay separate.
+
+
+When preparing the named tests, use distinct change IDs for distinct proposals and retain a single ID for true same-proposal retries. Keep the ordinary duplicate case separate from the same-marker case, including changed-digest refusal, same-key independent proposals, response loss after creation, and a legitimate document whose contract or currency differs. Verify contents on the TEST clone only.
+

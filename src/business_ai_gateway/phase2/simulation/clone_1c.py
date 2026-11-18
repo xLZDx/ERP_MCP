@@ -188,6 +188,7 @@ class _Document:
     version: int
     status: str
     payload: DraftPayload  # stored without the transport-only ``expected_target_version``
+    _simulation_marker: tuple[str, str] | None = None
 
 
 class SimulatedOneC:
@@ -378,11 +379,14 @@ class SimulatedOneC:
             # Any uncertain or refused attempt therefore cannot be replayed under a
             # changed ticket/base to produce a second side effect.
             self._simulation_calls[call_id] = call_identity
-            return self._apply_locked(kind, payload_bytes, target_ref, expected_version)
+            create_marker = (change_id, digest_set_hash) if kind is ChangeKind.CREATE_DRAFT else None
+            return self._apply_locked(kind, payload_bytes, target_ref, expected_version,
+                                      simulation_marker=create_marker)
 
     def _apply_locked(self, kind: ChangeKind, payload_bytes: bytes, target_ref: str | None,
                       expected_version: str | None, *, change_id: str | None = None,
-                      dispatch_id: str | None = None) -> ApplyResult:
+                      dispatch_id: str | None = None,
+                      simulation_marker: tuple[str, str] | None = None) -> ApplyResult:
         if type(kind) is not ChangeKind or not isinstance(payload_bytes, (bytes, bytearray)):
             raise ValueError("APPLY_ARGUMENTS_INVALID")
         if (change_id is None) != (dispatch_id is None):
@@ -417,11 +421,12 @@ class SimulatedOneC:
         except CloneRejected as exc:
             entry["outcome"] = "REFUSED:" + exc.code
             raise CloneRejected(exc.code, digest) from None
-        refusal = self._plan(kind, payload, target_ref, expected_version, check_version=True)
+        refusal = self._plan(kind, payload, target_ref, expected_version, check_version=True,
+                             simulation_marker=simulation_marker)
         if refusal is not None:
             entry["outcome"] = "REFUSED:" + refusal
             raise CloneRejected(refusal, digest)
-        result = self._write(kind, payload, target_ref, digest)
+        result = self._write(kind, payload, target_ref, digest, simulation_marker=simulation_marker)
         entry["write_applied"] = True
         entry["outcome"] = "APPLIED"
         if injected == "crash_after_write":
@@ -453,7 +458,8 @@ class SimulatedOneC:
         }
 
     def _plan(self, kind: ChangeKind, payload: DraftPayload | None, target_ref: str | None,
-              expected_version: str | None, check_version: bool) -> str | None:
+              expected_version: str | None, check_version: bool,
+              simulation_marker: tuple[str, str] | None = None) -> str | None:
         """The refusal code the clone would give, or ``None`` when the change is admissible."""
         doc = self._docs.get(target_ref) if type(target_ref) is str else None
         if kind in _DRAFT_KINDS:
@@ -462,6 +468,21 @@ class SimulatedOneC:
             if kind is ChangeKind.CREATE_DRAFT:
                 if target_ref is not None or expected_version is not None or payload.expected_target_version is not None:
                     return "CREATE_ARGUMENTS_INVALID"
+                if simulation_marker is not None:
+                    change_id, approved_digest = simulation_marker
+                    prior_markers = [existing._simulation_marker for existing in self._docs.values()
+                                     if existing._simulation_marker is not None
+                                     and existing._simulation_marker[0] == change_id]
+                    if any(marker[1] != approved_digest for marker in prior_markers):
+                        return "IDEMPOTENCY_CONFLICT"
+                    if prior_markers:
+                        return "DUPLICATE"
+                    if payload.duplicate_override is None:
+                        candidate_key = _create_business_key(payload)
+                        if any(_create_business_key(existing.payload) == candidate_key
+                               for existing in self._docs.values()):
+                            return "DUPLICATE"
+                    return None
             else:
                 if doc is None:
                     return "NOT_FOUND"
@@ -485,12 +506,16 @@ class SimulatedOneC:
             return "NOT_POSTED"
         return None
 
-    def _write(self, kind: ChangeKind, payload: DraftPayload | None, target_ref: str | None, digest: str) -> ApplyResult:
+    def _write(self, kind: ChangeKind, payload: DraftPayload | None, target_ref: str | None, digest: str,
+               *, simulation_marker: tuple[str, str] | None = None) -> ApplyResult:
         effects = {"documents_created": 0, "documents_updated": 0, "movement_rows_added": 0, "movement_rows_removed": 0}
         if kind is ChangeKind.CREATE_DRAFT:
             ref = f"SIM-DOC-{self._next_doc:06d}"
             self._next_doc += 1
-            doc = _Document(ref, 1, STATUS_DRAFT, replace(payload, expected_target_version=None))
+            doc = _Document(
+                ref, 1, STATUS_DRAFT, replace(payload, expected_target_version=None),
+                _simulation_marker=simulation_marker,
+            )
             self._docs[ref] = doc
             effects["documents_created"] = 1
         else:
@@ -515,6 +540,11 @@ def _version_text(version: int) -> str:
 
 def _dup_key(payload: DraftPayload) -> tuple[str, str, str]:
     return (payload.counterparty_ref, payload.supplier_document_number, payload.supplier_document_date)
+
+
+def _create_business_key(payload: DraftPayload) -> tuple[str, str, str, str, str, str]:
+    return (payload.organization_ref, payload.counterparty_ref, payload.contract_ref,
+            payload.supplier_document_number, payload.supplier_document_date, payload.currency)
 
 
 def _movements_for(payload: DraftPayload) -> dict[str, int]:

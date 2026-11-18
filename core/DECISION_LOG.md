@@ -2451,3 +2451,8 @@ GPT-PM approved all five bounded S13 stories at exact HEAD 6dc18f0177f88d8ccfc8f
 
 The approved offline S14 port uses a private live-instance binding in its ticket digest and signed permit message. Independent authorities with the same fixture key on the same clone remain compatible, and each authority binds once under a lock. Require attachment before synthetic issuance. Preserve deterministic business-state fingerprints and synthetic result shapes. Licensed COM, measured target binding, atomic marker and least-privilege qualification remain in the operational backlog. Named verification has not run because S14 source assembly is still underway.
 
+
+## 2026-11-18 - Retain the CT2 create marker in the governed TEST clone
+
+The governed simulation now stores the change identity and approved digest on the new draft under the same clone-owned lock as the write. The marker survives the injected post-write failure path and prevents a later call for the same change from creating a second document. Under that lock, check the full receipt business key for different proposals; a permitted override does not bypass the change marker. Preserve legacy simulation entry points, exact call identity semantics and public result shapes. Formal CT14 qualification remains external and is recorded in the backlog. Named verification is NOT_RUN pending S14 source assembly.
+

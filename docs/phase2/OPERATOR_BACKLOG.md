@@ -1906,3 +1906,8 @@ The scoped code review of fc25b8f identified one MINOR coverage gap. Registratio
 
 The retained offline simulation has an approved TEST-only contract and the low-level COM draft executor and STA lane remain candidate source. Completing the measured operational port requires a CT14-qualified licensed clone and channel, measured write-account rights including payment/delete denial, a confirmed in-write marker, and authenticated base/tenant/company/organization/version binding. Exercise the exact authorized receipt operations and retain evidence for lookup, queue fencing and recovery. The licensed-channel owner is not assigned in the canonical plan. Continue local technical work without representing simulation receipts or historical draft rollback as full S14 acceptance. No live channel activation is implied.
 
+
+## S14-02 operational marked write and duplicate qualification
+
+Verify that the selected CT14-qualified licensed channel records the change identity and digest in the same receipt write, independently reads them back, and serializes the canonical business-key check with the actual create. Include response loss, edited-marker control, a conflicting proposal, and an independently approved separate document. Historical draft rollback and the governed TEST simulator do not establish those channel-specific properties. The qualified channel owner is unassigned in the current plan.
+

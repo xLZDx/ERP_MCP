@@ -805,3 +805,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: A simulation label and a deterministic state fingerprint identify a configuration but do not identify a live clone instance. Rule: bind TEST permits to the exact instance while keeping state fingerprints deterministic and production authority separate.
 
+
+- 2026-11-18 SHORTCOMING: The governed TEST create simulation reserved call identity but did not store a per-change marker with the new draft. Rule: check proposal identity and the full business key inside the same lock and commit the marker with the draft.
+
