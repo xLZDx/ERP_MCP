@@ -134,6 +134,30 @@ class _UnitOnlySink:
         return max(matching, key=lambda record: record.seq) if matching else None
 
 
+class _ReadbackFailureSink(_UnitOnlySink):
+    """Stores T16 writes but returns or raises on the required post-write read-back."""
+
+    def __init__(self, events: list[str], failure: str) -> None:
+        super().__init__(events)
+        self.failure = failure
+        self.read_count = 0
+
+    async def read_back(self, scope: Scope, seq: int) -> CheckpointRecord | None:
+        self.events.append("sink.read_back")
+        self.read_count += 1
+        record = self.rows.get((seq, scope.tenant_id, scope.company_id))
+        if self.read_count == 1:
+            return record
+        if self.failure == "missing":
+            return None
+        if self.failure == "mismatched":
+            assert record is not None
+            return CheckpointRecord(**{**record.__dict__, "head_hash": "c" * 64})
+        if self.failure == "exception":
+            raise TimeoutError("private read-back detail")
+        raise AssertionError(f"unknown failure mode: {self.failure}")
+
+
 class _UnitOnlyLedger:
     """SQL boundary double: records calls but never opens a connection or mutates a database."""
 
@@ -424,5 +448,34 @@ async def test_t16_checkpoint_rechecks_policy_after_sql_before_provider_or_hold_
     assert "authority.readiness" in events
     assert "sql.operator_resolve_s13" in events
     assert not any(event.startswith("sink.") for event in events)
+    assert "sql.record_checkpoint_s13" not in events
+    assert "sql.release_hold" not in events
+
+
+@pytest.mark.parametrize("failure", ["missing", "mismatched", "exception"])
+@pytest.mark.asyncio
+async def test_t16_readback_failure_after_sink_write_keeps_database_holds_open(failure: str) -> None:
+    events: list[str] = []
+    authority = _UnitOnlyAuthorityHarness(events)
+    sink = _ReadbackFailureSink(events, failure)
+    gate = DispatchGate(
+        _UnitOnlyLedger(events), sink, _UnitOnlySigner(events), _UnitOnlyVerifier(events),
+        real_checkpoint_sink=True, private_writer_schema_enabled=True,
+        runtime_authority=authority,
+    )
+
+    with pytest.raises(CheckpointUnavailable) as error:
+        await gate.resolve_t16_s13(
+            SCOPE, CHANGE_ID, uuid4(), uuid4(), "receipt", "completion", "outcome",
+        )
+
+    assert error.value.code == "CHECKPOINT_UNAVAILABLE"
+    expected_message = "CHECKPOINT_UNAVAILABLE" if failure == "exception" else "READ_BACK_MISMATCH"
+    assert str(error.value) == expected_message
+    assert "private read-back detail" not in str(error.value)
+    assert "sql.operator_resolve_s13" in events
+    assert "sink.write" in events
+    assert events.count("sink.read_back") == 2
+    assert events.index("sql.operator_resolve_s13") < events.index("sink.write")
     assert "sql.record_checkpoint_s13" not in events
     assert "sql.release_hold" not in events

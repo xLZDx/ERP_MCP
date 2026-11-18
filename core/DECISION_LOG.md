@@ -2326,3 +2326,8 @@ Restore the accepted claim test delta from 9d3cb5f on top of the byte-identical 
 ## 2026-11-18 - Reconcile the retained S13 checkpoint evidence
 
 Keep the main branch's post-consolidation checkpoint and restore coverage as the baseline. PR #58 remains open at 9bd6d38 and the preserved follow-up branch at 65c4086 contains that head. Do not replace main's migration 027 or test files with the preserved branch wholesale. The operator selected the dev-only service; external provider and custody proof are a separate operational gap. Treat current-head S13 acceptance as pending.
+
+## 2026-11-18 - Restore recovery checkpoint read-back refusal coverage
+
+Retain the exact test additions from 82f7620 for a missing, mismatched or failed provider read-back after a recovery checkpoint append. On the current coordinator path, registration of the checkpoint and release of the stop-effects holds follow exact provider read-back and signature verification. The retained cases assert that none of those failures records a checkpoint or releases a hold. The tests use an in-memory provider and ledger double. Execution is pending sprint verification; the change does not alter a runtime setting or enable physical dispatch.
+

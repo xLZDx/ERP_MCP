@@ -743,3 +743,8 @@ Restoring the exact historical test delta makes the SQL-level contention and rol
 ## 2026-11-18 - SUCCESS - Compare dev anchor package identity before integration
 
 Compare import paths alongside Git ancestry. The earlier package was renamed after consolidation, and the existing development module retained the old public module name. Blindly restoring the old test fixtures would exercise the wrong target.
+
+## 2026-11-18 - SUCCESS - Preserve refusal tests beyond the original pull request
+
+The follow-up branch contained a test-only coverage gap absent from the open pull request and current candidate. Compared the original blob with the current file and carried the exact refusal cases without bringing in unrelated SQL or changing the provider contract.
+
