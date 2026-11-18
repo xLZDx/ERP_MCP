@@ -199,7 +199,7 @@ Assertions:
    refused (E29, E39). Cookie scope is separate from any chat/admin cookie.
 8. Authorization is checked on every request: unauthorized preview retrieval (no session, wrong person, requester viewing own approval) is refused (E39).
 9. Session revocation takes effect on the next request (E39).
-10. Re-authentication is required to approve; posting and amounts above a threshold require a second confirmation (CT12). Threshold: Q3.
+10. Re-authentication is required to approve. Posting and amounts above the registered threshold require a second confirmation (CT12, Q3). Preview and decision use the same confirmation rule. Invalid thresholds and stale targets refuse preview before issuing a decision reference.
 11. Every approval or refusal appends an audit record; an invalid approval changes no authorization state (E39 invariant).
 12. Direct calls to the approval service with the author's token are refused by the service itself, not merely hidden from a tool list (E29, I4).
 13. Nonce and digest are issued by ApprovalService/ChangeService (5.3). Test: a page handler given a tampered nonce, digest or version cannot make

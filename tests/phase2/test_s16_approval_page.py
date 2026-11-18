@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import html
 import re
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -118,6 +119,121 @@ def test_preview_rejects_truthy_integer_independence_before_issuing_nonce():
     assert '<form' in accepted.text
     assert env.nonce_source._counter == nonce_count_before + 1
     assert env.store.get(snapshot.change_id) == before_receipt
+
+
+@pytest.mark.parametrize("threshold", ["Infinity", "-1", 1, True], ids=[
+    "non-finite", "negative", "integer-not-string", "bool-not-string",
+])
+def test_preview_rejects_invalid_confirmation_threshold_before_issuing_nonce(threshold):
+    env = build_env()
+    snapshot = propose(env, request_id=f"approval-invalid-threshold-{threshold!r}")
+    target = env.targets.current(snapshot.scope)
+    env.targets.put(replace(target, amount_confirmation_threshold=threshold))
+    client = _client(env)
+    before_receipt = env.store.get(snapshot.change_id)
+    nonce_count_before = env.nonce_source._counter
+
+    refused = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+
+    assert refused.status_code == 403
+    assert render(ErrorCode.TARGET_REJECTED).message in refused.text
+    assert "<form" not in refused.text
+    assert env.nonce_source._counter == nonce_count_before
+    assert env.store.get(snapshot.change_id) == before_receipt
+
+
+def test_amount_equal_to_confirmation_threshold_needs_no_extra_confirmation():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-threshold-equality")
+    target = env.targets.current(snapshot.scope)
+    # The fixture's independent business amount is 21.00 + 3.50 = 24.50 RUB.
+    env.targets.put(replace(target, amount_confirmation_threshold="24.50"))
+    client = _client(env)
+
+    page = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+
+    assert page.status_code == 200
+    assert 'name="confirmation_text"' not in page.text
+    decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', page.text).group(1)
+    csrf_token = re.search(r'name="csrf_token" value="([^"]+)"', page.text).group(1)
+    accepted = client.post(
+        f"/approval/{snapshot.change_id}/decision",
+        data={"decision_ref": decision_ref, "csrf_token": csrf_token,
+              "decision": "APPROVE"},
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert accepted.status_code == 200
+    receipt = env.store.get(snapshot.change_id)
+    assert receipt.approval is not None and receipt.approval.decision == "APPROVE"
+    assert env.apply_port.calls == 0
+
+
+def test_amount_above_confirmation_threshold_requires_exact_phrase():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-threshold-confirmation")
+    target = env.targets.current(snapshot.scope)
+    env.targets.put(replace(target, amount_confirmation_threshold="24.49"))
+    client = _client(env)
+
+    page = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+
+    assert page.status_code == 200
+    assert 'name="confirmation_text"' in page.text
+    assert "CONFIRM CHANGE" in page.text
+    decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', page.text).group(1)
+    csrf_token = re.search(r'name="csrf_token" value="([^"]+)"', page.text).group(1)
+    missing_phrase = client.post(
+        f"/approval/{snapshot.change_id}/decision",
+        data={"decision_ref": decision_ref, "csrf_token": csrf_token,
+              "decision": "APPROVE"},
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+    assert missing_phrase.status_code == 403
+    assert env.store.get(snapshot.change_id).approval is None
+    assert env.apply_port.calls == 0
+
+    # A fresh decision reference makes the successful exact-phrase case independent
+    # of whether a future implementation consumes references on policy refusal.
+    fresh_page = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+    assert fresh_page.status_code == 200
+    fresh_ref = re.search(r'name="decision_ref" value="([^"]+)"', fresh_page.text).group(1)
+    fresh_csrf = re.search(r'name="csrf_token" value="([^"]+)"', fresh_page.text).group(1)
+    accepted = client.post(
+        f"/approval/{snapshot.change_id}/decision",
+        data={"decision_ref": fresh_ref, "csrf_token": fresh_csrf,
+              "decision": "APPROVE", "confirmation_text": "CONFIRM CHANGE"},
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert accepted.status_code == 200
+    receipt = env.store.get(snapshot.change_id)
+    assert receipt.approval is not None and receipt.approval.decision == "APPROVE"
+    assert env.apply_port.calls == 0
+
+
+def test_approval_post_rejects_target_version_changed_after_preview():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-target-version-stale")
+    client = _client(env)
+    page = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+    assert page.status_code == 200
+    decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', page.text).group(1)
+    csrf_token = re.search(r'name="csrf_token" value="([^"]+)"', page.text).group(1)
+    target = env.targets.current(snapshot.scope)
+    env.targets.change_version(snapshot.scope, replace(target.version, value="v2"))
+
+    refused = client.post(
+        f"/approval/{snapshot.change_id}/decision",
+        data={"decision_ref": decision_ref, "csrf_token": csrf_token,
+              "decision": "APPROVE"},
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert refused.status_code == 403
+    assert render(ErrorCode.STALE_VERSION).message in refused.text
+    assert env.store.get(snapshot.change_id).approval is None
+    assert env.apply_port.calls == 0
 
 
 def test_approval_post_rejects_missing_or_foreign_origin_and_keeps_authorization_unchanged():

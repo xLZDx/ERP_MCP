@@ -102,6 +102,25 @@ def _allowed_target_record(target: object, scope: object) -> bool:
             and target.scope == scope and type(target.version) is TargetVersion)
 
 
+def _confirmation_required(kind: object, payload: object, target: object) -> bool | None:
+    """Return the shared confirmation decision, or None for invalid target policy data."""
+    required = getattr(kind, "value", None) == "POST"
+    if payload is None:
+        return required
+    if (type(target) is not TargetRecord
+            or type(target.amount_confirmation_threshold) is not str):
+        return None
+    try:
+        amount = sum((Decimal(line.amount) + Decimal(line.vat_amount)
+                      for line in payload.lines), Decimal(0))
+        threshold = Decimal(target.amount_confirmation_threshold)
+        if not amount.is_finite() or not threshold.is_finite() or threshold < 0:
+            return None
+        return required or amount > threshold
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+
 def _valid_approver_session(session: object, principal: AuthenticatedPrincipal,
                             now: datetime) -> bool:
     if (type(principal) is not AuthenticatedPrincipal or type(session) is not ApproverSession
@@ -220,19 +239,23 @@ class S16Core:
             return ErrorCode.APPROVAL_VOIDED
         return None
 
-    def validate_current_target(self, receipt: DomainReceipt) -> ErrorCode | None:
+    def current_target_for_receipt(self, receipt: DomainReceipt) -> tuple[TargetRecord | None, ErrorCode | None]:
         try:
             target = self.targets.current(receipt.scope)
             fingerprint = self.targets.resolve_fingerprint(receipt.scope)
         except Exception:
-            return ErrorCode.TARGET_REJECTED
+            return None, ErrorCode.TARGET_REJECTED
         if not _allowed_target_record(target, receipt.scope):
-            return ErrorCode.TARGET_REJECTED
+            return None, ErrorCode.TARGET_REJECTED
         if fingerprint != receipt.scope.base_fingerprint:
-            return ErrorCode.SCOPE_MISMATCH
-        if target.version != receipt.snapshot.target_version:
-            return ErrorCode.STALE_VERSION
-        return None
+            return None, ErrorCode.SCOPE_MISMATCH
+        if target.version != receipt.snapshot.target_version or target.version != receipt.target_version:
+            return None, ErrorCode.STALE_VERSION
+        return target, None
+
+    def validate_current_target(self, receipt: DomainReceipt) -> ErrorCode | None:
+        _, error = self.current_target_for_receipt(receipt)
+        return error
 
     @staticmethod
     def _principal(principal: object, token_class: object) -> bool:
@@ -423,7 +446,6 @@ class S16Core:
                     or PrincipalRole.REQUESTER not in requester_record.roles
                     or type(dependencies_current) is not bool or not dependencies_current):
                 return Result.refused(ErrorCode.EPOCH_CHANGED)
-            policy_requires_confirmation = receipt.proposal.kind.value == "POST"
             payload = receipt.proposal.payload
             try:
                 target = self.targets.current(receipt.scope)
@@ -433,17 +455,9 @@ class S16Core:
                 return Result.refused(ErrorCode.TARGET_REJECTED)
             if target.version != receipt.target_version:
                 return Result.refused(ErrorCode.STALE_VERSION)
-            if payload is not None:
-                if target is None or target.amount_confirmation_threshold is None:
-                    return Result.refused(ErrorCode.TARGET_REJECTED)
-                try:
-                    amount = sum((Decimal(line.amount) + Decimal(line.vat_amount) for line in payload.lines), Decimal(0))
-                    threshold = Decimal(target.amount_confirmation_threshold)
-                    if not amount.is_finite() or not threshold.is_finite() or threshold < 0:
-                        return Result.refused(ErrorCode.TARGET_REJECTED)
-                    policy_requires_confirmation = policy_requires_confirmation or amount > threshold
-                except (InvalidOperation, ValueError, TypeError):
-                    return Result.refused(ErrorCode.TARGET_REJECTED)
+            policy_requires_confirmation = _confirmation_required(receipt.proposal.kind, payload, target)
+            if policy_requires_confirmation is None:
+                return Result.refused(ErrorCode.TARGET_REJECTED)
             phrase = "CONFIRM CHANGE"
             if (binding.confirmation_required != policy_requires_confirmation
                     or (policy_requires_confirmation and binding.confirmation_phrase != phrase)

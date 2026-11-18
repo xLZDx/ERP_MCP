@@ -25,7 +25,7 @@ from .contracts import (
     ProposalPort, Result, TargetRecord,
     canonical_preview_bytes,
 )
-from .core import S16Core, _as_utc, _valid_approver_session
+from .core import S16Core, _as_utc, _confirmation_required, _valid_approver_session
 
 APPROVAL_NONCE_LIFETIME = timedelta(minutes=5)
 PROPOSAL_LIFETIME = timedelta(minutes=5)
@@ -323,7 +323,7 @@ class ApprovalService:
         issued_error = self.core.validate_issued_receipt(receipt)
         if issued_error is not None:
             return Result.refused(issued_error)
-        target_error = self.core.validate_current_target(receipt)
+        target, target_error = self.core.current_target_for_receipt(receipt)
         if target_error is not None:
             return Result.refused(target_error)
         if receipt.scope != approver.scope:
@@ -363,23 +363,15 @@ class ApprovalService:
             return Result.refused(ErrorCode.APPROVAL_EXPIRED)
         if _digest(snap.canonical_preview_bytes) != snap.preview_digest:
             return Result.refused(ErrorCode.APPROVAL_EXPIRED)
+        requires = _confirmation_required(receipt.proposal.kind, receipt.proposal.payload, target)
+        if requires is None:
+            return Result.refused(ErrorCode.TARGET_REJECTED)
+        phrase = "CONFIRM CHANGE" if requires else None
         try:
             ref = self.nonce_source.issue()
             if type(ref) is not str or not re.fullmatch(r"[A-Za-z0-9_-]{32,512}", ref):
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
             ref_digest = _digest(ref)
-            target = self.core.targets.current(receipt.scope)
-            if target is None:
-                return Result.refused(ErrorCode.TARGET_REJECTED)
-            requires = receipt.proposal.kind is ChangeKind.POST
-            if receipt.proposal.payload is not None:
-                if target.amount_confirmation_threshold is None:
-                    return Result.refused(ErrorCode.TARGET_REJECTED)
-                from decimal import Decimal
-                amount = sum((Decimal(line.amount) + Decimal(line.vat_amount)
-                              for line in receipt.proposal.payload.lines), Decimal(0))
-                requires = requires or amount > Decimal(target.amount_confirmation_threshold)
-            phrase = "CONFIRM CHANGE" if requires else None
             decision_expires = min(snapshot_expires_at, session_expires_at,
                                    session_idle_expires_at, approver_expires_at)
             binding = DecisionBinding(snap.change_id, snap.version, snap.scope, approver.principal_id,

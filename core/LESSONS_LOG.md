@@ -852,3 +852,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The named S16 regression verified refusal and preserved state for an integer registry response, and accepted exact true through the same approval page fixture. Rule: pair a fail-closed check with its positive control at the same boundary.
 
+- 2026-11-18 SHORTCOMING: Preview and decision calculated confirmation separately, so a malformed threshold could produce a preview the core would refuse. Rule: share the decision policy and validate it before minting a preview reference.
+
