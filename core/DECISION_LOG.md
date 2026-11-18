@@ -2239,3 +2239,7 @@ The first named run found two test failures and no observed runner regression. C
 ### 2026-11-18 - Close S6 after standard engine acceptance
 
 PR #62 merged exact GPT-PM-approved head 9591e781505d75769e80f182e90972972f9f9fbe into main as dbfa62d2f74838300108f7424f45111e3a986c62 (request 9504fced-efe7-4bef-b2fc-8c8e8cc41387, reply 9a9b32c3-c18e-509c-a796-6876488f07c8). Close S6 as 8/8 bounded. The synthetic engine module passed 61 cases and three reviews found no actionable issue. Native 1C, verified configuration, accountant/UI evidence and product acceptance remain in the backlog. S7's recorded bounded implementation commit 417bd87 is an ancestor of origin/main, supporting restoration of its documented sprint closure without claiming fresh tests.
+
+### 2026-11-18 - Restore the S8 source ownership regression on main
+
+Historical PR #48 merged bb6ef080 to the integration branch as 5672c9c. The integrated timeline implementation retains the same independent source ownership check, but the accepted mislabeled event-feed regression and its positive fixture binding are absent on main. Restore those two test hunks without changing product code. Reverify the named timeline and view modules to establish that consolidation preserved TC120, then retain the historical bounded scope; live source ownership and user acceptance still require separate qualification.
