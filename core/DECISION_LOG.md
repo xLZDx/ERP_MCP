@@ -2366,3 +2366,8 @@ Recover the scoped budget-revoke scenarios from 5655a2c on the byte-equivalent m
 
 Merge the exact PR 58 source head 9bd6d3840437a811db4f3f8ad7e12619e102c57b into the sprint continuation. Retain the current source versions: anchor client behavior is unchanged, checkpoint replay verifies the retained signature, and the lifecycle retains the more complete diagnostic base preflight and receipt validation. Keep the earlier package under dev_anchor_service_s13 to avoid shadowing the separate dev_anchor_service.py entry point. Keep the current restore, suffix, HTTP preflight and refusal scenarios, and retain historical dev-service contract and review records in the design, acceptance map and merged commit history. No product behavior changed in this merge. Exact-head tests and review remain pending.
 
+
+## 2026-11-18 - Submit the bounded S13 sequence for documentation review
+
+Request an independent decision on the local acceptance order so that missing external trust and physical-writer proof do not silently close an operational gate or block independent disposable checks. Keep the current ordered dependency until a genuine verdict supersedes it. This proposal contains no runtime code or test-result changes.
+

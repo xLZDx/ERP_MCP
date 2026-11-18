@@ -752,3 +752,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Integrated the exact historical S13 pull request head while retaining the safer current source and distinct development service names. Rule: inspect automatically staged package paths as well as explicit conflicts when consolidating historical branches.
 
+
+- 2026-11-18 SUCCESS: Prepared a documented decision that distinguishes the current executable evidence plan from operational dependencies. Rule: review an explicit acceptance sequence when a historical order otherwise creates a dependency between local testing and external qualification.
+
