@@ -789,4 +789,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Separated the legacy recovery sweep result from the migration 036 entry contract. Rule: exercise the claimed migration and privileges explicitly on an invocation-owned database before recording recovery acceptance.
 
+
+- 2026-11-18 SUCCESS: Added targeted checks for the registry bridge boundary using the same migration closure as the integration candidate. Rule: assert the effective entry privileges separately from the actual scoped registry and observation outcomes.
+
 </pre></main></body></html>

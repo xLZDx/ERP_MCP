@@ -56,7 +56,7 @@ async def _fence_snapshot(ledger: L):
 async def test_begin_base_recovery_is_unavailable_to_runtime_roles(ledger: L):
     """Only the internal recovery owner may call the fence-establishing entry point."""
     assert await ledger.conn.fetchval(
-        "SELECT pg_get_userbyid(p.proowner) FROM pg_catalog.pg_proc p WHERE p.oid=$1::regprocedure",
+        "SELECT pg_get_userbyid(p.proowner) FROM pg_catalog.pg_proc p WHERE p.oid=$1::text::regprocedure",
         BEGIN_SIGNATURE,
     ) == "ledger_owner"
     for role in RUNTIME_ROLES:
