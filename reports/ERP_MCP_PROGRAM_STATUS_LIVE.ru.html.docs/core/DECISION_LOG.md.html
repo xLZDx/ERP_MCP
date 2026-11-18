@@ -2757,4 +2757,12 @@ The Admin workbench status route reads the durable `change_ledger` projections; 
 ## 2026-11-18 — Refresh S17 report after the queue-scope clarification
 
 Regenerate the standard live report and its browsable document copies after `f9d5e58f`. The report records the bounded acceptance numerator from the project reconciliation, and its snapshot names the source HEAD `f9d5e58f`; generation does not promote S17-05 beyond implementation or change test/runtime qualification.
+
+## 2026-11-18 — Reconcile project statuses from the plan and branch refs
+
+Run `python .harness-tools/ledger.py reconcile-project` after the plan audit. It records the project-document status and hashes for 23 sprints / 111 tasks and scans 115 local, remote, and archive refs while leaving native harness verification/review evidence unchanged. This repairs stale project reconciliation such as S17-01 `NOT_STARTED` versus the plan&#x27;s `IN_REVIEW`; it does not convert that state to acceptance. Regenerate the standard report afterward so its category counts use the reconciled project status.
+
+## 2026-11-18 — Refresh program status after full plan/branch reconciliation
+
+Regenerate the standard Russian live report after the reconciliation event and S17 status-boundary commits. The current bounded project counts are 91 accepted, 1 in review, 2 blocked, 6 in progress, and 11 not started across 111 task IDs. The generated page snapshot names source HEAD `6544966a`; it preserves “accepted in bounded scope” separately from runtime/product acceptance. Report generation does not run tests or change acceptance.
 </pre></main></body></html>
