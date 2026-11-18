@@ -2401,3 +2401,8 @@ Record the documentation-only verdict PMG-20261118-f4c5bcee. The retained S13-03
 
 S13-04 source assembly retained scoped registration, observed fingerprint/class matching, and scoped epoch fences. The operator-accessible SQL bridges are the disposable acceptance surface, while direct versioned registry routines remain ungranted. Do not make candidate register_target or bump_epoch fall back to an old wrapper before the complete bridge family is qualified. Proceed to ordered S13-05 source assembly. No execution evidence was collected.
 
+
+## 2026-11-18 - Complete assembly of the bounded S13 recovery source
+
+Reject oversized base recovery manifests before allocation or parsing. Require exact string base and state fields at the diagnostic boundary. Preserve the migration 036 runtime privilege restrictions. Correct the S13-04 plan status to PARTIAL, which the plan parser recognizes, and record the deferred adapter cutover separately. Tests were not run during source assembly.
+

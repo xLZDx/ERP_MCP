@@ -119,3 +119,8 @@ PMG-20261118-f4c5bcee approved the amendment against f4c5bcee687470a40c922298940
 
 Migration 027 preserves the granted register_target, bump_epoch, and observe_target signatures as fenced bridges into ungranted v1 routines; migration 030 retains the updated target registration lock plan. The adapter's candidate observe route uses the granted bridge. Candidate registration and epoch bump currently point to the directly ungranted routines and therefore remain unavailable under normal operator grants. Do not change that routing or grant those routines before qualification of the complete registry bridge family under S13-REGISTRY-LEGACY-BRIDGE-01. This is an explicit withheld cutover, not an accepted or portable production capability. The existing SQL source is assembled for the isolated bridge qualification. Continue S13-05 source assembly under PMG-20261118-f4c5bcee and keep S13-04 acceptance NOT_RUN.
 
+
+### S13-05 source assembly boundary
+
+Retain the existing fenced recovery primitives and migration 036's owner-only entry. The diagnostic preflight rejects malformed base/state fields and scope counts outside one through 64 before constructing any scope objects. It remains read-only and never grants readiness. This completes assembly for disposable qualification of the retained bounded code. Coordinated operational recovery, post-recovery admission and 1C restore skew require the outstanding operational trust and writer evidence. The next stage runs the named tests in the approved order and does not infer acceptance from source assembly.
+
