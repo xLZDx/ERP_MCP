@@ -91,6 +91,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
         organization: str = ORGANIZATION,
         base_fingerprint: str | None = None,
         call_id: str = "SIM-CALL-1",
+        change_id: str = "SIM-CHANGE-1",
         generation: int = 1,
         tenant: str = TENANT,
         company: str = COMPANY,
@@ -103,7 +104,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             )
             digest_set_hash = payload_digest(digest_payload, target_version)
         return ApplyTicket(
-            change_id="SIM-CHANGE-1",
+            change_id=change_id,
             generation=generation,
             call_id=call_id,
             kind=kind.value if isinstance(kind, ChangeKind) else kind,
@@ -123,9 +124,17 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             checkpoint_seq=1,
         )
 
-    async def _create(self, *, payload: DraftPayload | None = None, call_id: str = "SIM-CREATE-1"):
+    async def _create(
+        self,
+        *,
+        payload: DraftPayload | None = None,
+        call_id: str = "SIM-CREATE-1",
+        change_id: str = "SIM-CHANGE-1",
+    ):
         body = payload or _payload()
-        ticket = self._ticket(ChangeKind.CREATE_DRAFT, call_id=call_id, payload=body)
+        ticket = self._ticket(
+            ChangeKind.CREATE_DRAFT, call_id=call_id, change_id=change_id, payload=body
+        )
         permit = self._permit(ticket)
         return await self.port.create_draft(ticket, permit, payload_to_dict(body))
 
@@ -150,6 +159,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
 
         post_ticket = self._ticket(
             ChangeKind.POST,
+            change_id="SIM-CHANGE-POST-1",
             target_ref=created["target_ref"],
             target_version=created["new_version"],
             call_id="SIM-POST-1",
@@ -161,6 +171,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
 
         unpost_ticket = self._ticket(
             ChangeKind.UNPOST,
+            change_id="SIM-CHANGE-UNPOST-1",
             target_ref=created["target_ref"],
             target_version=posted["new_version"],
             call_id="SIM-UNPOST-1",
@@ -231,7 +242,8 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             None,
             None,
         )
-        other_port = self._port(same_identity_other_clone, self.authority)
+        other_authority = SyntheticPermitAuthority(SIMULATOR, TEST_KEY)
+        other_port = self._port(same_identity_other_clone, other_authority)
         with self.assertRaises(SyntheticPortRefusal) as fingerprint_error:
             await other_port.verify_ticket(valid)
         self.assertEqual(fingerprint_error.exception.code, "BASE_FINGERPRINT_MISMATCH")
@@ -357,13 +369,16 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.clone.truth_log(), ())
 
     async def test_stale_version_is_refused_and_concurrent_calls_are_serialized(self) -> None:
-        created = await self._create(call_id="SIM-RACE-CREATE")
+        created = await self._create(
+            call_id="SIM-RACE-CREATE", change_id="SIM-RACE-CREATE-CHANGE"
+        )
         target_ref = created["target_ref"]
         stale_ticket = self._ticket(
             ChangeKind.POST,
             target_ref=target_ref,
             target_version="V99",
             call_id="SIM-STALE-POST",
+            change_id="SIM-STALE-POST-CHANGE",
         )
         with self.assertRaises(SyntheticPortRefusal) as stale_error:
             await self.port.post(stale_ticket, self._permit(stale_ticket))
@@ -376,6 +391,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             target_ref=target_ref,
             target_version="V1",
             call_id="SIM-CONCURRENT-POST",
+            change_id="SIM-CONCURRENT-POST-CHANGE",
         )
         concurrent_permit = self._permit(concurrent_ticket)
         barrier = Barrier(2)
@@ -422,9 +438,27 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.clone.target_refs()), 1)
         self.assertEqual(first["target_ref"], self.clone.target_refs()[0])
 
+        same_change_retry = self._ticket(
+            ChangeKind.CREATE_DRAFT,
+            change_id=first_ticket.change_id,
+            generation=2,
+            call_id="SIM-DUP-FIRST-NEW-CALL",
+            payload=first_payload,
+        )
+        with self.assertRaises(SyntheticPortRefusal) as marker_duplicate:
+            await self.port.create_draft(
+                same_change_retry,
+                self._permit(same_change_retry),
+                payload_to_dict(first_payload),
+            )
+        self.assertEqual(marker_duplicate.exception.code, "CLONE_REFUSED:DUPLICATE")
+        self.assertEqual(self.clone.write_count, before_repeat)
+        self.assertEqual(len(self.clone.target_refs()), 1)
+
         second_payload = _payload(supplier_number="SIM-INV-DUPLICATE")
         second_ticket = self._ticket(
             ChangeKind.CREATE_DRAFT,
+            change_id="SIM-CHANGE-DUPLICATE-2",
             call_id="SIM-DUP-SECOND",
             payload=second_payload,
         )
@@ -433,6 +467,45 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             await self.port.create_draft(second_ticket, self._permit(second_ticket), payload_to_dict(second_payload))
         self.assertEqual(duplicate_error.exception.code, "CLONE_REFUSED:DUPLICATE")
         self.assertEqual(self.clone.write_count, before_duplicate)
+        self.assertEqual(len(self.clone.target_refs()), 1)
+
+    async def test_change_identity_cannot_be_reused_for_another_operation_or_digest(self) -> None:
+        payload = _payload(supplier_number="SIM-CHANGE-BOUND")
+        ticket = self._ticket(
+            ChangeKind.CREATE_DRAFT,
+            change_id="SIM-FROZEN-CHANGE",
+            call_id="SIM-FROZEN-CALL-1",
+            payload=payload,
+        )
+        result = await self.port.create_draft(ticket, self._permit(ticket), payload_to_dict(payload))
+        before = self.clone.state_fingerprint()
+        writes_before = self.clone.write_count
+
+        switched_operation = self._ticket(
+            ChangeKind.POST,
+            change_id=ticket.change_id,
+            call_id="SIM-FROZEN-CALL-2",
+            target_ref=result["target_ref"],
+            target_version=result["new_version"],
+        )
+        with self.assertRaises(SyntheticPortRefusal) as operation_error:
+            await self.port.post(switched_operation, self._permit(switched_operation))
+        self.assertEqual(operation_error.exception.code, "CLONE_REFUSED:IDEMPOTENCY_CONFLICT")
+
+        changed_payload = _payload(supplier_number="SIM-CHANGE-ALTERED")
+        changed_digest = self._ticket(
+            ChangeKind.CREATE_DRAFT,
+            change_id=ticket.change_id,
+            call_id="SIM-FROZEN-CALL-3",
+            payload=changed_payload,
+        )
+        with self.assertRaises(SyntheticPortRefusal) as digest_error:
+            await self.port.create_draft(
+                changed_digest, self._permit(changed_digest), payload_to_dict(changed_payload)
+            )
+        self.assertEqual(digest_error.exception.code, "CLONE_REFUSED:IDEMPOTENCY_CONFLICT")
+        self.assertEqual(self.clone.state_fingerprint(), before)
+        self.assertEqual(self.clone.write_count, writes_before)
         self.assertEqual(len(self.clone.target_refs()), 1)
 
     async def test_refusal_is_not_signed_no_effect_evidence_and_is_distinct_from_unknown(self) -> None:
@@ -497,6 +570,31 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(clone.write_count, expected_writes)
                 self.assertEqual(len(clone.truth_log()), 1)
                 self.assertEqual(len(clone.target_refs()), expected_writes)
+
+                follow_up_port = self._port(
+                    clone,
+                    SyntheticPermitAuthority(clone.label, TEST_KEY),
+                )
+                follow_up_payload = _payload(supplier_number=f"SIM-FOLLOW-UP-{index}")
+                follow_up_ticket = ApplyTicket(
+                    f"SIM-FOLLOW-UP-CHANGE-{index}", 1, f"SIM-FOLLOW-UP-CALL-{index}",
+                    ChangeKind.CREATE_DRAFT.value, TENANT, COMPANY, ORGANIZATION,
+                    clone.state_fingerprint(), None, None, payload_digest(follow_up_payload, None),
+                )
+                follow_up_writes = clone.write_count
+                with self.assertRaises(SyntheticPortRefusal) as held:
+                    await follow_up_port.create_draft(
+                        follow_up_ticket,
+                        authority.issue(
+                            follow_up_ticket, datetime.now(timezone.utc) + timedelta(minutes=5)
+                        ),
+                        payload_to_dict(follow_up_payload),
+                    )
+                self.assertEqual(held.exception.code, "CLONE_REFUSED:BASE_WRITE_HELD")
+                self.assertEqual(clone.write_count, follow_up_writes)
+                self.assertEqual(len(clone.target_refs()), expected_writes)
+                if clone.target_refs():
+                    self.assertEqual(clone.read_state(clone.target_refs()[0])["status"], "DRAFT")
 
     async def test_port_exposes_no_clone_oracle_and_base_authentication_is_synthetic(self) -> None:
         ticket = self._ticket(ChangeKind.CREATE_DRAFT)

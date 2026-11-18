@@ -818,3 +818,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: Audience membership alone can accept a token shared between separate services. Rule: reject mixed audiences wherever a dedicated write token is required and exclude the write audience at read boundaries.
 
+- 2026-11-18 SHORTCOMING: Existing fixtures reused one approval across distinct changes and one authority across separate clones. Rule: create separate fixture identities for separate real-world operations and reserve shared identities for deliberate replay scenarios.
+

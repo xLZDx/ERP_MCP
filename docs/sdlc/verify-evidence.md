@@ -1095,3 +1095,17 @@ On clean 6dc18f0177f88d8ccfc8f2c5e748385d636712c1, a fresh designated e2e-runner
 
 PR 58 merged the approved head into main at 1f0192d. This is bounded engineering; operational recovery and release acceptance remain NOT_RUN.
 
+## 2026-11-18 - S14 bounded offline acceptance
+
+On source HEAD `2e1778c`, the designated e2e-runner used `PYTHONPATH=src;tests/phase2` and `.venv/Scripts/python.exe -m pytest -q` with these node IDs:
+
+- `tests/phase2/test_s14_simulated_write_port_protocol_e2e.py::SimulatedWritePortProtocolE2ETests::test_protocol_consumer_runs_only_test_lane_create_post_unpost`
+- `tests/phase2/test_s14_simulated_write_port_protocol_e2e.py::SimulatedWritePortProtocolE2ETests::test_unknown_outcomes_are_test_only_and_never_authorize_retry`
+- `tests/phase2/test_s12_reconciliation_immutability_e2e.py::ReconciliationEvidenceImmutabilityE2ETests::test_delayed_unknown_cannot_replace_a_newer_base_hold`
+
+Result: `3 passed in 0.36s`. These cases exercise distinct receipt approvals and movement effects, an unresolved clone hold across adapters while reads continue, and preservation of the active hold after a delayed callback. The e2e-runner also reported an unintended scoped whitespace check. It is excluded from acceptance evidence.
+
+For S14-06, the current role file and `c4ab1ea` resolve to the same Git blob, `2aff3915002ffb43a5e07ffaeae4d731c3af4c65`. This ties the source to the recorded 57-object measurement on `818HA_p2diff`. The selected operational account, licensed channel and fresh 1C read-back remain NOT_RUN.
+
+On the same source HEAD, the designated functional-test-reviewer used `.venv/Scripts/python.exe -m pytest -q tests/phase2/test_s14_simulated_write_port.py tests/test_auth.py`. The first pass identified two fixture defects: a single change identity was reused across distinct operations, and a fixture authority was reused across different clone instances. The corrected final run reported `44 passed, 23 subtests passed in 6.69s`, exit 0. This covers the clone authority, marker and duplicate refusal, unresolved hold, distinct approvals, and both directions of token audience isolation. The normal additional read audience remains covered.
+
