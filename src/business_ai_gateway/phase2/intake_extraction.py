@@ -14,6 +14,7 @@ only until H3 qualifies an extractor. No OCR or external I/O is performed here.
 from __future__ import annotations
 
 import re
+import json
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -100,6 +101,7 @@ _CURRENCY = re.compile(r"[A-Z]{3}\Z", re.ASCII)
 _PLAIN_DECIMAL = re.compile(r"(?:0|[1-9][0-9]{0,17})(?:\.[0-9]{1,6})?\Z", re.ASCII)
 MAX_EXTRACTED_VALUES = 50_000
 MAX_TOTAL_COMPONENTS = 50_000
+MAX_MANUAL_FIELDS = 500
 _REFUSED = ExtractionResult(
     state=ExtractionState.REFUSED,
     code="INVALID_INPUT",
@@ -147,6 +149,46 @@ def extract_upload(
 
     parsed = run_isolated(data, limits=limits) if source_format is UploadFormat.XLSX else parse_csv(data, limits=limits)
     return _extract_parse_result(data, source_format, parsed, limits=limits, column_labels=labels)
+
+
+def extract_manual_fields(fields: object) -> ExtractionResult:
+    """Create provenance-bound review candidates from bounded manual fields.
+
+    The digest covers the ordered, exact field-key/value pairs. It is a
+    provenance identifier, not approval, a signature, or a persisted record.
+    """
+    if type(fields) is not tuple or len(fields) > MAX_MANUAL_FIELDS:
+        return _refused(UploadFormat.OTHER, code="INVALID_MANUAL_INPUT")
+    canonical: list[tuple[str, str]] = []
+    total_chars = 0
+    for pair in fields:
+        if (type(pair) is not tuple or len(pair) != 2
+                or type(pair[0]) is not str or _FIELD_KEY.fullmatch(pair[0]) is None
+                or type(pair[1]) is not str or len(pair[1]) > ParseLimits().max_cell_chars
+                or "\x00" in pair[1]):
+            return _refused(UploadFormat.OTHER, code="INVALID_MANUAL_INPUT")
+        total_chars += len(pair[0]) + len(pair[1])
+        if total_chars > ParseLimits().max_total_text_chars:
+            return _refused(UploadFormat.OTHER, code="BOUND_MANUAL_INPUT")
+        canonical.append((pair[0], pair[1]))
+
+    digest = sha256(json.dumps(canonical, ensure_ascii=True, separators=(",", ":"))
+                    .encode("ascii")).hexdigest()
+    values = tuple(
+        ExtractedValue(
+            value,
+            SourceProvenance(digest, UploadFormat.OTHER, "manual", index, 1, field_key),
+        )
+        for index, (field_key, value) in enumerate(canonical, start=1)
+        if value != ""
+    )
+    return ExtractionResult(
+        ExtractionState.REVIEW_REQUIRED,
+        "MANUAL_VALUES_REVIEW_REQUIRED",
+        digest,
+        UploadFormat.OTHER,
+        values,
+    )
 
 
 def _extract_parse_result(

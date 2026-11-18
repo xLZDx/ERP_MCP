@@ -112,8 +112,9 @@ The assigned functional-test-reviewer and e2e-runner own these named cases after
 
 - `WorkbenchSession.intake_preview` rejects invalid/foreign/expired sessions before parsing and returns the same scoped refusal contract as other workbench reads. A parse refusal has no partial fields.
 - A successful supported-file preview lists each extracted value with its exact source hash, format and one-based source coordinates; every field is review-required and its materiality is explicitly `UNCLASSIFIED` until a human classifies it.
+- `manual_preview` is also behind the same entitlement/session gate, bounds field count and text, derives a stable digest from the ordered exact field pairs, and returns one-based field provenance; blank entries create no candidate and every nonblank value remains review-required.
 - Configured entity-field mappings use only the server-injected company-scoped `AliasResolver`; ambiguous and unmatched fields stay visible with candidate/suggestion state, and missing directory configuration is explicit. A field from another scope is refused.
-- PDF/image and other unsupported inputs remain manual-review-only; filenames are not accepted by the parser API and no Drive/source URL is fetched.
+- PDF/image and other unsupported uploaded inputs remain manual-review-only; filenames are not accepted by the parser API and no Drive/source URL is fetched.
 - Every preview has `proposal_allowed == false` and `apply_allowed == false`; no approve/apply/write tool or 1C call is reachable from the preview operation.
 - Existing `cards`, `read_job`, and `read_result` endpoints must continue to report authoritative current service state after failure/retry. The interactive change-list/retry/rollback-proposal screen is not yet implemented by this preview slice and must be completed before S17-05 acceptance.
 

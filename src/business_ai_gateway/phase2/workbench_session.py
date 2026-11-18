@@ -74,7 +74,7 @@ from .intake_entity_resolution import (
     IntakeEntityResolution,
     resolve_extracted_entity,
 )
-from .intake_extraction import UploadFormat, extract_upload
+from .intake_extraction import UploadFormat, extract_manual_fields, extract_upload
 from .intake_workbench import IntakeReviewCard, build_intake_review
 from .safe_errors import RenderedError, new_safe_error, render_safe_error
 from .timeline_view import ScopeAuthority, TimelineView, build_timeline, render_guard
@@ -348,23 +348,39 @@ class WorkbenchSession:
             return self._refusal(_R.INPUT_INVALID)
         try:
             extraction = extract_upload(data, source_format, column_labels=column_labels)  # type: ignore[arg-type]
-            scope = AliasScope(viewer.tenant_id, viewer.company_id)
-            resolutions: list[IntakeEntityResolution] = []
-            for value in extraction.values:
-                field_key = value.provenance.field_key
-                if field_key not in self._intake_entity_field_keys:
-                    continue
-                if self._intake_alias_resolver is None:
-                    resolutions.append(IntakeEntityResolution(
-                        EntityResolutionState.UNMATCHED_REVIEW, "ENTITY_DIRECTORY_UNAVAILABLE",
-                        scope, value.provenance,
-                    ))
-                    continue
-                resolutions.append(resolve_extracted_entity(self._intake_alias_resolver, scope, value))
-            return build_intake_review(extraction, scope=scope,
-                                       entity_resolutions=tuple(resolutions))
+            return self._intake_review_card(extraction, viewer)
         except Exception as exc:  # noqa: BLE001 - fixed safe error, no content or exception text
             return self._internal(exc)
+
+    def manual_preview(self, session: object, viewer: object, fields: object) -> IntakeReviewCard | SafeError:
+        """Authenticate before turning bounded manual fields into review-only candidates."""
+        refused = self._admit(session, viewer)
+        if refused is not None:
+            return refused
+        if not is_valid_scope(viewer):
+            return self._refusal(_R.INPUT_INVALID)
+        try:
+            return self._intake_review_card(extract_manual_fields(fields), viewer)
+        except Exception as exc:  # noqa: BLE001 - fixed safe error, no content or exception text
+            return self._internal(exc)
+
+    def _intake_review_card(self, extraction: object, viewer: object) -> IntakeReviewCard:
+        """Attach configured in-scope entity evidence and preserve fail-closed preview semantics."""
+        scope = AliasScope(viewer.tenant_id, viewer.company_id)  # type: ignore[attr-defined]
+        resolutions: list[IntakeEntityResolution] = []
+        values = getattr(extraction, "values", ())
+        for value in values:
+            field_key = value.provenance.field_key
+            if field_key not in self._intake_entity_field_keys:
+                continue
+            if self._intake_alias_resolver is None:
+                resolutions.append(IntakeEntityResolution(
+                    EntityResolutionState.UNMATCHED_REVIEW, "ENTITY_DIRECTORY_UNAVAILABLE",
+                    scope, value.provenance,
+                ))
+                continue
+            resolutions.append(resolve_extracted_entity(self._intake_alias_resolver, scope, value))
+        return build_intake_review(extraction, scope=scope, entity_resolutions=tuple(resolutions))
 
     def render_error(self, error: object) -> RenderedError:
         return render_safe_error(error)
