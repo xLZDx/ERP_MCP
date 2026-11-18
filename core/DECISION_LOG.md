@@ -2316,3 +2316,8 @@ Close S12 in its bounded offline synthetic TEST scope after PR #54 merged at fcf
 
 Restore the exact test file from e3c98f2 (PR #58) on the S13 consolidation branch. Its parent and current main were identical for that path, so no current test changes were displaced. The historical disposable PostgreSQL result covers migrations 001-018 and its selected scenarios. Compare the current effective privileges, scope isolation and restore coverage when qualifying the complete sprint candidate. Keep later S13-02 tests and the checkpoint and writer changes separate until their ordered reconciliation. No business records, database migrations or runtime settings were changed.
 
+
+## 2026-11-18 - Carry accepted S13-02 transactional test coverage onto current main
+
+Restore the accepted claim test delta from 9d3cb5f on top of the byte-identical S13-01 test file. The retained scenarios cover concurrent claims and transactional rollback in disposable PostgreSQL. Qualification of a physical 1C writer and an ambiguous remote effect still requires separate evidence. This commit changes test coverage and leaves database code, data and services untouched. The named tests await sprint-level execution.
+
