@@ -913,3 +913,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: A sprint with one plan-prohibited residual can close only as a bounded sprint when GPT-PM explicitly approves that exception and the residual remains PARTIAL, blocked and traceable in the backlog. Never roll it into accepted or operational status.
 
 - 2026-11-18 SHORTCOMING: The S17 preparation note and Windows test skip were stale about parser memory containment even though source used a Job Object. Rule: reconcile platform-specific code and tests before prescribing a new mitigation; distinguish memory/resource limits from sandboxing and from app-level upload integration.
+
+- 2026-11-18 SHORTCOMING: The live report treated a missing feature-branch upstream as proof that remote closure could not be measured, despite a fetched remote default branch. Rule: calculate pushed closure against the configured upstream or, when absent, the remote's symbolic default branch; display the exact target ref and SHA so the percentage is auditable.
+
+- 2026-11-18 SUCCESS: Cross-checking current task state found S17-02 already started in the native ledger while the project plan still said not started. Rule: reconcile both task-status layers after a task start; never conflate reviewer evidence counts with the number of tasks currently in review.

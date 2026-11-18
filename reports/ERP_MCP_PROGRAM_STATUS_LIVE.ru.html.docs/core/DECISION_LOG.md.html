@@ -2652,4 +2652,12 @@ GPT-PM approved exact S16 HEAD `12df2ca369d694860d16317ef97fc20a41905e8c` for bo
 
 Source inspection found the approved parser already applies a Windows Job Object per-process memory limit and refuses parsing if setup fails; the preparation document and an old platform test skip incorrectly claimed Windows had no memory cap. Correct those records and specify named parser-boundary evidence. Keep the limitation explicit: process-level resource control is not an OS sandbox, and the current parser has no upload/workbench caller; S17-05 owns integration.
 
+## 2026-11-18 — Select a remote status ref for live reports
+
+The live report ran from an S17 feature branch with no configured upstream, even though the fetched remote advertises `origin/HEAD`. Select the branch upstream when present; otherwise use the remote&#x27;s symbolic HEAD, then its `main`/`master` ref, and bind pushed-closure counts to that exact ref and SHA. Keep local HEAD-to-target divergence visible. This changes reporting only; it does not push, merge, or alter task acceptance and does not collapse harness review evidence into project task status.
+
+## 2026-11-18 — Refresh project status from current refs and active ledger work
+
+Reconcile the 111 planned task placements against 115 fetched local, remote, and archive refs while preserving native harness verification/review fields. Keep bounded project task status as its own overlay: 91 accepted, 1 in review, 2 blocked, 2 active/partial, and 15 not started after recording S17-02&#x27;s existing ledger start event in the project plan. The 44 accepted harness review records remain evidence-level counts, not 44 tasks currently awaiting review. Do not claim product/runtime completion from these engineering statuses.
+
 </pre></main></body></html>
