@@ -714,4 +714,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 FAILURE: S10 focused test runs did not cover a scope-epoch check removed during main consolidation. Rule: compare admission and publication guards with their approved historic counterparts and exercise each loss-of-authority boundary with synthetic state.
 
 - 2026-11-18 SHORTCOMING: A second inherited test referenced the old post-run epoch behavior without allowing the new admission read first. Rule: inspect every injected authority read in affected fixtures and preserve the intended failure point when introducing an earlier guard.
+
+- 2026-11-18 SUCCESS: The S10 fresh review recovered the pre-dispatch epoch guard missing after integration and added a separate post-call result acceptance gate. Rule: distinguish admission, fenced completion and local publication, and require synthetic tests for each affected refusal branch before accepting a retained integration.
 </pre></main></body></html>
