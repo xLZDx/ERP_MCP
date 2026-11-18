@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 import json
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from enum import StrEnum
 from hashlib import sha256
 
@@ -102,6 +102,9 @@ _PLAIN_DECIMAL = re.compile(r"(?:0|[1-9][0-9]{0,17})(?:\.[0-9]{1,6})?\Z", re.ASC
 MAX_EXTRACTED_VALUES = 50_000
 MAX_TOTAL_COMPONENTS = 50_000
 MAX_MANUAL_FIELDS = 500
+# Each amount coefficient has at most 24 digits. The sum may contain up to twice
+# MAX_TOTAL_COMPONENTS amounts; add the base-10 carry width for that term count.
+_TOTAL_ARITHMETIC_PRECISION = 18 + 6 + len(str(2 * MAX_TOTAL_COMPONENTS - 1))
 _REFUSED = ExtractionResult(
     state=ExtractionState.REFUSED,
     code="INVALID_INPUT",
@@ -287,10 +290,12 @@ def cross_check_explicit_total(
     if stated_value is None or any(value is None for value in (*amount_values, *vat_values)):
         return TotalCheckResult(TotalCheckState.UNCOMPUTABLE_REVIEW, "TOTAL_INPUT_UNSUPPORTED")
 
-    computed = sum((value for value in amount_values if value is not None), Decimal("0"))
-    if not includes_vat:
-        computed += sum((value for value in vat_values if value is not None), Decimal("0"))
-    difference = computed - stated_value
+    with localcontext() as context:
+        context.prec = _TOTAL_ARITHMETIC_PRECISION
+        computed = sum((value for value in amount_values if value is not None), Decimal("0"))
+        if not includes_vat:
+            computed += sum((value for value in vat_values if value is not None), Decimal("0"))
+        difference = computed - stated_value
     state = TotalCheckState.MATCH_REVIEW if difference == 0 else TotalCheckState.MISMATCH_REVIEW
     return TotalCheckResult(
         state=state,

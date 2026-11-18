@@ -938,6 +938,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: A pre-commit plan-to-ledger rebuild can remove document/Git reconciliation metadata from imported non-genuine tasks and make legacy `verified` states appear as current review work. Rule: regenerate the project reconciliation projection after ledger sync and before rendering the live report; do not rewrite harness test/review evidence.
 
 - 2026-11-18 SUCCESS: The S17 runtime contains PostgreSQL control-plane state, a tenant/source-only queue port, and a separate read-only 1C adapter; the older company-scoped dispatcher is only an unwired in-memory fake. Rule: expose workbench status only through a company-bound service composed into the authenticated runtime; never infer company ownership from queue payloads or confuse control-plane records with 1C business data.
+- 2026-11-18 SHORTCOMING: Bounded Decimal inputs do not guarantee bounded exact sums under the process-wide default context. Rule: derive local arithmetic precision from the maximum coefficient width and number of terms, and add a maximum-cardinality acceptance case; never silently round an accounting comparison.
 
 
 - 2026-11-18 SUCCESS: An authenticated preview without a configured entity directory must expose that limitation at both API and UI boundaries. Rule: return a fixed NOT_CONFIGURED marker, never infer a match or fabricate suggestions, and keep preview values review-required.

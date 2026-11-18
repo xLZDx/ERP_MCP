@@ -69,6 +69,7 @@ The assigned functional-test-reviewer owns these named cases after all S17 story
 - Malformed parser result shapes, invalid caller field-label mappings, missing source bytes, or candidate-count overflow fail closed without returning a partial candidate set or a proposal.
 - Every extracted candidate starts `REVIEW_REQUIRED`; parsing or exact text extraction never means business approval.
 - For the measured explicit `includes_vat` rule, exact same-currency decimal values produce `MATCH_REVIEW` or `MISMATCH_REVIEW` (`false`: sum lines plus explicitly supplied VAT; `true`: sum lines). Both outcomes require review and `proposal_allowed` stays false. Use independent synthetic values and the recorded CT14 example `20 + 1.82 = 21.82`; do not infer VAT from a rate or apply rounding/tolerance.
+- Exercise the largest supported component count and amount precision in both `includes_vat` modes. The sum must remain exact beyond Python's default `Decimal` context precision; a false match caused by implicit context rounding is a failure. This is a named case for the assigned reviewer, not a test run in this implementation pass.
 - Mixed currencies, unknown `includes_vat`, discounts, credit notes, unsupported rounding/precision or other undefined accounting shapes remain `UNCOMPUTABLE_REVIEW`; no unsupported proposal or guessed tolerance is emitted.
 - PDF/image input before qualified H3 extraction returns manual-review-only status and cannot produce a proposal or bypass human review.
 
