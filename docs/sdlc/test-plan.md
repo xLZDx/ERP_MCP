@@ -67,6 +67,7 @@ The assigned functional-test-reviewer owns these named cases after all S17 story
 
 - XLSX/CSV nonblank cell candidates retain the source byte SHA-256, file kind, one-based row and column, and XLSX sheet identity where present. A manually assigned field label remains tied to the same cell provenance.
 - Malformed parser result shapes, invalid caller field-label mappings, missing source bytes, or candidate-count overflow fail closed without returning a partial candidate set or a proposal.
+- Partially initialized slotted `ParseResult`, `ParseStats`, or `SheetValues` objects with missing fields return the fixed `MALFORMED_PARSE_RESULT` refusal; no `AttributeError` escapes.
 - Every extracted candidate starts `REVIEW_REQUIRED`; parsing or exact text extraction never means business approval.
 - For the measured explicit `includes_vat` rule, exact same-currency decimal values produce `MATCH_REVIEW` or `MISMATCH_REVIEW` (`false`: sum lines plus explicitly supplied VAT; `true`: sum lines). Both outcomes require review and `proposal_allowed` stays false. Use independent synthetic values and the recorded CT14 example `20 + 1.82 = 21.82`; do not infer VAT from a rate or apply rounding/tolerance.
 - Exercise the largest supported component count and amount precision in both `includes_vat` modes. The sum must remain exact beyond Python's default `Decimal` context precision; a false match caused by implicit context rounding is a failure. This is a named case for the assigned reviewer, not a test run in this implementation pass.

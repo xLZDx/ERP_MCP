@@ -329,37 +329,51 @@ def _validated_labels(labels: dict[int, str] | None, max_entries: int) -> dict[i
 
 
 def _valid_parse_result(parsed: object, limits: ParseLimits) -> bool:
-    if type(parsed) is not ParseResult or type(parsed.status) is not Status or type(parsed.code) is not str:
+    if type(parsed) is not ParseResult:
         return False
-    if len(parsed.code) > 80 or not parsed.code.isascii() or not parsed.code.replace("_", "").isalnum():
+    try:
+        status, code, sheets, stats = parsed.status, parsed.code, parsed.sheets, parsed.stats
+    except AttributeError:
         return False
-    if type(parsed.sheets) is not tuple or type(parsed.stats) is not ParseStats:
+    if type(status) is not Status or type(code) is not str:
         return False
-    stats = parsed.stats
-    counters = (
-        stats.members,
-        stats.uncompressed_bytes,
-        stats.rows,
-        stats.cells,
-        stats.formula_cells,
-        stats.leading_formula_chars,
-    )
+    if len(code) > 80 or not code.isascii() or not code.replace("_", "").isalnum():
+        return False
+    if type(sheets) is not tuple or type(stats) is not ParseStats:
+        return False
+    try:
+        counters = (
+            stats.members,
+            stats.uncompressed_bytes,
+            stats.rows,
+            stats.cells,
+            stats.formula_cells,
+            stats.leading_formula_chars,
+        )
+    except AttributeError:
+        return False
     if any(type(value) is not int or value < 0 for value in counters):
         return False
-    if len(parsed.sheets) > limits.max_sheets:
+    if len(sheets) > limits.max_sheets:
         return False
     rows_seen = 0
     cells_seen = 0
     text_seen = 0
-    for sheet in parsed.sheets:
-        if type(sheet) is not SheetValues or type(sheet.name) is not str or len(sheet.name) > limits.max_cell_chars:
+    for sheet in sheets:
+        if type(sheet) is not SheetValues:
             return False
-        if type(sheet.rows) is not tuple:
+        try:
+            sheet_name, sheet_rows = sheet.name, sheet.rows
+        except AttributeError:
             return False
-        rows_seen += len(sheet.rows)
+        if type(sheet_name) is not str or len(sheet_name) > limits.max_cell_chars:
+            return False
+        if type(sheet_rows) is not tuple:
+            return False
+        rows_seen += len(sheet_rows)
         if rows_seen > limits.max_rows:
             return False
-        for row in sheet.rows:
+        for row in sheet_rows:
             if type(row) is not tuple:
                 return False
             cells_seen += len(row)
@@ -374,9 +388,9 @@ def _valid_parse_result(parsed: object, limits: ParseLimits) -> bool:
                     text_seen += len(value)
                     if text_seen > limits.max_total_text_chars:
                         return False
-    if parsed.status is Status.OK:
+    if status is Status.OK:
         if (
-            parsed.code != "OK"
+            code != "OK"
             or stats.rows != rows_seen
             or stats.cells < cells_seen
             or stats.cells > limits.max_cells

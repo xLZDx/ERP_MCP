@@ -969,4 +969,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: Report generation before a source commit records its parent HEAD. Rule: record verified implementation/review facts in the plan, reconcile project status, then regenerate the standard report after the source commit; never upgrade acceptance while named tests remain NOT_RUN.
 - 2026-11-18 SUCCESS: A plan/evidence commit also changes the report&#x27;s source HEAD. Rule: regenerate the live report once more after the evidence commit so the page&#x27;s provenance matches the current branch head.
+- 2026-11-18 SHORTCOMING: Exact-type validation does not prove that every slot in an untrusted dataclass was initialized; direct field access can still leak `AttributeError`. Rule: guard the bounded record-validation boundary and map missing fields to the fixed refusal, with a named partial-slot regression case.
 </pre></main></body></html>

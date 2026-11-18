@@ -284,6 +284,8 @@ S17-05 authorization follow-up (2026-11-18): commit `98fc9109` replaces the cach
 
 S17-01 implementation follow-up (2026-11-18): commit `16ea7275` preflights ordinary ZIP central-directory records before `zipfile` materializes `ZipInfo` objects, preventing an underreported EOCD entry count from hiding a larger `size_cd` allocation. The test plan now includes undercounted-directory and sentinel-field cases and preserves the explicit ZIP64 fallback. Independent code-reviewer and security-reviewer reviews found no remaining issue in this diff. Named parser tests remain NOT_RUN, so S17-01 stays IN_REVIEW and S17 acceptance is unchanged.
 
+S17-02 implementation follow-up (2026-11-18): a code review found that partially initialized slotted parser records could leak `AttributeError` during adapter validation. `_valid_parse_result` now converts only missing-field `AttributeError` into the fixed `MALFORMED_PARSE_RESULT` path; unrelated exceptions are not broadly swallowed. Independent re-review found no remaining issue. Named S17-02 tests remain NOT_RUN, so this follow-up does not promote the task beyond IN_PROGRESS.
+
 ## Sprint S18 - Reliability and security
 Goal: Reliability and security.
 

@@ -2783,3 +2783,7 @@ After implementation commit `16ea7275`, record the S17-01 parser hardening and i
 ## 2026-11-18 — Refresh report after S17-01 plan evidence commit
 
 Regenerate the standard live report after `f109836a` so the snapshot names the current source head and includes the S17-01 plan evidence. Keep the S17 task at IN_REVIEW and test evidence NOT_RUN; this is a report-only refresh, not acceptance.
+
+## 2026-11-18 — Fail closed on partial S17-02 parser records
+
+A code review found that `_valid_parse_result` type-checked slotted parser dataclasses but could still read a missing field and leak `AttributeError`. The adapter now catches only `AttributeError` around the strict field validator and returns `False`, which maps to the fixed `MALFORMED_PARSE_RESULT` refusal without returning a partial candidate set. The test plan records the incomplete `ParseResult`, `ParseStats`, and `SheetValues` case. Named tests remain NOT_RUN; keep S17-02 IN_PROGRESS.
