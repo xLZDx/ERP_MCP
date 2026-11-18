@@ -2779,3 +2779,7 @@ After source commit `98fc9109`, update the plan with the role-revocation guard, 
 ## 2026-11-18 — Refresh S17 status after parser preflight
 
 After implementation commit `16ea7275`, record the S17-01 parser hardening and independent review results in `PROJECT_PLAN.md` while preserving IN_REVIEW because the named tests have not run. Reconcile project status from the plan and regenerate the standard live report so its source snapshot includes the parser commit. The report remains bounded-program status, not runtime or product acceptance.
+
+## 2026-11-18 — Refresh report after S17-01 plan evidence commit
+
+Regenerate the standard live report after `f109836a` so the snapshot names the current source head and includes the S17-01 plan evidence. Keep the S17 task at IN_REVIEW and test evidence NOT_RUN; this is a report-only refresh, not acceptance.
