@@ -1020,3 +1020,32 @@ S13-03, owned PostgreSQL and development anchor:
 
 Result: 3 passed in 43.78s; exit 0. Restore fixture reported "CLEANUP: owned PostgreSQL container and 1 volume(s) absent". Three cases retain their own documented migration chains. No existing databases or operational services were used. This evidence verifies the listed behavior only. Independently adjudicated task acceptance, S13-04/05 qualification, production custody, provider retention and physical writer qualification remain open.
 
+
+## 2026-11-18 - S13-04 and S13-05 named verification
+
+Clean head: 5049369def1a754d59cdba2aa9791114419d1ec3. Designated e2e-runners invoked .venv/Scripts/python.exe -m pytest -q -s with these named nodes. ERP_PHASE2_TEST_DSN was absent. Database cases enabled the standard invocation-owned cluster flag and, for test_change_ledger_sql.py, the dedicated owned mode and ERP_PHASE2_REQUIRE_PG.
+
+S13-04:
+
+- tests/phase2/test_s13_universal_fence_matrix.py::test_s13_uf54_bump_epoch_waits_before_epoch_row_and_event_effects
+- tests/phase2/test_s13_universal_fence_matrix.py::test_s13_uf54_declare_target_class_waits_before_record_and_event_effects
+
+Result: 2 passed in 10.85s; exit 0.
+
+- tests/phase2/test_s13_completion_outcome_e2e.py::test_s13_completion_outcome_target_lock_owner_mismatch_refuses_without_delta
+
+Result: 1 passed in 11.09s; exit 0. The database fixtures completed normal teardown. Full registry bridge family and operational writer qualification remain open.
+
+S13-05:
+
+- tests/phase2/test_s13_base_recovery_preflight.py::test_snapshot_is_canonical_and_bounded_at_64_scopes
+- tests/phase2/test_s13_base_recovery_preflight.py::test_preflight_is_concurrency_bounded_manifest_ordered_and_never_ready
+- tests/phase2/test_s13_base_recovery_preflight.py::test_caller_cancellation_cancels_only_active_bounded_reads
+- tests/phase2/test_s13_base_recovery_preflight.py::test_deadline_preserves_completed_reads_and_marks_pending_as_timed_out
+
+Result: 4 passed in 0.31s; exit 0.
+
+- tests/phase2/test_change_ledger_sql.py::test_recover_sweep_releases_expired_claim_reservation_and_expired_permit
+
+Result: 1 passed in 9.15s; exit 0. The owned fixture checks its ownership label before teardown. No standalone container inventory was taken. These five cases verify the diagnostic and legacy sweep behavior. The migration 036 entry itself was not exercised by these S13-05 runs. No operational recovery or authorized 1C clone was used.
+

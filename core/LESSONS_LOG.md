@@ -784,3 +784,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The ordered named checks proved local ledger integrity, transactional recovery boundaries, and diagnostic restore refusal on owned fixtures. Rule: record the exact head, isolation and cleanup beside each receipt before independently adjudicating acceptance.
 
+
+- 2026-11-18 SUCCESS: Separated the legacy recovery sweep result from the migration 036 entry contract. Rule: exercise the claimed migration and privileges explicitly on an invocation-owned database before recording recovery acceptance.
+

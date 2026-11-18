@@ -2416,3 +2416,8 @@ Keep the default test fixture behavior and add a per-module disposable opt-in al
 
 The designated test agents ran the approved named S13-01, S13-02 and S13-03 scenarios on 024d5fb after bounded source assembly. They reported passing exit codes, including the older restored-page refusal and hold/replay checks. Keep these scope-limited receipts as verification evidence for the upcoming routed review. No operational gate or code acceptance was adjudicated.
 
+
+## 2026-11-18 - Record S13 scope and recovery verification and cover base recovery entry
+
+Record the named S13-04 and S13-05 results from clean 5049369. Add owner-only recovery entry qualification on the owned 001–039 chain: runtime EXECUTE remains denied, owner begin binds the manifest, retry increments epoch, and overlapping or oversized scopes leave both fence tables unchanged. The added SQL cases are pending execution.
+
