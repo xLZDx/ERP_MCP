@@ -68,6 +68,14 @@ from .jobs_api import (
     read_job,
     read_result,
 )
+from .aliases import AliasResolver, AliasScope
+from .intake_entity_resolution import (
+    EntityResolutionState,
+    IntakeEntityResolution,
+    resolve_extracted_entity,
+)
+from .intake_extraction import UploadFormat, extract_upload
+from .intake_workbench import IntakeReviewCard, build_intake_review
 from .safe_errors import RenderedError, new_safe_error, render_safe_error
 from .timeline_view import ScopeAuthority, TimelineView, build_timeline, render_guard
 from .workbench_review import (
@@ -170,12 +178,18 @@ class WorkbenchSession:
                  attestations: object, ctx: ApiContext, reader: Callable[..., object],
                  subjects: Callable[[], object], feeds: Callable[[], object],
                  matrix: Callable[[], object], policy: Callable[[], object],
-                 evidence: Callable[[], object]) -> None:
+                 evidence: Callable[[], object], intake_alias_resolver: AliasResolver | None = None,
+                 intake_entity_field_keys: tuple[str, ...] = ()) -> None:
         self._ledger, self._store, self._review_log = ledger, store, review_log
         self._owners, self._attestations, self._ctx = owners, attestations, ctx
         self._reader = reader
         self._subjects, self._feeds, self._matrix = subjects, feeds, matrix
         self._policy, self._evidence = policy, evidence
+        self._intake_alias_resolver = (intake_alias_resolver
+                                       if type(intake_alias_resolver) is AliasResolver else None)
+        self._intake_entity_field_keys = frozenset(
+            key for key in intake_entity_field_keys if type(key) is str and key.isascii()
+        ) if type(intake_entity_field_keys) is tuple else frozenset()
         self._authority = ScopeAuthority(lambda tenant, company: ctx.scopes.current_epoch(tenant, company))
         self._gate = _FacadeRerunGate(self)
 
@@ -323,6 +337,34 @@ class WorkbenchSession:
 
     def read_result(self, viewer: object, session: object, job_id: object) -> ApiDecision | SafeError:
         return self._run(lambda: read_result(self._ctx, viewer, session, job_id))  # type: ignore[return-value]
+
+    def intake_preview(self, session: object, viewer: object, data: object,
+                       source_format: object, *, column_labels: object = None) -> IntakeReviewCard | SafeError:
+        """Authenticate before bounded parsing, then return a review-only preview for this company."""
+        refused = self._admit(session, viewer)
+        if refused is not None:
+            return refused
+        if not is_valid_scope(viewer) or type(source_format) is not UploadFormat:
+            return self._refusal(_R.INPUT_INVALID)
+        try:
+            extraction = extract_upload(data, source_format, column_labels=column_labels)  # type: ignore[arg-type]
+            scope = AliasScope(viewer.tenant_id, viewer.company_id)
+            resolutions: list[IntakeEntityResolution] = []
+            for value in extraction.values:
+                field_key = value.provenance.field_key
+                if field_key not in self._intake_entity_field_keys:
+                    continue
+                if self._intake_alias_resolver is None:
+                    resolutions.append(IntakeEntityResolution(
+                        EntityResolutionState.UNMATCHED_REVIEW, "ENTITY_DIRECTORY_UNAVAILABLE",
+                        scope, value.provenance,
+                    ))
+                    continue
+                resolutions.append(resolve_extracted_entity(self._intake_alias_resolver, scope, value))
+            return build_intake_review(extraction, scope=scope,
+                                       entity_resolutions=tuple(resolutions))
+        except Exception as exc:  # noqa: BLE001 - fixed safe error, no content or exception text
+            return self._internal(exc)
 
     def render_error(self, error: object) -> RenderedError:
         return render_safe_error(error)
