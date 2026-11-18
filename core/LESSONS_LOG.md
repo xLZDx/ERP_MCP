@@ -678,3 +678,13 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 FAILURE: the executor applied the unknown-outcome handler before any action was sent. Layer: E2E state-machine acceptance. Rule: distinguish a proved no-dispatch refusal from an uncertain attempted effect; retain exclusive ownership only when required for recovery.
 
 - 2026-11-18 FAILURE: a resource lease protected concurrent capture but did not retain completion identity after release, allowing a new executor instance to redispatch. Layer: routed source review. Rule: resource exclusion and one-time request ownership are separate invariants; verify replay after releasing the resource.
+
+- 2026-11-18 SHORTCOMING: S5's first push attempt was rejected because four historical approvals were visible in the plan but still recorded as implemented in the native ledger. Rule: preview the standard plan sync and confirm historical verified states before the final sprint push; preserve review and test receipts.
+
+- 2026-11-18 SHORTCOMING: The S5 historical plan sync preserved approval and task receipts but reopened previously closed sprint flags. Rule: compare sprint flags with the sync backup and restore documented prior closures before using the next-task selection.
+
+- 2026-11-18 SUCCESS: The standard report manifest links provenance to the existing digest and run context without duplicating its reader, period or clone identifiers. Rule: store each provenance fact at the level where it is authoritative and omit report provenance when the enclosing run is invalid.
+
+- 2026-11-18 SUCCESS: Distinguish a reported zero balance from an empty generated sheet by asserting both dimensions and the absence of an exported artifact, digest and provenance. Rule: exercise each missing dimension through the same report-generation adapter used for a nonempty result.
+
+- 2026-11-18 FAILURE: The first named S6 run failed because the negative fixture hit private-root validation and a preserved test still expected the historical component list. Rule: prove a negative test reaches the intended gate and reconcile inherited exact-list assertions with the recorded integration change.

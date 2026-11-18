@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import datetime as dt
+import hashlib
 import inspect
 import json
 import os
@@ -97,8 +98,9 @@ class FakeReports:
 
 
 class FakeConn:
-    def __init__(self, user=ner.READER_USER, rows=5, broken=(), write_denied=True, rights=None):
+    def __init__(self, user=ner.READER_USER, rows=5, broken=(), write_denied=True, rights=None, cols=3):
         self.user, self.rows, self.broken = user, rows, set(broken)
+        self.cols = cols
         self.rights = rights or {}  # {(right, object name or "*config"): True}
         self.created, self.new_types, self.writes = [], [], []
         self.param_names = ["НачалоПериода", "КонецПериода", "Период", "КонецПериодаОстатки", "Other"]
@@ -154,7 +156,7 @@ class FakeConn:
                     self.doc = doc
 
                 def Output(self, proc):
-                    self.doc.TableHeight, self.doc.TableWidth = conn.rows, (3 if conn.rows else 0)
+                    self.doc.TableHeight, self.doc.TableWidth = conn.rows, conn.cols
 
             return Out()
         return object()
@@ -311,13 +313,14 @@ def test_the_default_output_root_is_outside_the_repository():
 
 
 # ---------------------------------------------------------------- the whole run
-def _fp(content, unreadable="u" * 64, per_table=None):
-    return {"content_fingerprint_sha256": content, "metadata_fingerprint": META, "unreadable_fingerprint": unreadable,
+def _fp(content, unreadable="u" * 64, per_table=None, metadata=META):
+    return {"content_fingerprint_sha256": content, "metadata_fingerprint": metadata, "unreadable_fingerprint": unreadable,
             "per_table": {"Catalogs.X": 3} if per_table is None else per_table, "readable_tables": 1,
             "unreadable_tables": 2, "metadata_object_count": 3}
 
 
-def _patch_run(monkeypatch, conn, *, pre=PRE, post=PRE, baseline=None, post_unreadable="u" * 64, root=None):
+def _patch_run(monkeypatch, conn, *, pre=PRE, post=PRE, baseline=None, post_unreadable="u" * 64,
+               pre_metadata=META, post_metadata=META, root=None):
     monkeypatch.setattr(ner, "_reader_password", lambda: "pw")
     monkeypatch.setattr(ner, "prepare_report_clone",
                         lambda run_id, copier=None: ner.WORKING_DIR / f"{ner.REPORT_CLONE_PREFIX}{run_id}")
@@ -325,7 +328,7 @@ def _patch_run(monkeypatch, conn, *, pre=PRE, post=PRE, baseline=None, post_unre
         monkeypatch.setattr(ner, "PRIVATE_ROOT", root)
     monkeypatch.setattr(ner, "verify_reference_manifest", lambda path: {
         "metadata_fingerprint": META, "private": {"per_table_counts": baseline or {"Catalogs.X": 3, "Catalogs.Hidden": 9}}})
-    prints = iter([_fp(pre), _fp(post, post_unreadable)])
+    prints = iter([_fp(pre, metadata=pre_metadata), _fp(post, post_unreadable, metadata=post_metadata)])
     monkeypatch.setattr(ner, "readable_fingerprint", lambda c: next(prints))
     connector = lambda: type("C", (), {"Connect": lambda _s, text: conn})()
     return connector
@@ -343,10 +346,22 @@ def test_full_run_records_hashes_and_marks_the_class_non_validating(monkeypatch,
     assert record["identity"] == ner.READER_USER and record["preflight_report_clone"] == "PASS_WRITE_DENIED"
     assert record["evidence_valid"] is True
     assert [r["status"] for r in record["reports"]] == ["GENERATED", "GENERATED"]
+    assert conn.created == ["ДоходыРасходы", "ОстаткиТоваров"]
     files = sorted((tmp_path / "run_20261007_120000").glob("*.xlsx"))
     assert len(files) == 2 and all(len(r["sha256"]) == 64 for r in record["reports"])
+    by_name = {entry["report"]: entry for entry in record["reports"]}
+    assert all(entry["provenance"] == {
+        "configuration_object": f"Report.{name}",
+        "generation_route": "standard_report_data_composition",
+    } for name, entry in by_name.items())
+    for name, entry in by_name.items():
+        artifact = tmp_path / "run_20261007_120000" / f"{name}.xlsx"
+        assert entry["sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
     saved = json.loads((tmp_path / "run_20261007_120000" / "manifest.json").read_text(encoding="utf-8"))
     assert saved["validating"] is False
+    assert saved["metadata_fingerprint_pre"] == saved["metadata_fingerprint_post"] == META
+    assert saved["fingerprint_pre"] == saved["fingerprint_post"] == PRE
+    assert saved["reports"] == record["reports"]
 
 
 def test_a_report_the_reader_cannot_run_is_unavailable_without_retry(monkeypatch, tmp_path):
@@ -358,10 +373,13 @@ def test_a_report_the_reader_cannot_run_is_unavailable_without_retry(monkeypatch
     assert conn.created.count("ОстаткиТоваров") == 1  # no retry
 
 
-def test_an_empty_sheet_is_recorded_empty_and_not_exported(monkeypatch, tmp_path):
-    conn = FakeConn(rows=0)
+@pytest.mark.parametrize("rows,cols", [(0, 3), (4, 0)])
+def test_an_empty_sheet_is_recorded_empty_without_export_hash_or_provenance(monkeypatch, tmp_path, rows, cols):
+    conn = FakeConn(rows=rows, cols=cols)
     record = _run(tmp_path, _patch_run(monkeypatch, conn, root=tmp_path), reports=["ДоходыРасходы"])
-    assert record["reports"][0]["status"] == "EMPTY"
+    entry = record["reports"][0]
+    assert entry["status"] == "EMPTY"
+    assert "sha256" not in entry and "provenance" not in entry
     assert not list(tmp_path.rglob("*.xlsx"))
 
 
@@ -378,6 +396,18 @@ def test_fingerprint_drift_voids_the_evidence(monkeypatch, tmp_path):
         _run(tmp_path, _patch_run(monkeypatch, conn, post="e" * 64, root=tmp_path), reports=["ДоходыРасходы"])
     saved = json.loads((tmp_path / "run_20261007_120000" / "manifest.json").read_text(encoding="utf-8"))
     assert saved["evidence_valid"] is False
+
+
+def test_metadata_fingerprint_drift_voids_the_evidence(monkeypatch, tmp_path):
+    conn = FakeConn()
+    with pytest.raises(ner.GeneratorRefused):
+        _run(tmp_path, _patch_run(monkeypatch, conn, post_metadata="e" * 64, root=tmp_path),
+             reports=["ДоходыРасходы"])
+    saved = json.loads((tmp_path / "run_20261007_120000" / "manifest.json").read_text(encoding="utf-8"))
+    assert saved["metadata_fingerprint_pre"] == META
+    assert saved["metadata_fingerprint_post"] == "e" * 64
+    assert saved["evidence_valid"] is False
+    assert "provenance" not in saved["reports"][0]
 
 
 def test_a_readable_table_that_differs_from_the_manifest_baseline_stops_the_run(monkeypatch, tmp_path):
@@ -407,6 +437,31 @@ def test_unknown_report_in_the_request_is_refused_before_connecting(monkeypatch,
     with pytest.raises(ner.UnallowedOperation):
         _run(tmp_path, connector, reports=["КарточкаСчета"])
     connector.assert_not_called()
+
+
+def test_external_processing_file_is_refused_before_password_clone_or_com(monkeypatch, tmp_path):
+    password = Mock(side_effect=AssertionError("must not read the reader secret"))
+    clone = Mock(side_effect=AssertionError("must not prepare a clone"))
+    connector = Mock(side_effect=AssertionError("must not connect to COM"))
+    monkeypatch.setattr(ner, "PRIVATE_ROOT", tmp_path)
+    monkeypatch.setattr(ner, "_reader_password", password)
+    monkeypatch.setattr(ner, "prepare_report_clone", clone)
+
+    with pytest.raises(ner.UnallowedOperation):
+        _run(tmp_path, connector, reports=["untrusted-processing.epf"])
+
+    password.assert_not_called()
+    clone.assert_not_called()
+    connector.assert_not_called()
+    assert not any("ExternalDataProcessor" in item for item in ner._NEW)
+    assert not any("ExternalDataProcessor" in item for item in ner._CALL)
+
+    class UnreachableLoader:
+        def __getattr__(self, name):
+            raise AssertionError(f"attempted to access external processor loader {name}")
+
+    with pytest.raises(ner.UnallowedOperation):
+        ner._get(UnreachableLoader(), "ExternalDataProcessors")
 
 
 def test_fixed_paths_agree_with_the_lane_runner():
@@ -500,10 +555,11 @@ def test_run_refuses_an_output_root_inside_the_repository(monkeypatch):
 
 def test_the_default_component_list_and_the_loops_that_use_it():
     common = (ROOT_DIR / "scripts" / "e2e" / "_common.ps1").read_text(encoding="utf-8")
-    assert "@('fake1c', 'sidecar', 'idp', 'gateway')" in common
+    assert "@('fake1c', 'sidecar', 'idp', 'capability_acceptor', 'capability_observer', 'gateway')" in common
+    assert "@('idp', 'capability_acceptor', 'capability_observer', 'gateway')" in common
     for name in ("up.ps1", "reset.ps1"):
         text = (ROOT_DIR / "scripts" / "e2e" / name).read_text(encoding="utf-8")
-        assert "$script:ProcessComponents" in text or name == "reset.ps1"
+        assert "$script:ProcessComponents" in text
         assert "'fake1c'" not in text and "'sidecar'" not in text, name
 
 

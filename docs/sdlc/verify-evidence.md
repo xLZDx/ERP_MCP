@@ -904,3 +904,15 @@ At d4efd2cd661c1aef4563ccf5bce2a78b06702df6 the focused PostgreSQL command above
 ## 2026-11-18 - First named S5 bounded acceptance runs
 
 At dcbc263a2f502dc4a2a1720f4d9052fed03aa19c, the functional-test-reviewer ran the named test_s5_native_baseline.py module: 18 passed in 0.23s. Its initial invocation used the main checkout instead of the scratch checkout and found no tests; use the corrected run as evidence. On the same clean head the e2e-runner ran test_s5_native_capture_executor.py with --maxfail=1: 13 passed, then TC065 refused incorrectly with UNKNOWN for a missing initial selector. No dispatch took place. Retain the earlier failure and rerun the executor module after distinguishing pre-dispatch denial from an unknown result.
+
+## 2026-11-18 - Final S5 bounded acceptance
+
+The baseline module passed 18 cases in 0.23s at dcbc263. The baseline source and test inputs match 52ef731. The e2e-runner ran the named test_s5_native_capture_executor.py module at exact HEAD 52ef731adf81d2e0266378f0929264af0eb9d98a: 25 passed in 0.27s. Independent code and Python fix reviews confirmed that an exact permit cannot dispatch twice across executor instances backed by the shared synthetic authority. Missing or unauthorized recovery evidence prevents replay, and malformed times fail closed.
+
+The named historical regressions at 52ef731 were independent runs: test_capture_permit.py (48 passed), test_side_effect_boundary.py (91 passed), test_artifact_vault.py (42 passed), and test_safe_parser.py (165 passed, one skipped). These supplement the prior bounded acceptance records and do not establish all platform-specific behavior. The native ledger's standard plan sync restored the four historical verified states from documented acceptance without fabricating agent receipts.
+
+GPT-PM approved the bounded offline implementation and S5 closure (request da9afc1b-383f-468a-b33b-3bf86a2b8326, reply a4d9b070-f98b-59d0-9c40-9b09c1d8dd80). PR #61 merged the approved head as f0d082e751cc87a772f4b0477f42943e8b169774. Native 1C UI, actual native original files, durable authority and product acceptance were NOT_RUN.
+
+## 2026-11-18 - First named S6 standard engine run
+
+The e2e-runner ran test_native_engine_reports.py at b398851c85f2ed39e7d120a3989460e7e82a21d4. Result: 2 failed, 59 passed in 1.08s, exit 1. The new external processing test failed before report selection because its private root was not configured to use the temporary fixture. The existing component-list assertion still expected the historical four-service fake lane, while the current orchestrator includes capability_acceptor and capability_observer. The module uses test doubles and did not connect to 1C.

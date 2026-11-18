@@ -2217,4 +2217,24 @@ The first S5 executor run at dcbc263 reached the missing-initial-selector case a
 Code and Python reviewers independently confirmed that a completed attempt was recorded only in its original executor, while the process resource lease was released. Keep a synthetic authority-side atomic claim for the exact issued permit, attempt ID and intake request ID. An already claimed attempt can only recover its scoped receipt; a changed or unresolved claim cannot dispatch. Model separate executor instances in the named regression. This does not establish cross-process or native authority durability.
 
 The Python reviewer also identified unguarded clock and permit timezone conversion. Normalize those values through a fixed fail-closed helper so malformed authority data returns refusal without dispatch.
+
+### 2026-11-18 - Close S5 after bounded capture acceptance
+
+PR #61 merged exact GPT-PM-approved head 52ef731adf81d2e0266378f0929264af0eb9d98a into main as f0d082e751cc87a772f4b0477f42943e8b169774 (request da9afc1b-383f-468a-b33b-3bf86a2b8326, reply a4d9b070-f98b-59d0-9c40-9b09c1d8dd80). Record S5 as 6/6 bounded after offline baseline intake and synthetic capture are accepted. Track actual native export, durable authority and product qualification in the existing backlog. The first push attempt exposed four stale native ledger states; the supported plan sync restored documented historical verification, retained the existing approvals and events, and backed up the previous ledger.
+
+### 2026-11-18 - Prepare the S6 standard report engine contract
+
+S5 merged through PR #61. The next ledger record is R2-US-0231, which the specification names R2-US-023. Prepare one bounded contract for its three acceptance criteria around the existing standard report runner. Preserve the fixed reader, disposable clone, comparison-only evidence class and external processing denial. Real clone and accountant qualification are separate from offline tests. The existing plan sync had reopened six prior sprint states; restored the previously recorded bounded closures after comparing the backup with the current ledger.
+
+### 2026-11-18 - Record wrapper-owned standard report provenance
+
+GPT-PM approved the bounded S6 design at 5f163e1 (request ba02e918-b262-4f8c-986e-b23e1bbaf2bd). Store the allowlisted configuration object and standard data-composition route beside the generated report digest. Keep the existing reader, period, clone and fingerprint context in the enclosing manifest. Record pre/post metadata fingerprints and omit provenance for an invalidated run. The runner remains comparison-only; native qualification is tracked separately.
+
+### 2026-11-18 - Pin the standard report engine acceptance cases
+
+Use the existing fake COM report and the named runner test module to cover the exact allowlisted object and export digest, stable metadata, zero rows and zero columns, drift invalidation, and early refusal of an external processing file. Run the module from the S6 worktree on the committed candidate. These tests must not connect to 1C.
+
+### 2026-11-18 - Correct the S6 test fixture and lane expectation
+
+The first named run found two test failures and no observed runner regression. Configure the private root for the external-processing refusal scenario so its allowlist gate is reached. Preserve the PowerShell component-loop guard but assert the current fake-lane list, including the two capability services added by b1e2605. Rerun the same named module on the corrected commit.
 </pre></main></body></html>

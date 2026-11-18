@@ -392,14 +392,23 @@ def run(*, out_root: Path = PRIVATE_ROOT, reports: list[str] | None = None,
         results.append(entry)
 
     post = readable_fingerprint(session.conn)
-    drift = (post["content_fingerprint_sha256"] != pre["content_fingerprint_sha256"]
+    drift = (post["metadata_fingerprint"] != pre["metadata_fingerprint"]
+             or post["content_fingerprint_sha256"] != pre["content_fingerprint_sha256"]
              or post["unreadable_fingerprint"] != pre["unreadable_fingerprint"])
+    for entry in results:
+        if entry["status"] == "GENERATED" and not drift:
+            entry["provenance"] = {
+                "configuration_object": f"Report.{entry['report']}",
+                "generation_route": "standard_report_data_composition",
+            }
     record = {
         "evidence_class": EVIDENCE_CLASS, "validating": False, "identity": session.user,
         "execution_target": "disposable report-generation clone (file copy of the probe clone)",
         "report_clone": clone.name, "reference_clone_opened": False,
         "period": [period[0].isoformat(), period[1].isoformat()],
         "preflight_report_clone": verdict,
+        "metadata_fingerprint_pre": pre["metadata_fingerprint"],
+        "metadata_fingerprint_post": post["metadata_fingerprint"],
         "fingerprint_pre": pre["content_fingerprint_sha256"], "fingerprint_post": post["content_fingerprint_sha256"],
         "fingerprint_coverage": {"readable_tables": pre["readable_tables"], "unreadable_tables": pre["unreadable_tables"],
                                  "metadata_objects": pre["metadata_object_count"]},
