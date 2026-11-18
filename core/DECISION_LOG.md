@@ -2506,3 +2506,9 @@ The designated functional tester ran 18 named comparisons at `c33adc59e3d878b251
 
 The enabled write gate must see a finite positive freshness window and an age inside it. Non-finite ages can bypass a guard phrased as only less-than or greater-than. Require positive evidence that the age is in the valid interval and fail closed if the clock is unavailable. The disabled writer retains its read-only behavior.
 
+At `e9a791cafccf2b7fb8c00423acc89e6a48bbe0bb`, the designated tester ran eight selected S15-04 nodes and obtained 13 passed in 0.61s, exit 0. Probes were offline fixtures for freshness, restore, marker and population only.
+
+## 2026-11-18 - Reuse the S15 negative-control implementation
+
+The retained negative-control set already checks the undistorted baseline and exact required canonical controls. Refresh named offline evidence without replacing working source or repeating historical broad suite runs. Native register distortions require qualified read-back and remain in the backlog.
+
