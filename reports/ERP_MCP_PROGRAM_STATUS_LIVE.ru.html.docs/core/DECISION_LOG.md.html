@@ -2257,4 +2257,8 @@ S8 bounded closure was restored after PR #63. The current S9 work joins earlier 
 ### 2026-11-18 - Preserve separate S9 recovery verification
 
 The 352 named release compatibility tests passed at d748a3d. Advance in order to R2-US-046 for synthetic restore verification, export safety and decision-only retention. Keep runtime execution and its prerequisites in the backlog. No product source, migrations or live data changed.
+
+### 2026-11-18 - Exercise retained migration checksum refusals
+
+Current plan_rehearsal binds an applied version to the recorded file checksum and rejects changed checksums within a repeat of one version. The named S9 release tests cover matching checksums and idempotent replay but did not explicitly assert the checksum mismatch result. Add the missing named regression without changing the decision implementation. Recovery verification ran separately and its source and tests remain unchanged.
 </pre></main></body></html>

@@ -928,3 +928,7 @@ At f831457971f9af8c1186d4ec1c90e6f4259affc4 the e2e-runner ran the named test_ti
 ## 2026-11-18 - S9 retained release compatibility modules
 
 At d748a3d72bf454d9c3305801a74b5797588d9e3f the e2e-runner ran test_release_migration.py, test_release_rollback.py and test_release_sql_guard.py in one named invocation with PYTHONPATH set to the S9 scratch source and root. Result: 352 passed in 1.36s. The SQL guard reads the retained migration statements as text. No migration or rollback was applied.
+
+## 2026-11-18 - S9 retained restore, export and retention modules
+
+At b20e6a1e6200d5fb4884c678dc31f433d4cdda98 the e2e-runner ran test_restore_verify.py, test_export_safety.py and test_retention_hold.py with the S9 scratch source and root on PYTHONPATH. Result: 376 passed in 3.02s, exit 0. These are in-memory behavioral cases. No actual backup restore, export delivery, deletion or external authority was tested.
