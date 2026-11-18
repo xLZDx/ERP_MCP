@@ -907,3 +907,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: The S16 replay fixture can cover fresh action-bound re-authentication without adding a real identity service: pass the TEST credential through the fake authenticator to the fake IdP and replace the synthetic session only on success. Keep that evidence labeled synthetic.
 
 - 2026-11-18 SUCCESS: Rerunning assigned named test files on one clean committed HEAD gives a precise acceptance boundary across S16-01/03/04/05. Preserve the one deprecation warning and keep external IdP, durable-store and outbound-writer claims explicitly unproven.
+
+- 2026-11-18 SHORTCOMING: The program report fell back to stale native `verified` states for tasks whose project reconciliation was missing, inflating the “on review” count after the plan had already accepted them. Rule: after any project-plan change, reconcile every task against project records and all current branch refs before rendering the report; keep harness test/review evidence as a separate column/state layer.

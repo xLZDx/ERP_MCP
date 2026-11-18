@@ -2640,4 +2640,8 @@ The deterministic S16-05 replay must traverse the same decision-bound re-authent
 
 After committing the S16 approval-helper and replay-fixture corrections, the assigned functional tester ran the six named S16 functional files at clean exact HEAD `ab1a88d919fc3b033d9e32824b540e5a65eaab74` (168 passed, one `httpx2` deprecation warning), and the assigned E2E runner ran `test_s16_replay.py` at the same HEAD (4 passed). Record these as synthetic TEST-only results; they do not establish real IdP, durable database, listener or writer-egress qualification.
 
+## 2026-11-18 — Reconcile live status from current project records
+
+The live report showed 42 tasks on review because 62 ledger task records had no fresh project reconciliation and their native harness `verified` state was being used as the display fallback. The current project plan marks 91 of 111 task placements accepted in bounded scope, 2 blocked, 1 partial and 17 not started. Reconcile all 113 local/remote/archive branch refs against the current plan, preserving native verify/review evidence, then regenerate the report. The resulting project view is 91/111 accepted, 0 on review, 2 blocked, 1 in progress and 17 not started; the independent harness result remains 45/111 done.
+
 </pre></main></body></html>
