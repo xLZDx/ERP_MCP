@@ -2311,3 +2311,8 @@ The named S12-02 module passed 542 cases at 9a33cc0. Source and fixture comparis
 ## 2026-11-18 - S12 bounded closure
 
 Close S12 in its bounded offline synthetic TEST scope after PR #54 merged at fcffaeefd634f61ec367a2bdda82e2098c597453. GPT-PM approved head a70c03da6f53808703989fe697520cb8c4940b66, request 5bbe2284-e198-48d6-a6f0-e591bf139182, reply ed3d0fae-53b5-58d2-b577-2e3bd59ad356. Preserve both integration histories and leave operational G8 separate.
+
+## 2026-11-18 - Carry accepted S13-01 test coverage onto current main
+
+Restore the exact test file from e3c98f2 (PR #58) on the S13 consolidation branch. Its parent and current main were identical for that path, so no current test changes were displaced. The historical disposable PostgreSQL result covers migrations 001-018 and its selected scenarios. Compare the current effective privileges, scope isolation and restore coverage when qualifying the complete sprint candidate. Keep later S13-02 tests and the checkpoint and writer changes separate until their ordered reconciliation. No business records, database migrations or runtime settings were changed.
+

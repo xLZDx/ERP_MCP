@@ -2,8 +2,8 @@
 
 Contract: docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md revision 6. Needs ERP_PHASE2_TEST_DSN (a
 superuser DSN of a disposable cluster); without it: skip NOT_RUN, or fail when ERP_PHASE2_REQUIRE_PG=1.
-Every test gets its own throwaway database (g1x_<uuid8>) with 001-004 applied; runtime actors are NOLOGIN
-roles (clt_*) assumed with SET LOCAL ROLE, exactly like the living tests do. Superuser access is used only
+Every test gets its own throwaway database (g1x_<uuid8>) with migrations 001-018 applied; runtime actors are NOLOGIN
+roles (clt_*) assumed with SET LOCAL ROLE. Superuser access is used only
 to arrange state that no API can produce (clock back-dating, tampering) and to read results.
 """
 import asyncio
@@ -20,6 +20,8 @@ from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import fails, require_dsn, throwaway_db
 
 from business_ai_gateway.phase2.change import canonical_json
+from business_ai_gateway.phase2.change_ledger._common import Scope
+from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
 
 pytestmark = pytest.mark.integration
 
@@ -407,8 +409,51 @@ async def test_migration_applies_and_roles_are_safe(led):
     assert not bad, [b[0] for b in bad]
 
 
-@pytest.mark.parametrize("role", ["clt_alice", "clt_bob", "clt_dave", "clt_wri", "clt_wrk", "clt_aud"])
-async def test_no_direct_dml_for_any_runtime_role(led, role):
+async def test_runtime_roles_have_no_effective_table_or_column_dml_through_inheritance(led):
+    c = led.conn
+    roles = tuple(dict.fromkeys([*RUNTIME_ROLES, *ACTORS]))
+    tables = await c.fetch(
+        "SELECT c.oid::regclass::text AS relation "
+        "FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "
+        "WHERE n.nspname='change_ledger' AND c.relkind IN ('r','p') ORDER BY c.relname")
+    assert tables
+    for role in roles:
+        exists = await c.fetchval("SELECT EXISTS(SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=$1)", role)
+        assert exists, role
+        # MEMBER checks the full transitive membership graph, while the privilege functions below
+        # evaluate grants inherited through that graph and PUBLIC.
+        assert not await c.fetchval("SELECT pg_catalog.pg_has_role($1,'ledger_owner','MEMBER')", role), role
+        for table in tables:
+            for privilege in ("INSERT", "UPDATE", "DELETE", "TRUNCATE"):
+                assert not await c.fetchval(
+                    "SELECT pg_catalog.has_table_privilege($1,$2,$3)",
+                    role, table["relation"], privilege), (role, table["relation"], privilege)
+            for privilege in ("INSERT", "UPDATE"):
+                assert not await c.fetchval(
+                    "SELECT pg_catalog.has_any_column_privilege($1,$2,$3)",
+                    role, table["relation"], privilege), (role, table["relation"], privilege)
+
+
+async def test_sql_change_ledger_adapter_uses_scoped_postgres_v2_ledger(led):
+    scope = Scope(T, C)
+    ledger = SqlChangeLedger(led.conn, actors={"requester": "clt_alice", "auditor": "clt_aud"})
+    change_id = uuid.uuid4()
+    created = await ledger.propose(scope, change_id, "CREATE_DRAFT", BASE, ORG, "clt_alice",
+                                  "adapter-s13-01", DIGEST, "doc-adapter", "v1", None, exp(), None)
+    assert created == change_id
+    head = await ledger.ledger_head(scope, as_class="auditor")
+    verified = await ledger.verify_chain(scope, as_class="auditor")
+    assert head["seq"] == 1 and len(head["head_hash"]) == 64
+    assert verified == {"ok": True, "count": 1, "bad_seq": None}
+    row = await led.conn.fetchrow(
+        "SELECT hash_version,tenant_id,company_id,hash FROM change_ledger.events WHERE change_id=$1", change_id)
+    assert tuple(row[:3]) == (2, T, C)
+    assert row["hash"] == head["head_hash"]
+    assert not led.conn.is_in_transaction()
+    assert await led.conn.fetchval("SELECT current_user=session_user") is True
+
+
+async def test_no_direct_dml_for_any_runtime_role(led):
     cid = await led.propose()
     stmts = [
         "INSERT INTO change_ledger.events(tenant_id,company_id,event_type,hash) VALUES('T1','C1','X',repeat('a',64))",
@@ -435,9 +480,20 @@ async def test_no_direct_dml_for_any_runtime_role(led, role):
         "SELECT change_ledger.budget_consume('T1','C1',gen_random_uuid())",
         "SELECT change_ledger.budget_release('T1','C1',gen_random_uuid())",
     ]
-    for s in stmts:
-        with pytest.raises(asyncpg.InsufficientPrivilegeError):
-            await led.sql(role, s)
+    # Test every runtime group and every configured actor, including checkpoint_role, under
+    # PostgreSQL's effective current_user. This deliberately bypasses L.sql's scope setup so a
+    # missing scope cannot masquerade as the direct-privilege denial under test.
+    roles = tuple(dict.fromkeys([*RUNTIME_ROLES, *ACTORS]))
+    for role in roles:
+        for statement in stmts:
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                async with led.conn.transaction():
+                    await led.conn.execute(f'SET LOCAL ROLE "{role}"')
+                    current = await led.conn.fetchval("SELECT current_user")
+                    assert current == role
+                    assert not await led.conn.fetchval(
+                        "SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname=current_user")
+                    await led.conn.execute(statement)
 
 
 @pytest.mark.parametrize("role,fn,args", [
@@ -533,6 +589,27 @@ async def test_concurrent_appends_keep_one_gapless_verifiable_chain(led):
             await x.close()
     got = await led.call("clt_aud", "verify_chain")
     assert got == {"ok": True, "count": 24, "bad_seq": None}
+
+
+async def test_ledger_append_is_atomic_when_the_enclosing_postgres_transaction_fails(led):
+    c = led.conn
+    change_id = uuid.uuid4()
+    before = await c.fetchval("SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2", T, C)
+    request_id = f"rollback-{change_id}"
+    with pytest.raises(asyncpg.PostgresError, match="division by zero"):
+        async with c.transaction():
+            await c.execute('SET LOCAL ROLE "clt_alice"')
+            await c.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+            created = await c.fetchval(
+                "SELECT change_ledger.propose($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
+                T, C, change_id, "CREATE_DRAFT", BASE, ORG, "clt_alice", request_id,
+                DIGEST, "doc-rollback", "v1", None, exp(), None)
+            assert created == change_id
+            await c.fetchval("SELECT 1 / 0")
+    assert await c.fetchval("SELECT count(*) FROM change_ledger.records WHERE change_id=$1", change_id) == 0
+    assert await c.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", change_id) == 0
+    assert await c.fetchval("SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2", T, C) == before
+    assert await led.call("clt_aud", "verify_chain") == {"ok": True, "count": before, "bad_seq": None}
 
 
 # ============================================================================ scope / RLS
