@@ -109,3 +109,8 @@ Requested amendment: proceed in order through local source assembly for S13-03, 
 
 The candidate source already includes scoped target registration and observation and a recovery entry in migration 036. The latter deliberately revokes execution from all runtime roles. Any local source assembly must preserve that restriction unless a separate design approves a new authority. Diagnostic preflight remains read-only and cannot produce READY. Review this scheduling amendment only; no code acceptance, publication, runtime enablement, or production grant is requested.
 
+
+### Source assembly and verification ordering verdict
+
+PMG-20261118-f4c5bcee approved the amendment against f4c5bcee687470a40c922298940313bc7a3bbadb, request f2c983ec-b865-44a9-ab6b-627eeee053d2, reply 52a706ec-b062-5c2d-8180-af7c2a71299c. Assemble bounded source in task order. Execute only the permitted named scenarios after source assembly, then adjudicate S13-01 through S13-05 in order. The retained S13-03 dev checkpoint, authority, diagnostic and refusal code is assembled, with exact-head tests and acceptance pending. No production grant, operational readiness, publication or code approval follows.
+
