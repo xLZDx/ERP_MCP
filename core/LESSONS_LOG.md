@@ -778,3 +778,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: The S13-04 plan used a status literal recognized by the task ledger but unsupported by the plan parser. Rule: use the project plan vocabulary and retain source assembly details in the evidence cell.
 
+
+- 2026-11-18 SUCCESS: Completed named S13 ledger and claim cases on owned clusters and identified the retained module's independent DSN requirement. Rule: use an explicit owned fixture mode to exercise tests that otherwise rely on an externally supplied database.
+

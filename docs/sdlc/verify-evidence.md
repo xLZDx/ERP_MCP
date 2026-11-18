@@ -969,3 +969,16 @@ On a70c03da6f53808703989fe697520cb8c4940b66 the named proposal, change, simulati
 
 On eafe7ac496d255ae5ac144e3da9cf31adaec72dc the assigned e2e-runner inspected the clean tree and live ledger. S13-01/02 targeted PostgreSQL scenarios were NOT_RUN because S13-03 was partial and S13-04/05 had not reached source assembly. No PostgreSQL fixture was started. This is a stage restriction, not evidence of a database failure. The follow-up S13-03 development key separation change also remains NOT_RUN pending the named sprint verification.
 
+
+## 2026-11-18 - S13-01 and S13-02 selected disposable verification
+
+Clean head: 19101a258472c17d137b2ee16dec7c2b052c0968. The assigned e2e-runner removed any inherited ERP_PHASE2_TEST_DSN from the test process and set ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1. Named commands below use only their invocation-owned cluster fixtures.
+
+    .\.venv\Scripts\python.exe -m pytest -q -s tests/phase2/test_s13_inflight_status.py::test_s13_add_role_scope_exact_conflict_is_idempotent tests/phase2/test_s13_inflight_status.py::test_operator_status_and_list_do_not_reveal_another_company_record
+
+Result: 2 passed in 14.92s. The fixture applies through 039; scope isolation and exact scope-role replay only.
+
+    .\.venv\Scripts\python.exe -m pytest -q -s tests/phase2/test_s13_adapter_claim_release_bridge_e2e.py::test_s13_flag_on_adapter_uses_narrow_claim_and_release_bridges tests/phase2/test_s13_global_id_contention_e2e.py::test_s13_uf54_cross_scope_global_change_id_waits_before_rows
+
+Result: 2 passed in 14.76s. Claim/release routing and cross-scope global-ID contention only. Ownership label verified for r2-s13-dump-aa9a0a5ba2bc-a; the exact container was absent after teardown. No unrelated containers were touched. Pytest reported both invocations passing; the numeric shell exit code was not captured separately. Direct runtime DML refusal, hash-chain integrity and same-target transaction rollback remain NOT_RUN at this head.
+

@@ -2,6 +2,8 @@
 
 Contract: docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md revision 6. Needs ERP_PHASE2_TEST_DSN (a
 superuser DSN of a disposable cluster); without it: skip NOT_RUN, or fail when ERP_PHASE2_REQUIRE_PG=1.
+For an invocation-owned cluster, explicitly set both ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1 and
+ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1; that mode refuses an inherited ERP_PHASE2_TEST_DSN.
 Every test gets its own throwaway database (g1x_<uuid8>) with migrations 001-018 applied; runtime actors are NOLOGIN
 roles (clt_*) assumed with SET LOCAL ROLE. Superuser access is used only
 to arrange state that no API can produce (clock back-dating, tampering) and to read results.
@@ -10,6 +12,7 @@ import asyncio
 import hashlib
 import itertools
 import json
+import os
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -17,7 +20,7 @@ import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope, fixture_digest_for
 from _ed25519_fixtures import pub_hex, sign_hex
-from _pg_harness import fails, require_dsn, throwaway_db
+from _pg_harness import disposable_cluster, fails, require_dsn, throwaway_db
 
 from business_ai_gateway.phase2.change import canonical_json
 from business_ai_gateway.phase2.change_ledger._common import Scope
@@ -382,10 +385,28 @@ async def _setup(conn):
 
 @pytest.fixture
 async def led():
-    dsn = require_dsn()
-    async with throwaway_db(dsn, seed=False) as db:
-        await _setup(db.conn)
-        yield L(db)
+    if os.environ.get("ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE") == "1":
+        # This module-specific opt-in must be paired with the shared disposable-cluster flag.
+        # Refuse an inherited lane DSN so this branch can never silently use an existing DB.
+        if os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS") != "1":
+            pytest.fail(
+                "ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1 requires "
+                "ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1"
+            )
+        if os.environ.get("ERP_PHASE2_TEST_DSN"):
+            pytest.fail(
+                "owned disposable mode refuses inherited ERP_PHASE2_TEST_DSN"
+            )
+        async with disposable_cluster() as (dsn, _container_name, _owner_token):
+            async with throwaway_db(dsn, seed=False) as db:
+                await _setup(db.conn)
+                yield L(db)
+    else:
+        # Preserve the historical external-DSN behavior unless both explicit opt-ins are set.
+        dsn = require_dsn()
+        async with throwaway_db(dsn, seed=False) as db:
+            await _setup(db.conn)
+            yield L(db)
 
 
 # ============================================================================ schema / privileges

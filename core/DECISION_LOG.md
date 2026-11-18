@@ -2406,3 +2406,8 @@ S13-04 source assembly retained scoped registration, observed fingerprint/class 
 
 Reject oversized base recovery manifests before allocation or parsing. Require exact string base and state fields at the diagnostic boundary. Preserve the migration 036 runtime privilege restrictions. Correct the S13-04 plan status to PARTIAL, which the plan parser recognizes, and record the deferred adapter cutover separately. Tests were not run during source assembly.
 
+
+## 2026-11-18 - Add an owned-cluster mode for retained ledger tests
+
+Keep the default test fixture behavior and add a per-module disposable opt-in alongside the existing cluster opt-in. Reject an inherited external test DSN in that mode and create a separate database for each case inside an invocation-owned cluster. This allows the remaining local ledger cases to exercise the legacy contract without using a pre-existing PostgreSQL instance. The already completed four owned S13 cases are recorded as partial exact-head evidence.
+
