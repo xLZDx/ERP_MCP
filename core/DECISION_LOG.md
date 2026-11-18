@@ -2614,6 +2614,8 @@ The approval page previously accepted an MFA-marked session without proving a fr
 
 The operator explicitly deferred FIN-S1.2 until final project verification and directed that work continue to the next sprint. GPT-PM's bounded FIN closure is recorded for exact head `3f7fe83a94793bd97f0e3f5476d1e361668096a9` (request `3b7f1905-5e0e-463b-920f-ee003ab035c0`); that commit is present on `main`. Close the native FIN sprint with the remaining one task still open/externally blocked, preserving its evidence and deferral. FIN is 9/10 accepted in bounded scope; this does not clear FIN-S1.2 or imply product/runtime/production acceptance. S16 remains the active sprint.
 
+The S16-01 code commit subject initially placed `Task: S16-01` on the same line as the prose. The local commit hook expects the task marker as its own trailer line, so it did not append the code commit to the native task record. Preserve the commit and add a documented follow-up with a separate task trailer; the clean-head test evidence remains tied to the code commit `9ad472dc`, while the follow-up is docs-only.
+
 ## 2026-11-18 — Select report activity from reconciled sprint status
 
 Historical native harness sprint rows can remain open even when the source plan and Git reconciliation mark them `CLOSED_BOUNDED_SPRINT`; after FIN was closed, the report therefore selected S4 as active ahead of S16. Preserve exact current-branch matching, then prefer the unique sprint with reconciled project status `IN_PROGRESS` or `ACTIVE`; fall back to the legacy native selector only when that project status is absent or ambiguous. This changes report display selection only and does not rewrite historical harness task evidence.
