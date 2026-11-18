@@ -24,12 +24,26 @@ from .contracts import (
     ApplyReceipt,
     AuthenticatedPrincipal,
     DomainReceipt,
+    IdSource,
     PreviewSnapshot,
     Result,
     TargetScope,
     TargetVersion,
     VerifyRequest,
 )
+
+
+class _Uuid4IdSource:
+    def issue(self) -> UUID:
+        return uuid.uuid4()
+
+
+def _issue_uuid4(source: IdSource) -> str:
+    value = source.issue()
+    if (type(value) is not UUID or value.version != 4
+            or value.variant != "specified in RFC 4122"):
+        raise ValueError("ID_SOURCE_INVALID")
+    return str(value)
 
 __all__ = ["S16_MODEL_OPERATION_ALLOWLIST", "S16_TOOL_MANIFEST", "S16_TOOL_OPERATION_MAP",
            "ToolSpec", "register_s16_tools"]
@@ -396,7 +410,8 @@ async def _resolve_principal(resolver: Callable[..., Any], context: object) -> A
 
 def register_s16_tools(server: object, service: ChangeServicePort,
                        principal_resolver: Callable[..., Any],
-                       error_renderer: Callable[[ErrorCode], object] | None = None) -> None:
+                       error_renderer: Callable[[ErrorCode], object] | None = None,
+                       *, correlation_id_source: IdSource | None = None) -> None:
     """Register the immutable five-tool surface on an explicitly supplied server.
 
     The resolver receives server transport context, never model arguments. The server must
@@ -404,8 +419,13 @@ def register_s16_tools(server: object, service: ChangeServicePort,
     manifest schema is published verbatim. Signature-derived adapters are rejected because
     they cannot preserve the exact schema or guarantee rejection of undeclared arguments.
     """
+    id_source = correlation_id_source or _Uuid4IdSource()
+
     async def dispatch(name: str, arguments: object, context: object = None) -> dict[str, object]:
-        correlation_id = str(uuid.uuid4())
+        try:
+            correlation_id = _issue_uuid4(id_source)
+        except Exception:
+            return _safe_error(ErrorCode.AUDIT_UNAVAILABLE, str(uuid.uuid4()))
         try:
             spec = next((candidate for candidate in S16_TOOL_MANIFEST if candidate.name == name), None)
             if spec is None or type(arguments) is not dict or not _validate_tree(arguments):

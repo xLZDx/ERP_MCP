@@ -54,6 +54,24 @@ class FakeNonceSource:
             return raw
 
 
+class FakeIdSource:
+    """Deterministic UUIDv4-shaped IDs for isolated replay fixtures."""
+    def __init__(self, seed: str = "s16-id") -> None:
+        self._seed = seed
+        self._counter = 0
+        self._lock = threading.Lock()
+
+    def issue(self) -> UUID:
+        import hashlib
+        with self._lock:
+            self._counter += 1
+            raw = bytearray(hashlib.sha256(
+                f"{self._seed}:{self._counter}".encode("utf-8")).digest()[:16])
+            raw[6] = (raw[6] & 0x0F) | 0x40
+            raw[8] = (raw[8] & 0x3F) | 0x80
+            return UUID(bytes=bytes(raw))
+
+
 class InMemoryChangeStore(ChangeStore):
     """Storage fake. Claim is an atomic CAS; decision policy remains in S16Core."""
     def __init__(self, *, permissive_decisions: bool = False) -> None:

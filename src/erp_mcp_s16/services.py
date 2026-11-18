@@ -21,7 +21,7 @@ from business_ai_gateway.phase2.change.types import BudgetCheck, CallerClass, Ve
 
 from .contracts import (
     ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionBinding, DecisionPage,
-    DomainReceipt, FROZEN_V2_PROPOSAL_KINDS, NonceSource, PreviewSnapshot,
+    DomainReceipt, FROZEN_V2_PROPOSAL_KINDS, IdSource, NonceSource, PreviewSnapshot,
     ProposalPort, Result, TargetRecord,
     canonical_preview_bytes,
 )
@@ -33,6 +33,19 @@ PROPOSAL_LIFETIME = timedelta(minutes=5)
 
 def _digest(raw: bytes | str) -> str:
     return hashlib.sha256(raw.encode("utf-8") if isinstance(raw, str) else raw).hexdigest()
+
+
+class _Uuid4IdSource:
+    def issue(self) -> UUID:
+        return uuid4()
+
+
+def _issue_uuid4(source: IdSource) -> str:
+    value = source.issue()
+    if (type(value) is not UUID or value.version != 4
+            or value.variant != "specified in RFC 4122"):
+        raise ValueError("ID_SOURCE_INVALID")
+    return str(value)
 
 
 def _now(clock, now: datetime | None) -> datetime:
@@ -57,12 +70,13 @@ def _proposal_context(requester, principal_record, target, *, now, expires_at, c
 
 class ChangeService:
     def __init__(self, core: S16Core, store, proposal_port: ProposalPort,
-                 nonce_source: NonceSource, clock) -> None:
+                 nonce_source: NonceSource, clock, *, id_source: IdSource | None = None) -> None:
         self.core = core
         self.store = store
         self.proposal_port = proposal_port
         self.nonce_source = nonce_source
         self.clock = clock
+        self.id_source = id_source or _Uuid4IdSource()
 
     def propose(self, requester: AuthenticatedPrincipal, raw_request: dict[str, object], *,
                 now: datetime | None = None) -> Result[PreviewSnapshot]:
@@ -86,7 +100,7 @@ class ChangeService:
             nonce = self.nonce_source.issue()
             if type(nonce) is not str or len(nonce) < 32:
                 return Result.refused(ErrorCode.SCHEMA_INVALID)
-            change_id = str(uuid4())
+            change_id = _issue_uuid4(self.id_source)
             provisional_context = _proposal_context(
                 requester, principal_record, target, now=timestamp, expires_at=expiry,
                 change_id=change_id, preview_digest="0" * 64)
@@ -228,7 +242,7 @@ class ChangeService:
             return Result.refused(ErrorCode.ROLLBACK_REFUSED)
         try:
             nonce = self.nonce_source.issue()
-            rollback_id = str(uuid4())
+            rollback_id = _issue_uuid4(self.id_source)
             expiry = timestamp + PROPOSAL_LIFETIME
             target = self.core.targets.current(requester.scope)
             principal_record = self.core.principals.current(requester.principal_id)

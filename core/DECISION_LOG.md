@@ -2590,3 +2590,7 @@ The exact five-tool adapter had a fixed tool manifest but no executable mapping 
 
 The private S16 ASGI wrapper selected the tool app for every path that was not an approval path, so an unrelated or near-prefix path could reach the tool app. Return a fixed 404 refusal before authentication, route probing or dispatch unless the path matches the exact private tool or approval prefixes. This closes only the local route-dispatch gap; outbound 1C writer-target routing and actual gateway/listener composition remain separate backlog items. Regression tests are authored but NOT_RUN until all S16 story code is complete, following the project test timing rule.
 
+## 2026-11-18 — Make S16 replay identifiers injectable
+
+S16-05 requires identical fake-state responses when a recorded transcript is replayed. Proposal IDs, rollback IDs and transport correlation IDs were generated randomly, so the existing injected clock and nonce did not make responses deterministic. Add an `IdSource` seam with a secure random UUIDv4 default and a deterministic, thread-safe fake for tests; reject non-UUIDv4 or malformed injected values. This supports synthetic replay only and does not establish any real-client observation. Acceptance tests are authored but NOT_RUN until all S16 stories are coded.
+
