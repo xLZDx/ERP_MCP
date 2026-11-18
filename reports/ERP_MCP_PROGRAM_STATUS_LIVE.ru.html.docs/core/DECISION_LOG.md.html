@@ -2720,4 +2720,6 @@ Do not back a live S17 change list with `living.jobs` or the offline `jobs_api.F
 
 The explicit S17 `includes_vat` check accepts up to 50,000 line/VAT pairs, with each amount carrying at most 18 integer and 6 fractional digits. Summing the maximum supported count under the process-wide default `Decimal` precision can round a valid value and misclassify a total. Use a local decimal context sized from those existing limits; do not loosen input bounds, add rounding/tolerance, or change the review-only result. Add the maximum-cardinality exactness case to the named S17 reviewer plan. Implementation is source-only; the S17 test rule keeps the case NOT_RUN until all sprint code is complete.
 
+After `428427b1`, run the standard report generator so the committed live report snapshot includes the exact arithmetic fix and reconciled project counts. Preserve the documented 91/111 bounded-acceptance total; no review, test, or task acceptance is inferred by report generation.
+
 </pre></main></body></html>
