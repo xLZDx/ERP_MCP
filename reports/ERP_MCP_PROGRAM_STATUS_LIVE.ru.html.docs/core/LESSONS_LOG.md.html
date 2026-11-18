@@ -870,4 +870,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The corrected transport selection covered six named scenarios on one committed tree. Rule: keep audit-disabled and malformed-request controls alongside the valid retry so refusals and successful commits remain distinguishable.
 
+- 2026-11-18 SHORTCOMING: The test identity provider validated a cached session without rereading identity and issued replacements without validating predecessors. Rule: enforce current eligibility on both validation and serialized rotation.
+
 </pre></main></body></html>

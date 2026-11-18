@@ -2566,3 +2566,7 @@ The first named transport run at `c9fd8d35` reported 5 passed and one fixture fa
 
 The corrected same six named transport nodes at `24f4eb78` passed in 0.74s, exit 0. The source now has bounded offline evidence for one-time decisions, address binding, sanitized transport and core refusal records, and fail-closed audit unavailability. The unconfigured durable store, real cookies and fresh approval proof remain operational qualifications.
 
+## 2026-11-18 - Validate the in-memory approver session on access and rotation
+
+The isolated identity provider checked the stored session lifetime on validation without rechecking the current registry. The rotation path also revoked the supplied ID and issued a replacement without validating the old session. Require a currently eligible session and serialize successor issuance with revocation so one old session can produce at most one successor.
+

@@ -346,6 +346,53 @@ def test_apply_exception_becomes_unknown_and_cannot_retry_the_apply_port():
 def test_approver_session_expires_at_the_fifteen_minute_boundary():
     env = build_env()
     assert env.idp.validate_session(env.session, NOW + timedelta(minutes=15)) is None
+    assert env.idp.rotate_session(env.session, NOW + timedelta(minutes=15)) is None
+
+
+def test_valid_approver_session_rotation_replaces_and_revokes_old_session():
+    env = build_env()
+
+    replacement = env.idp.rotate_session(env.session, NOW + timedelta(minutes=1))
+
+    assert replacement is not None
+    assert replacement.session_id != env.session.session_id
+    assert env.idp.validate_session(replacement, NOW + timedelta(minutes=1)) == replacement
+    assert env.idp.validate_session(env.session, NOW + timedelta(minutes=1)) is None
+    assert env.idp.rotate_session(env.session, NOW + timedelta(minutes=1)) is None
+
+
+def test_concurrent_rotation_of_one_approver_session_has_only_one_successor():
+    env = build_env()
+    start = Barrier(2)
+
+    def rotate_once():
+        start.wait()
+        return env.idp.rotate_session(env.session, NOW + timedelta(minutes=1))
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        replacements = list(workers.map(lambda _index: rotate_once(), range(2)))
+
+    successors = [replacement for replacement in replacements if replacement is not None]
+    assert len(successors) == 1
+    assert env.idp.validate_session(successors[0], NOW + timedelta(minutes=1)) == successors[0]
+    assert env.idp.validate_session(env.session, NOW + timedelta(minutes=1)) is None
+
+
+@pytest.mark.parametrize("registry_change", ["revoke", "epoch", "unavailable"])
+def test_registry_revocation_epoch_change_or_unavailability_invalidates_session(registry_change):
+    env = build_env()
+    if registry_change == "revoke":
+        env.principals.revoke(env.approver.principal_id)
+    elif registry_change == "epoch":
+        env.principals.bump_epoch(env.approver.principal_id)
+    else:
+        def unavailable(_principal_id):
+            raise OSError("principal registry unavailable")
+
+        env.principals.current = unavailable
+
+    assert env.idp.validate_session(env.session, NOW + timedelta(minutes=1)) is None
+    assert env.idp.rotate_session(env.session, NOW + timedelta(minutes=1)) is None
 
 
 def test_missing_begin_apply_reader_fails_closed_before_apply_port():

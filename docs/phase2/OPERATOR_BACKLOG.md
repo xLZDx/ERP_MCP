@@ -1949,3 +1949,7 @@ The approval principal currently carries an MFA-authenticated flag and the sessi
 
 The isolated store now commits the decision, consumed reference and final audit atomically under its lock. Transport and core refusal events carry only safe codes, timestamps and optional digest correlation. The isolated implementation has no database-backed approval store. Qualify the equivalent atomic durable transaction with concurrent submits, lost replies, failed appends and read-back faults. The durable store owner is unassigned.
 
+## S16-02 operational identity and credential lifecycle
+
+The isolated test provider and in-memory registries exercise principal and session revocation. The current secret-store fake reports an unconfigured store and never supplies credentials. Bind a configured provider and authoritative identity registry, qualify credential versions and revocation, and show that rotation and revocation invalidate sessions derived from the prior credential. Keep credentials out of diagnostic output and persisted application artifacts. The provider owner is unassigned.
+
