@@ -828,3 +828,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 FAILURE: The S15-02 test runner first used system Python and failed loading the project's MCP dependency during collection. Rule: invoke the repository virtual environment explicitly for named test runs.
 
+- 2026-11-18 FAILURE: An exact-head test invocation used an incorrect import-graph filename before the corrected nine-case run. Rule: resolve exact node paths from the current checkout before handing off a named run.
+
+- 2026-11-18 SHORTCOMING: The A-to-B SIM read accepted a before-read identity without checking for a later remap, and a truthy non-Boolean value could disclose details. Rule: recheck source identity after reads and require explicit Boolean true to reveal values.
+

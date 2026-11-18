@@ -253,6 +253,15 @@ def test_values_are_shown_only_when_requested():
     assert dict(result.missing_items) == {BAL: 1}
 
 
+@pytest.mark.parametrize("show_values", ["true", 1], ids=["truthy_string", "truthy_int"])
+def test_non_boolean_truthy_show_values_never_exposes_direct_comparison_items(show_values):
+    extra = DiffItem("movement", "SECRET-KEY-77", "123456.78")
+    result = compare(EFFECT[:3] + (extra,), show_values=show_values)
+    assert result.status is S.MISMATCH and result.extra_count == 1
+    assert result.extra_items == () and result.missing_items == ()
+    assert "SECRET-KEY-77" not in repr(result) and "123456.78" not in repr(result)
+
+
 def test_show_values_defaults_to_false_in_via_readers_as_well():
     secret = DiffItem("document", "HIDDEN-DOC")
     reader = FakeLaneReader({"A": snap(), "B": snap(*EFFECT, secret)})
@@ -412,7 +421,60 @@ def test_two_distinct_identities_with_matching_provenance_match_and_carry_no_rea
     reader = good_reader()
     result = via(reader)
     assert result.status is S.MATCH and result.reason == ""
-    assert reader.identity_calls == ["A", "B"] and reader.calls == ["A", "B"]
+    assert reader.identity_calls == ["A", "B", "A", "B"]
+    assert reader.calls == ["A", "B"]
+
+
+@pytest.mark.parametrize("show_values", ["true", 1], ids=["truthy_string", "truthy_int"])
+def test_non_boolean_truthy_show_values_never_exposes_reader_comparison_items(show_values):
+    secret = DiffItem("document", "SECRET-DOC")
+    reader = FakeLaneReader({"A": snap(), "B": snap(*EFFECT, secret)})
+    result = via(reader, show_values=show_values)
+    assert result.status is S.MISMATCH and result.extra_count == 1
+    assert result.extra_items == () and result.missing_items == ()
+    assert "SECRET-DOC" not in repr(result)
+
+
+def test_source_identity_change_during_reads_is_inconclusive_and_hides_values():
+    secret = DiffItem("document", "SECRET-DOC")
+
+    class ChangingIdentityReader(FakeLaneReader):
+        def read_snapshot(self, lane):
+            snapshot = super().read_snapshot(lane)
+            if lane == "B":
+                self.identities["B"] = "gateway-replaced-during-read"
+            return snapshot
+
+    reader = ChangingIdentityReader(
+        {"A": snap(), "B": snap(*EFFECT, secret)})
+    result = via(reader, show_values=True)
+    assert result.status is S.INCONCLUSIVE and result.reason == "LANE_IDENTITY_CHANGED"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
+    assert "SECRET-DOC" not in repr(result)
+
+
+@pytest.mark.parametrize("post_identity", [None, "   ", "raise"],
+                         ids=["unavailable", "blank", "exception"])
+def test_unavailable_post_read_identity_is_inconclusive_and_hides_values(post_identity):
+    secret = DiffItem("document", "SECRET-DOC")
+
+    class PostReadIdentityFailureReader(FakeLaneReader):
+        def source_identity(self, lane):
+            if self.calls:
+                self.identity_calls.append(lane)
+                if post_identity == "raise":
+                    raise RuntimeError("identity lookup failed after read")
+                return post_identity
+            return super().source_identity(lane)
+
+    reader = PostReadIdentityFailureReader(
+        {"A": snap(), "B": snap(*EFFECT, secret)})
+    result = via(reader, show_values=True)
+    assert result.status is S.INCONCLUSIVE and result.reason == "LANE_IDENTITY_UNKNOWN"
+    assert result.extra_items == () and result.missing_items == ()
+    assert result.extra_count == 0 and result.missing_count == 0
+    assert "SECRET-DOC" not in repr(result)
 
 
 def test_a_real_difference_between_distinct_lanes_is_a_mismatch_with_no_reason():

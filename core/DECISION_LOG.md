@@ -2494,3 +2494,9 @@ At `0a503615a3169df65dbeb089c9b1be4472ba9322`, nine named S15-01 verifier nodes 
 
 The functional test owner selected version, decimal total, type divergence, unverified-path, and import independence tests. The first attempt failed before test collection with the system interpreter, which lacks the project's MCP dependency. The same selection passed through the project virtual environment: 38 passed in 3.21s.
 
+The exact `decc8bc43ee2c4b6a5f05f8925a0bf5cec1e210c` committed selection ran nine oracle, verifier, and import cases in 0.88s, exit 0. A preceding attempt used the wrong import-graph filename and was excluded from evidence.
+
+## 2026-11-18 - Fail closed on uncertain lane identity and non-Boolean disclosure
+
+The A-to-B comparator had a before-read source check, and its details switch used general truthiness. Recheck the source pair after both reads and refuse detectable remapping or unavailable identity. Show mismatch values only for Boolean true. Native snapshot provenance remains in the backlog.
+

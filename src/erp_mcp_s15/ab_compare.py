@@ -106,7 +106,8 @@ class ComparisonResult:
     extra_items: tuple[tuple[DiffItem, int], ...] = ()
     missing_items: tuple[tuple[DiffItem, int], ...] = ()
     # Why the status is INCONCLUSIVE when it is caused by lane identity or provenance:
-    # SAME_LANE, LANE_IDENTITY_UNKNOWN, BASELINE_PROVENANCE_MISMATCH. Codes only.
+    # SAME_LANE, LANE_IDENTITY_UNKNOWN, LANE_IDENTITY_CHANGED,
+    # BASELINE_PROVENANCE_MISMATCH. Codes only.
     reason: str = ""
 
 
@@ -135,11 +136,12 @@ def _result(status: ComparisonStatus, extra: Counter[DiffItem] | None = None,
             reason: str = "") -> ComparisonResult:
     extra = extra or Counter()
     missing = missing or Counter()
+    include_values = show_values is True
     return ComparisonResult(
         status, LABEL_MACHINE_READ, LABEL_MACHINE_VERIFIED,
         sum(extra.values()), sum(missing.values()),
-        tuple(extra.items()) if show_values else (),
-        tuple(missing.items()) if show_values else (), reason)
+        tuple(extra.items()) if include_values else (),
+        tuple(missing.items()) if include_values else (), reason)
 
 
 def _canonical(identity: object) -> str | None:
@@ -199,7 +201,9 @@ def compare_via_readers(reader: LaneReader, lane_a: str, lane_b: str,
     The lanes must have distinct canonical names and distinct canonical source identities
     (``reader.source_identity``), and ``baseline`` must have been captured for exactly this
     identity pair; otherwise INCONCLUSIVE (SAME_LANE, LANE_IDENTITY_UNKNOWN or
-    BASELINE_PROVENANCE_MISMATCH).
+    BASELINE_PROVENANCE_MISMATCH). The pair is checked again after both reads; a missing or
+    changed identity at that point is INCONCLUSIVE (LANE_IDENTITY_UNKNOWN or
+    LANE_IDENTITY_CHANGED).
     """
     if _canonical(lane_a) is None or _canonical(lane_b) is None:
         return _result(ComparisonStatus.INCONCLUSIVE, reason="LANE_IDENTITY_UNKNOWN")
@@ -222,6 +226,17 @@ def compare_via_readers(reader: LaneReader, lane_a: str, lane_b: str,
         post_b = reader.read_snapshot(lane_b)
     except Exception:  # noqa: BLE001 - a failed read is incomplete data, never agreement
         return _result(ComparisonStatus.INCONCLUSIVE)
+    try:
+        identity_a_after = reader.source_identity(lane_a)
+        identity_b_after = reader.source_identity(lane_b)
+    except Exception:  # noqa: BLE001 - an unknown identity is never proof of lane continuity
+        return _result(ComparisonStatus.INCONCLUSIVE, reason="LANE_IDENTITY_UNKNOWN")
+    after_pair = (_canonical(identity_a_after), _canonical(identity_b_after))
+    if None in after_pair:
+        return _result(ComparisonStatus.INCONCLUSIVE, reason="LANE_IDENTITY_UNKNOWN")
+    before_pair = (_canonical(identity_a), _canonical(identity_b))
+    if after_pair != before_pair:
+        return _result(ComparisonStatus.INCONCLUSIVE, reason="LANE_IDENTITY_CHANGED")
     return compare_ab(baseline.snapshot_a, baseline.snapshot_b, post_a, post_b, expected,
                       show_values=show_values, lane_a_identity=identity_a,
                       lane_b_identity=identity_b)

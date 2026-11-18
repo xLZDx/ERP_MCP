@@ -124,7 +124,7 @@ Assertions:
 1. Comparison runs through the test-lane read-only MCP; its result is labelled as a machine-read agreement, never a native 1C PASS.
 2. Expected differences are compared as multisets (document ref, N movement lines, balance delta); an extra or a missing item is red (E1).
 3. An unrelated baseline difference neither masks an expected effect nor imitates one (E43).
-4. Incomplete data yields INCONCLUSIVE; amounts and names are hidden unless `show_values=true` is passed.
+4. Incomplete data yields INCONCLUSIVE; amounts and names are hidden unless `show_values` is the Boolean true. Check lane bindings before and after reading both snapshots and refuse detectable source changes or a failed identity check. This offline check cannot prove atomic capture or detect a temporary switch that reverts before rechecking; a qualified reader must bind the snapshot data to its authenticated source.
 Open questions: which lanes are A and B (UNKNOWN); how the baseline is re-captured after clone re-creation (section 3).
 
 ### Epic E15-4 Bidirectional ledger<->1C check, R-c (V2-S15-04)
