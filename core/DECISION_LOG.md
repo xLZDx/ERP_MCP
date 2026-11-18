@@ -2307,3 +2307,7 @@ S12-01's isolated admission and canonicalization checks passed (54 passed, 21 di
 ### 2026-11-18 - Integrate the historical S12 PR without losing retained main behavior
 
 The named S12-02 module passed 542 cases at 9a33cc0. Source and fixture comparison identified which remaining bounded contracts were byte-identical to PR #54 and which crash-window tests were unique to each lineage. Locally merge 2629aa2 while keeping the tested main transition and helper definitions, frozen-governed versus legacy parser boundary, and corrected T9/T16 fixtures. Take the historical CT10 Appendix C, keep current crash-window coverage and recover the missing historical parser refusal cases. This keeps PR #54 ancestry and makes a normal approved update possible without force push.
+
+## 2026-11-18 - S12 bounded closure
+
+Close S12 in its bounded offline synthetic TEST scope after PR #54 merged at fcffaeefd634f61ec367a2bdda82e2098c597453. GPT-PM approved head a70c03da6f53808703989fe697520cb8c4940b66, request 5bbe2284-e198-48d6-a6f0-e591bf139182, reply ed3d0fae-53b5-58d2-b577-2e3bd59ad356. Preserve both integration histories and leave operational G8 separate.

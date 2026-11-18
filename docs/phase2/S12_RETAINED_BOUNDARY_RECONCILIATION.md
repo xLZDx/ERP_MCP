@@ -24,3 +24,7 @@ After isolated S12-01 verification, reconcile the two failed assertions in test_
 The source for S12-03 principal/approval records, S12-04 policy, S12-05 kill switch and S12-07 CT14 qualification, and the named S12-05/S12-07 test files and CT14 record bytes, match PR #54 at 2629aa2. Preserve the historic acceptance and verify named current test inputs. S12-06 has a later main crash-window test expansion; retain that coverage and restore the two historical TEST-lane refusal tests absent from it.
 
 Integrate the current PR #54 head in the local continuation to retain its ancestry. Three merge conflicts are isolated to transitions.py, _change_helpers.py and the crash-window test file. Direct source comparison shows only reorder/format/documentation differences in the first two. Keep their tested main forms. Keep the already reconciled prototype parser and current model fixtures despite Git's automatic historical merge of those paths. Retain the reviewed CT10 Appendix C from the merged documentation. Update the existing PR branch only when its head is still 2629aa2 and exact final approval is recorded; use a normal fast-forward push. No gate-manifest change or real execution.
+
+## 2026-11-18 - S12 bounded closure
+
+PR #54 merged at fcffaeefd634f61ec367a2bdda82e2098c597453 after approval of a70c03da6f53808703989fe697520cb8c4940b66. All seven tasks were accepted in the offline synthetic TEST scope. Operational G8, real identity and durable runtime qualification remain separate.
