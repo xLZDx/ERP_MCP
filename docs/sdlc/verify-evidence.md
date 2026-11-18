@@ -1049,3 +1049,25 @@ Result: 4 passed in 0.31s; exit 0.
 
 Result: 1 passed in 9.15s; exit 0. The owned fixture checks its ownership label before teardown. No standalone container inventory was taken. These five cases verify the diagnostic and legacy sweep behavior. The migration 036 entry itself was not exercised by these S13-05 runs. No operational recovery or authorized 1C clone was used.
 
+
+## 2026-11-18 - S13-04 and S13-05 additional full-chain SQL cases
+
+Clean head a0079e1e53f94543914cf68188f304ea551090dd. The designated e2e-runner invoked .venv/Scripts/python.exe -m pytest -q -s on the explicit node IDs below, after checking ERP_PHASE2_TEST_DSN absent. ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1, ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1, and ERP_PHASE2_REQUIRE_PG=1. The owned fixture applied the integration chain through 039.
+
+S13-04, tests/phase2/test_s13_registry_contract_sql.py:
+
+- test_legacy_registry_grants_remain_and_v1_routes_are_not_callable_by_runtime_roles
+- test_legacy_register_target_bridge_records_synthetic_target_as_calling_operator
+- test_legacy_observe_target_bridge_rejects_substituted_fingerprint_then_binds_exact_target
+
+Result: 3 passed in 22.04s; exit 0. This verifies the effective grants for the ten legacy/v1 pairs, one entitled registration, and observed fingerprint binding. The complete bridge race matrix and runtime adapter cutover remain open.
+
+S13-05, tests/phase2/test_s13_base_recovery_begin_sql.py:
+
+- test_begin_base_recovery_is_unavailable_to_runtime_roles
+- test_owner_begin_returns_exact_manifest_and_retry_advances_epoch
+- test_overlapping_base_begin_refuses_without_changing_fence_rows
+- test_begin_rejects_65_scope_manifest_before_fence_changes
+
+Result: 4 passed in 27.80s; exit 0. This proves the owner-only migration 036 boundary, exact single-scope manifest and monotonic repeat, and rejection of overlap and over-limit plans without fence changes. Normal owned fixture teardown completed. Live 1C skew, shared physical-writer fencing, active recovery orchestration and operational admission remain NOT_RUN. Post-run HEAD matched and the worktree was clean.
+

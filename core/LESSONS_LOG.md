@@ -793,3 +793,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: The first target observation fixture attempted to claim a proposal before approval. Rule: seed the exact preceding state using the shared helper so the test reaches its intended boundary.
 
+
+- 2026-11-18 SUCCESS: The new S13 SQL tests established actual migration-036 state and grants separately from diagnostic preflight. Rule: report observed full-chain behavior at named entry points and leave uncovered integration requirements explicit.
+
