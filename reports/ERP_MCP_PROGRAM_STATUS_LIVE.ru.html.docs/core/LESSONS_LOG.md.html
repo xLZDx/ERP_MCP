@@ -740,4 +740,9 @@ Compare the historical parent with present main before restoring a path from the
 
 Restoring the exact historical test delta makes the SQL-level contention and rollback assertions independently traceable from later physical-writer qualification.
 
+
+
+## 2026-11-18 - SUCCESS - Compare dev anchor package identity before integration
+
+Compare import paths alongside Git ancestry. The earlier package was renamed after consolidation, and the existing development module retained the old public module name. Blindly restoring the old test fixtures would exercise the wrong target.
 </pre></main></body></html>

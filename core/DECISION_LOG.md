@@ -2321,3 +2321,8 @@ Restore the exact test file from e3c98f2 (PR #58) on the S13 consolidation branc
 
 Restore the accepted claim test delta from 9d3cb5f on top of the byte-identical S13-01 test file. The retained scenarios cover concurrent claims and transactional rollback in disposable PostgreSQL. Qualification of a physical 1C writer and an ambiguous remote effect still requires separate evidence. This commit changes test coverage and leaves database code, data and services untouched. The named tests await sprint-level execution.
 
+
+
+## 2026-11-18 - Reconcile the retained S13 checkpoint evidence
+
+Keep the main branch's post-consolidation checkpoint and restore coverage as the baseline. PR #58 remains open at 9bd6d38 and the preserved follow-up branch at 65c4086 contains that head. Do not replace main's migration 027 or test files with the preserved branch wholesale. The operator selected the dev-only service; external provider and custody proof are a separate operational gap. Treat current-head S13 acceptance as pending.

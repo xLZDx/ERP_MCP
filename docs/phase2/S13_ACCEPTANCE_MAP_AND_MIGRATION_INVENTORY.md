@@ -55,3 +55,12 @@ The corrected seven-path worktree diff `E63704676FA8960B33F90BAD4D1E9C4C38E831BA
 ## Project status
 
 Formal S13 entry remains `NOT_STARTED / NOT_APPROVED`; G1–G8 remain `NOT_PASSED`; Release 2 remains `NO-GO`; production authorization remains `NONE`. Migrations 023–026 are local preparatory changes; 023–024 and the corrected 025–026 suffix path have focused disposable-database evidence and exact-hash DB/security/reliability review. Migration 026 closes the worker payload and hash-inference channels found during initial review. The lifecycle fence lock's transaction-end lifetime, physical writer coverage, shared cross-process fencing, external anti-rollback provider, service admission, and qualified checkpoint/signer remain open. This map is a planning and traceability artifact, not a gate pass.
+
+
+## Retained evidence reconciliation (2026-11-18)
+
+PR #54 has merged and PR #58 is open against main at 9bd6d3840437a811db4f3f8ad7e12619e102c57b. The S13-01 (e3c98f2) and S13-02 (9d3cb5f) approved test deltas are retained in local commits bbf0f84 and cd3f145. Compare the ordered named cases against the current final migration chain at sprint verification. The original test runs and the current source retention are distinct evidence.
+
+S13-03 has two dev implementations in the consolidated tree. The PR package now lives under dev_anchor_service_s13, while dev_anchor_service.py has its own executable entry and named tests. Keep the latter's restart, key revocation and replay assertions. The open PR has a restore-skew scenario; main has a later variant. Compare both scenarios and preserve their assertions without replacing newer source. The preserved branch at 65c4086 descends from 9bd6d38 and contains additional checkpoint, writer and recovery evidence. Its migration 027 and current main differ, so compare candidate SQL changes and fixture compatibility by story before integrating. No branch or test result proves a qualified external provider, writer admission, custody or a durable READY transition.
+
+The dev-only anchor decision is already made. Any production-provider selection, key custody and shared physical-writer qualification remain separate backlog dependencies. No service was started for this reconciliation.
