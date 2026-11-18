@@ -2279,3 +2279,7 @@ The capture module rerun passed 52 cases at 2124b5b. Proceed to the existing R2-
 ### 2026-11-18 - Restore the retained capture epoch guard
 
 The routed review found that the main capture loop no longer verifies the live scope epoch after leasing and before submitting a connector call, although the historical integration merge 900a3d0 did. Its snapshot completion check also runs after local baseline updates. Restore the pre-dispatch guard and require a current epoch before publishing a successful observation. Test refusal independently before dispatch and after an in-flight epoch change. Keep actual scope authority, production and deployment outside this change.
+
+### 2026-11-18 - Keep the first resnapshot reason on a late authority failure
+
+Correct the inherited test for an already-required snapshot: admit the matching epoch, then make its post-call verification unavailable. Require the outcome to be refused, with existing CURSOR_LOST evidence intact and no published observation. Preserve the reviewed source guard from aa6b98e.

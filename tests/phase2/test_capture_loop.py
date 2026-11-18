@@ -163,7 +163,7 @@ async def test_guard_snapshot_at_older_epoch_keeps_requirement():
     conn = FakeConnector((Completeness.COMPLETE, H1))
     living, sched, tracker, loop = await build(conn, epoch=2)
     tracker.require(CONN, ResnapshotReason.SCOPE_EPOCH_CHANGED, 1)
-    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)  # ran under epoch 1, live 2
+    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)  # requested epoch 1, live 2
     assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED
     assert res.resnapshot_reason is ResnapshotReason.SCOPE_EPOCH_CHANGED
     assert conn.calls == 0
@@ -449,9 +449,21 @@ async def test_ledger_error_after_success_keeps_requirement_and_returns_typed_re
     conn = FakeConnector((Completeness.COMPLETE, H1))
     living, sched, tracker, loop = await build(conn)
     tracker.require(CONN, ResnapshotReason.CURSOR_LOST, 0)
+    epoch_reads = 0
 
-    async def boom(_scope):
+    async def boom_after_success(_scope):
+        nonlocal epoch_reads
+        epoch_reads += 1
+        if epoch_reads == 1:
+            return 0  # allow the connector to run at the request's epoch
         raise PortError("SQL_08006")
-    living.scope_epoch = boom
+    living.scope_epoch = boom_after_success
     res = await loop.capture_step(job(), CONN, req(), snapshot=True)
-    assert res.status is CaptureStatus.CAPTURED and not res.cleared and res.resnapshot_required
+    assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED and not res.cleared
+    assert res.resnapshot_required
+    assert res.resnapshot_reason is ResnapshotReason.CURSOR_LOST
+    assert tracker.reason(CONN) is ResnapshotReason.CURSOR_LOST
+    assert conn.calls == 1 and epoch_reads == 2
+    assert res.events == () and res.candidate_hash is None
+    assert res.accepted_hash == H1 and loop.accepted_hash(CONN) == H1
+    assert CONN not in loop._pending_baselines

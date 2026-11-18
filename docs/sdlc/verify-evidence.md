@@ -944,3 +944,7 @@ At 43ebd6bd372965fef6528f8bc5c5b349ca374c3b, the e2e-runner executed the named t
 ## 2026-11-18 - Exact S10 retained capture rerun
 
 The e2e-runner executed the same three named capture modules at 2124b5bd6fee9d506aeeb9160b9b3bd63ada9512 in clean D:/Repo/ERP_MCP with checkout source/root on PYTHONPATH and its .venv interpreter. Result: 52 passed in 6.35s, exit 0. The fixed failure code omits exception type and text. The group verifies development/test scope, production refusal, queued/running cancellation and drain in synthetic fixtures. Product canary and real comparison remain NOT_RUN.
+
+## 2026-11-18 - First S10 post-review scope guard regression
+
+Capture group at aa6b98e5f07dba9c34996993cc6015ee9e42b364: 55 passed, 1 failed in 5.85s. The additional inherited post-connector epoch test still expected CAPTURED and configured a failing port before dispatch. Update its fixture to reach the post-call guard and retain the existing CURSOR_LOST requirement when the later epoch read fails. The named manifest group was not run in this round because the capture group failed. Retain the first outcome separately from the next exact-head attempt.
