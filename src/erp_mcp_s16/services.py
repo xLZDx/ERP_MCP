@@ -406,14 +406,22 @@ class ApprovalService:
         try:
             timestamp = _now(self.clock, now)
         except Exception:
+            if not self.record_http_refusal(ErrorCode.NOT_ENTITLED, now=now):
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             return Result.refused(ErrorCode.NOT_ENTITLED)
         if origin != self.origin or not referer.startswith(self.origin + "/"):
+            if not self.record_http_refusal(ErrorCode.NOT_ENTITLED, now=timestamp):
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             return Result.refused(ErrorCode.NOT_ENTITLED)
         return self.core.decide(approver, session, decision_ref, decision,
                                 csrf_token=csrf_token,
                                 confirmation_text=confirmation_text, origin=origin,
                                 referer=referer, now=timestamp,
                                 expected_change_id=expected_change_id)
+
+    def record_http_refusal(self, error: ErrorCode, *, now: datetime | None = None) -> bool:
+        """Audit a safe transport refusal before submit_decision enters the core."""
+        return self.core.record_decision_refusal(error, now=now)
 
 
 def _scope_from_proposal(scope, target: TargetRecord):

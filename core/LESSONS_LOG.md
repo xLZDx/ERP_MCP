@@ -862,3 +862,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: The approval HTTP boundary checked its ticket only on returned success, after decision consumption. Rule: enforce route-to-decision binding before effects and retain exact response validation as a separate check.
 
+- 2026-11-18 SHORTCOMING: Core-only auditing could not observe decisions refused before the core. Rule: audit a refusal at the layer where it occurs and never serialize request material to fill missing correlation.
+

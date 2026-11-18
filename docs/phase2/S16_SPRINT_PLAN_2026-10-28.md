@@ -221,6 +221,8 @@ The isolated page and core fixtures cover canonical rendered bytes, an independe
 
 For the decision audit, distinguish the atomic domain receipt from the audit event. The current change-store contract consumes the reference and nonce with the persisted decision. Extend that atomic operation to include the final-decision audit record before treating it as durable acceptance evidence. A rejected decision attempt needs an append-only refusal record with a safe reason code and a digest-based correlation, while leaving authorization and reference state intact. Neither audit record should serialize raw references, session identifiers, CSRF values or the entire domain receipt. Verify database failure and commit-with-lost-response outcomes against the same atomic decision and audit pair.
 
+For canonical decision POST requests refused before the core, record the refusal at the producing layer. Trust only a closed reason code and server-side time, with no request details. Keep calls that reached the core separate so a refusal or committed outcome produces its existing core audit record exactly once. Database-backed atomicity and an authenticated session adapter remain separate operational evidence.
+
 ### Epic E16-3 MCP tools (V2-S16-03: propose, status, apply, verify, rollback_propose; no approve; safe errors)
 
 Assertions:

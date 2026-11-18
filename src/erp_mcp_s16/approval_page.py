@@ -40,6 +40,7 @@ class ApprovalServicePort(Protocol):
                         origin: str, referer: str,
                         now: datetime | None = None,
                         expected_change_id: UUID | None = None) -> Result[ApprovalDecision, ErrorCode]: ...
+    def record_http_refusal(self, error: ErrorCode, *, now: datetime | None = None) -> bool: ...
 
 
 class ApproverSessionAuthenticator(Protocol):
@@ -316,6 +317,27 @@ def create_approval_app(service: ApprovalServicePort,
             await send({"type": "http.response.start", "status": status, "headers": response_headers})
             await send({"type": "http.response.body", "body": content})
             return
+        decision_route = re.fullmatch(
+            r"/approval/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/decision",
+            path,
+        ) if method == "POST" else None
+        canonical_decision_post = bool(
+            decision_route and str(UUID(decision_route.group(1))) == decision_route.group(1)
+        )
+
+        async def decision_error(code: ErrorCode, status: int, *, now: datetime | None = None):
+            if not canonical_decision_post:
+                return _error(code, status)
+            recorder = getattr(service, "record_http_refusal", None)
+            try:
+                recorded = (await _invoke(recorder, code, now=now)
+                            if callable(recorder) else False)
+            except Exception:
+                recorded = False
+            if recorded is not True:
+                return _error(ErrorCode.AUDIT_UNAVAILABLE, 503)
+            return _error(code, status)
+
         raw_headers = scope.get("headers", ())
         header_lists: dict[str, list[str]] = {}
         try:
@@ -323,11 +345,11 @@ def create_approval_app(service: ApprovalServicePort,
                 name = key.decode("latin-1").casefold()
                 header_lists.setdefault(name, []).append(value.decode("latin-1"))
         except (AttributeError, TypeError, UnicodeError, ValueError):
-            response = _error(ErrorCode.SCHEMA_INVALID, 400)
+            response = await decision_error(ErrorCode.SCHEMA_INVALID, 400)
         else:
             headers = {key: values[0] for key, values in header_lists.items() if len(values) == 1}
             if any(len(values) != 1 for values in header_lists.values()):
-                response = _error(ErrorCode.SCHEMA_INVALID, 400)
+                response = await decision_error(ErrorCode.SCHEMA_INVALID, 400)
             elif type(path) is str and path == "/approval/s16.css" and method == "GET":
                 try:
                     style_session = await _invoke(authenticator.authenticate, scope, headers)
@@ -372,9 +394,9 @@ def create_approval_app(service: ApprovalServicePort,
                         except Exception:
                             now = None
                         if now is None:
-                            response = _error(ErrorCode.AUDIT_UNAVAILABLE, 503)
+                            response = await decision_error(ErrorCode.AUDIT_UNAVAILABLE, 503)
                         elif not _live_session(session, now):
-                            response = _error(ErrorCode.NOT_ENTITLED, 401)
+                            response = await decision_error(ErrorCode.NOT_ENTITLED, 401, now=now)
                         elif method == "GET" and path == f"/approval/{ticket}":
                             try:
                                 result = await _invoke(service.open_preview, session.principal, session, parsed_ticket,
@@ -446,9 +468,9 @@ def create_approval_app(service: ApprovalServicePort,
                         elif method == "POST" and path == f"/approval/{ticket}/decision":
                             content_types = header_lists.get("content-type", [])
                             if content_types != ["application/x-www-form-urlencoded"]:
-                                response = _error(ErrorCode.SCHEMA_INVALID, 415)
+                                response = await decision_error(ErrorCode.SCHEMA_INVALID, 415, now=now)
                             elif not _origin_matches(headers.get("origin", ""), headers.get("referer", ""), origin):
-                                response = _error(ErrorCode.NOT_ENTITLED, 403)
+                                response = await decision_error(ErrorCode.NOT_ENTITLED, 403, now=now)
                             else:
                                 body = bytearray()
                                 message_count = 0
@@ -494,7 +516,7 @@ def create_approval_app(service: ApprovalServicePort,
                                 except (UnicodeError, ValueError, OverflowError, TypeError):
                                     data = {}
                                 if not data:
-                                    response = _error(ErrorCode.SCHEMA_INVALID, 400)
+                                    response = await decision_error(ErrorCode.SCHEMA_INVALID, 400, now=now)
                                 else:
                                     try:
                                         result = await _invoke(

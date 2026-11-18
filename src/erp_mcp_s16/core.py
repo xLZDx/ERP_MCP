@@ -336,13 +336,26 @@ class S16Core:
         correlation = _sha(decision_ref) if _valid_wire_text(decision_ref, limit=512) else None
         outcome = (DecisionAuditOutcome.ATTEMPT_UNCERTAIN if audit_state["consume_ambiguous"]
                    else DecisionAuditOutcome.REFUSED)
+        if not self._append_decision_refusal(safe_code, now=now, outcome=outcome,
+                                             correlation_digest=correlation):
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        return Result.refused(safe_code)
+
+    def record_decision_refusal(self, error: ErrorCode, *, now: datetime | None = None) -> bool:
+        """Persist a sanitized refusal raised before the core decision path is entered."""
+        safe_code = error if type(error) is ErrorCode else ErrorCode.AUDIT_UNAVAILABLE
+        return self._append_decision_refusal(safe_code, now=now)
+
+    def _append_decision_refusal(self, error: ErrorCode, *, now: object = None,
+                                 outcome: DecisionAuditOutcome = DecisionAuditOutcome.REFUSED,
+                                 correlation_digest: str | None = None) -> bool:
         event = DecisionAuditEvent(outcome, self._decision_audit_time(now),
-                                   safe_code, correlation)
+                                   error, correlation_digest)
         try:
             self.store.append_decision_refusal(event)
         except Exception:
-            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
-        return Result.refused(safe_code)
+            return False
+        return True
 
     def _decision_audit_time(self, supplied: object) -> datetime:
         if _aware(supplied):

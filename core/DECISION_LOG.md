@@ -2556,3 +2556,9 @@ At exact `208dc2cedac3b0576fff65fec830c01820bbda40`, seven named tests passed in
 
 The HTTP handler used to compare the URL ticket with the returned receipt after the core finalized the decision. Pass the route ticket to the core and validate it against the stored decision binding before reading or writing the receipt. An inconsistent request must leave the original reference available to the correct route.
 
+At exact `8d67a2d7a06eb3834a14dd20154c631b9e588fe9`, the four named page scenarios passed in 0.83s, exit 0. The routed mismatch leaves both receipts unchanged and the same reference can be used exactly once on its correct route.
+
+## 2026-11-18 - Record refusals at the approval transport boundary
+
+For a recognized canonical decision POST, audit a rejected request that has not reached the approval service. Capture only a safe error code and time at this boundary. Cover service refusals before the core through the same operation. Keep core auditing responsible for decisions it handled, avoiding duplicate records across layers. An unavailable refusal sink produces the existing audit-unavailable response.
+

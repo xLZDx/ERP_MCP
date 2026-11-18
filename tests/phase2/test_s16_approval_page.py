@@ -13,7 +13,7 @@ from starlette.testclient import TestClient
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, render
 from erp_mcp_s16.approval_page import create_approval_app
-from erp_mcp_s16.contracts import ApprovalDecision, Result
+from erp_mcp_s16.contracts import ApprovalDecision, DecisionAuditOutcome, Result
 from s16_helpers import ORIGIN, build_env, propose, raw_create
 
 
@@ -94,6 +94,10 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
     receipt = env.store.get(snapshot.change_id)
     assert receipt.approval is not None and receipt.approval.decision == "APPROVE"
     assert env.apply_port.calls == 0
+    final_events = [event for event in env.store.decision_audit
+                    if event.outcome is DecisionAuditOutcome.APPROVE]
+    assert len(final_events) == 1
+    assert final_events[0].error_code is None
 
     replay = client.post(
         f"/approval/{snapshot.change_id}/decision", data=form,
@@ -102,6 +106,8 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
     assert replay.status_code == 403
     assert env.store.get(snapshot.change_id).approval == receipt.approval
     assert env.apply_port.calls == 0
+    assert sum(event.outcome is DecisionAuditOutcome.APPROVE
+               for event in env.store.decision_audit) == 1
 
     decided = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
     assert decided.status_code == 403
@@ -361,6 +367,32 @@ def test_approval_post_rejects_missing_or_foreign_origin_and_keeps_authorization
     )
     assert missing.status_code == foreign.status_code == csrf_rejected.status_code == 403
     assert env.store.get(pending.change_id) == before
+    accepted = client.post(
+        f"/approval/{pending.change_id}/decision", data=valid_form,
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+    assert accepted.status_code == 200
+    assert env.store.get(pending.change_id).approval is not None
+    events = env.store.decision_audit
+    assert [event.outcome for event in events[:2]] == [
+        DecisionAuditOutcome.REFUSED,
+        DecisionAuditOutcome.REFUSED,
+    ]
+    assert [event.error_code for event in events[:2]] == [
+        ErrorCode.NOT_ENTITLED,
+        ErrorCode.NOT_ENTITLED,
+    ]
+    assert events[-1].outcome is DecisionAuditOutcome.APPROVE
+    assert sum(event.outcome is DecisionAuditOutcome.APPROVE for event in events) == 1
+    assert all(event.occurred_at == env.clock.now() for event in events)
+    assert all(event.correlation_digest is None for event in events[:2])
+    audit_repr = repr(events)
+    for private_value in (decision_ref.group(1), csrf_token.group(1),
+                          env.session.session_id, env.session.csrf_secret):
+        assert private_value not in audit_repr
+    accepted_receipt = env.store.get(pending.change_id)
+    assert accepted_receipt.scope == before.scope
+    assert accepted_receipt.approval is not None
     assert env.apply_port.calls == 0
 
 
@@ -397,7 +429,8 @@ def test_approval_post_bounds_body_bytes_and_asgi_message_count_before_service_c
         return sent
 
     over_byte_limit = asyncio.run(run_request(({
-        "type": "http.request", "body": b"x" * 8193, "more_body": False,
+        "type": "http.request", "body": b"private-note=must-not-be-stored&" + b"x" * 8193,
+        "more_body": False,
     },)))
     over_message_limit = asyncio.run(run_request(tuple(
         {"type": "http.request", "body": b"", "more_body": True}
@@ -406,6 +439,42 @@ def test_approval_post_bounds_body_bytes_and_asgi_message_count_before_service_c
 
     assert [message["status"] for message in (over_byte_limit[0], over_message_limit[0])] == [400, 400]
     assert submit_calls == []
+    events = env.store.decision_audit
+    assert len(events) == 2
+    assert all(event.outcome is DecisionAuditOutcome.REFUSED for event in events)
+    assert all(event.error_code is ErrorCode.SCHEMA_INVALID for event in events)
+    assert all(event.occurred_at == env.clock.now() for event in events)
+    assert all(event.correlation_digest is None for event in events)
+    assert "must-not-be-stored" not in repr(events)
+
+
+def test_approval_transport_refusal_audit_failure_returns_safe_503_without_core_call():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-transport-audit-unavailable")
+    client = _client(env)
+    page = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+    assert page.status_code == 200
+    decision_ref = re.search(r'name="decision_ref" value="([^\"]+)"', page.text).group(1)
+    csrf_token = re.search(r'name="csrf_token" value="([^\"]+)"', page.text).group(1)
+    form = {"decision_ref": decision_ref, "csrf_token": csrf_token, "decision": "APPROVE"}
+    before = env.store.get(snapshot.change_id)
+    submit_calls = []
+    env.approval_service.submit_decision = lambda *args, **kwargs: submit_calls.append(args)
+
+    def unavailable_sink(_event):
+        raise OSError("private refusal sink detail")
+
+    env.store.append_decision_refusal = unavailable_sink
+    response = client.post(
+        f"/approval/{snapshot.change_id}/decision", data=form, headers=_headers(),
+    )
+
+    assert response.status_code == 503
+    assert render(ErrorCode.AUDIT_UNAVAILABLE).message in response.text
+    assert "private refusal sink detail" not in response.text
+    assert submit_calls == []
+    assert env.store.get(snapshot.change_id) == before
+    assert env.store.decision_audit == ()
 
 
 def test_malformed_http_scope_fields_return_schema_error_before_auth_or_service():
