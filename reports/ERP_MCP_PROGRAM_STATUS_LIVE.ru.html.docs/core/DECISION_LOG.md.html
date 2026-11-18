@@ -2749,4 +2749,8 @@ The Admin Control Center now exposes the GET list/detail routes as a read-only c
 ## 2026-11-18 — Refresh S17 program report after workbench integration
 
 Regenerate the standard Russian live report after `d5223044` so its provenance and commit update log include the bounded read-only ledger workbench. This documentation snapshot preserves the plan-derived counts and does not claim API/browser tests, PostgreSQL runtime qualification, GPT-PM approval, or task acceptance.
+
+## 2026-11-18 — Keep S17 company change status distinct from source queue jobs
+
+The Admin workbench status route reads the durable `change_ledger` projections; it is not a `living.jobs` queue browser. The queue row identity is `(tenant_id, source_id, job_id)` and does not carry `company_id`, while one registered source may contain multiple companies. `JobRecord` has company ownership for the existing known-ID user-session read contract, but its visible `FakeJobDispatcher` is not a production Admin list service. Do not infer company ownership from a queue row, payload, source key, or job id and do not expose a source-wide queue to one company. A future job list needs a durable company binding or a reviewed company-scoped projection, a read-only database function and exact-company authorization rechecked after the read. Until that separate contract exists, the UI calls its existing view “Change status” and reports only change-ledger state. No migration, runtime qualification, or test was performed for this decision.
 </pre></main></body></html>
