@@ -235,6 +235,39 @@ class TestIdP:
                 return None
             return session
 
+    def reauthenticate(self, session, decision_ref: str, now,
+                       credential: str | None = None):
+        """Issue TEST-only proof for one decision after checking the fixture credential."""
+        from .contracts import ApproverSession
+        if (self.credential_authority is None or type(session) is not ApproverSession
+                or type(decision_ref) is not str or not 32 <= len(decision_ref) <= 512
+                or any(character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+                       for character in decision_ref)
+                or type(credential) is not str or not credential):
+            return None
+        with self._lock:
+            current = self.validate_session(session, now)
+            if current is None:
+                return None
+            try:
+                evidence = self.credential_authority.verify(
+                    current.principal.principal_id, credential)
+                if (type(evidence) is not CredentialGenerationEvidence
+                        or evidence.principal_id != current.principal.principal_id
+                        or type(evidence.generation) is not int
+                        or evidence.generation <= 0
+                        or evidence.generation != current.credential_generation
+                        or not self._credential_generation_current(current)):
+                    return None
+                encoded = decision_ref.encode("ascii", errors="strict")
+                digest = hashlib.sha256(encoded).hexdigest()
+                replacement = replace(current, reauthenticated_at=now,
+                                      reauthentication_digest=digest)
+            except Exception:
+                return None
+            self._sessions[current.session_id] = replacement
+            return replacement
+
     def revoke_session(self, session_id: str) -> None:
         with self._lock:
             self._revoked_sessions.add(session_id)

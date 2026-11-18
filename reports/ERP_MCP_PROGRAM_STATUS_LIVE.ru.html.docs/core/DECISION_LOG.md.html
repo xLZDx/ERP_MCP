@@ -2608,4 +2608,16 @@ The first S16-05 replay test draft unpacked `build_env()` as though it returned 
 
 Architecture review of E16-4 found that `RouteProbePort` is called with the ASGI listener address, not an outbound 1C target. The S16 plan also explicitly keeps the apply port fake-only and forbids gateway/listener binding, while S14 `write_port.py` is still a `NotWired` skeleton. Finding: `MAJOR | S16_SPRINT_PLAN §5/§E16-4; src/erp_mcp_s16/ingress.py; src/business_ai_gateway/phase2/change_ledger/write_port.py | the current route check cannot prove writer-target SSRF or DNS-rebinding safety | an ASGI listener address is checked but an eventual writer connects elsewhere | do not add an unconsumed S16 target-probe port or claim S16 acceptance for egress | put source-registry selection, pinned DNS through connect, redirect/proxy refusal and route enumeration in the writer adapter when it is separately in scope; retain S16-04 as PARTIAL.` The read-only `OneCReadClient` is not reused as a writer. No listener, network, or 1C call was started.
 
+## 2026-11-18 — Bind S16-01 approval to fresh action re-authentication
+
+The approval page previously accepted an MFA-marked session without proving a fresh authentication for the exact approval action. Add an injected re-authentication port for APPROVE and a core-level, fail-closed proof check bound to the exact decision reference, with a maximum age of five minutes and rejection of missing, stale, future or cross-decision proof. The TEST IdP may issue synthetic proof only after validating its TEST credential authority; REJECT remains unchanged. This decision establishes only a local contract. Durable database audit, actual cookie issuance and real IdP/session-adapter qualification remain open. Two focused attempts caught Result-wrapper dereferences in the new REJECT test; the owning test author corrected the test, and the assigned reviewer then passed both named files (89 passed at dirty-tree HEAD `c2d43c72`). The result is synthetic and not commit-bound.
+
+## 2026-11-18 — Close FIN bounded while retaining FIN-S1.2
+
+The operator explicitly deferred FIN-S1.2 until final project verification and directed that work continue to the next sprint. GPT-PM&#x27;s bounded FIN closure is recorded for exact head `3f7fe83a94793bd97f0e3f5476d1e361668096a9` (request `3b7f1905-5e0e-463b-920f-ee003ab035c0`); that commit is present on `main`. Close the native FIN sprint with the remaining one task still open/externally blocked, preserving its evidence and deferral. FIN is 9/10 accepted in bounded scope; this does not clear FIN-S1.2 or imply product/runtime/production acceptance. S16 remains the active sprint.
+
+## 2026-11-18 — Select report activity from reconciled sprint status
+
+Historical native harness sprint rows can remain open even when the source plan and Git reconciliation mark them `CLOSED_BOUNDED_SPRINT`; after FIN was closed, the report therefore selected S4 as active ahead of S16. Preserve exact current-branch matching, then prefer the unique sprint with reconciled project status `IN_PROGRESS` or `ACTIVE`; fall back to the legacy native selector only when that project status is absent or ambiguous. This changes report display selection only and does not rewrite historical harness task evidence.
+
 </pre></main></body></html>

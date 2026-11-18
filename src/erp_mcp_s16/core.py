@@ -145,6 +145,28 @@ def _valid_approver_session(session: object, principal: AuthenticatedPrincipal,
         return False
 
 
+def _valid_action_reauthentication(session: object, decision_ref: object,
+                                   now: object) -> bool:
+    """Check recent, action-bound reauthentication without retaining the wire reference."""
+    try:
+        if (type(session) is not ApproverSession or type(decision_ref) is not str
+                or not decision_ref or not _aware(now)):
+            return False
+        proof_time = session.reauthenticated_at
+        proof_digest = session.reauthentication_digest
+        if (type(proof_time) is not datetime or not _aware(proof_time)
+                or type(proof_digest) is not str
+                or not re.fullmatch(r"[0-9a-f]{64}", proof_digest)):
+            return False
+        current = now.astimezone(timezone.utc)
+        proved = proof_time.astimezone(timezone.utc)
+        age = current - proved
+        return (timedelta(0) <= age <= timedelta(minutes=5)
+                and hmac.compare_digest(proof_digest, _sha(decision_ref)))
+    except Exception:
+        return False
+
+
 class S16Core:
     """Synchronous policy coordinator with process-local replay and apply serialization."""
 
@@ -390,6 +412,8 @@ class S16Core:
                 or type(csrf_token) is not str or not re.fullmatch(r"[0-9a-f]{64}", csrf_token)
                 or type(origin) is not str or type(referer) is not str or not origin or not referer
                 or type(confirmation_text) is not str):
+            return Result.refused(ErrorCode.NOT_ENTITLED)
+        if decision == "APPROVE" and not _valid_action_reauthentication(session, decision_ref, now):
             return Result.refused(ErrorCode.NOT_ENTITLED)
         try:
             binding = self.store.get_decision_binding(decision_ref)

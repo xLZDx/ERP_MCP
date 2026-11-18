@@ -18,21 +18,39 @@ from s16_helpers import ORIGIN, build_env, propose, raw_create
 
 
 class _SessionAuth:
-    def __init__(self, session):
-        self.session = session
+    def __init__(self, env):
+        self.env = env
+        self.session = env.session
+        self.reauthentication_calls = []
 
     def authenticate(self, _scope, headers):
         return self.session if headers.get("x-test-session") == "approver-session" else None
 
+    def reauthenticate(self, _scope, headers, session, *, decision_ref, now):
+        credential = headers.get("x-test-reauth-credential")
+        self.reauthentication_calls.append((decision_ref, credential is not None))
+        if credential is None:
+            return None
+        proof_session = self.env.idp.reauthenticate(
+            session, decision_ref, now, credential=credential,
+        )
+        if proof_session is not None:
+            self.session = proof_session
+        return proof_session
+
 
 def _client(env):
-    app = create_approval_app(env.approval_service, _SessionAuth(env.session),
+    app = create_approval_app(env.approval_service, _SessionAuth(env),
                               origin=ORIGIN, clock=env.clock)
     return TestClient(app, base_url=ORIGIN)
 
 
 def _headers(**extra):
     return {"x-test-session": "approver-session", **extra}
+
+
+def _reauth_headers(env, **extra):
+    return _headers(**{"x-test-reauth-credential": env.test_credential, **extra})
 
 
 def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_decision():
@@ -88,7 +106,7 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
             "decision": "APPROVE"}
     accepted = client.post(
         f"/approval/{snapshot.change_id}/decision", data=form,
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
     assert accepted.status_code == 200
     receipt = env.store.get(snapshot.change_id)
@@ -101,7 +119,7 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
 
     replay = client.post(
         f"/approval/{snapshot.change_id}/decision", data=form,
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
     assert replay.status_code == 403
     assert env.store.get(snapshot.change_id).approval == receipt.approval
@@ -112,6 +130,67 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
     decided = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
     assert decided.status_code == 403
     assert "<form" not in decided.text
+
+
+def test_approval_post_requires_test_idp_reauthentication_and_reject_remains_unchanged():
+    env = build_env()
+    approved = propose(env, request_id="approval-page-reauth-required")
+    rejected = propose(env, request_id="approval-page-reject-no-reauth")
+    authenticator = _SessionAuth(env)
+    app = create_approval_app(env.approval_service, authenticator, origin=ORIGIN, clock=env.clock)
+    client = TestClient(app, base_url=ORIGIN)
+    submit_calls = []
+    submit_decision = env.approval_service.submit_decision
+
+    def tracked_submit(*args, **kwargs):
+        submit_calls.append(args)
+        return submit_decision(*args, **kwargs)
+
+    env.approval_service.submit_decision = tracked_submit
+    approval_page = client.get(f"/approval/{approved.change_id}", headers=_headers())
+    assert approval_page.status_code == 200
+    decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', approval_page.text).group(1)
+    csrf_token = re.search(r'name="csrf_token" value="([^"]+)"', approval_page.text).group(1)
+    form = {"decision_ref": decision_ref, "csrf_token": csrf_token, "decision": "APPROVE"}
+    before_approval = env.store.get(approved.change_id)
+
+    missing_proof = client.post(
+        f"/approval/{approved.change_id}/decision", data=form,
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert missing_proof.status_code == 403
+    assert submit_calls == []
+    assert env.store.get(approved.change_id) == before_approval
+    assert env.store.get(approved.change_id).approval is None
+    refusal = env.store.decision_audit[-1]
+    assert refusal.outcome is DecisionAuditOutcome.REFUSED
+    assert refusal.error_code is ErrorCode.NOT_ENTITLED
+    assert decision_ref not in repr(env.store.decision_audit)
+
+    accepted = client.post(
+        f"/approval/{approved.change_id}/decision", data=form,
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert accepted.status_code == 200
+    assert len(submit_calls) == 1
+    assert env.store.get(approved.change_id).approval.decision == "APPROVE"
+
+    reject_page = client.get(f"/approval/{rejected.change_id}", headers=_headers())
+    assert reject_page.status_code == 200
+    reject_ref = re.search(r'name="decision_ref" value="([^"]+)"', reject_page.text).group(1)
+    reject_csrf = re.search(r'name="csrf_token" value="([^"]+)"', reject_page.text).group(1)
+    rejected_response = client.post(
+        f"/approval/{rejected.change_id}/decision",
+        data={"decision_ref": reject_ref, "csrf_token": reject_csrf, "decision": "REJECT"},
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert rejected_response.status_code == 200
+    assert env.store.get(rejected.change_id).approval.decision == "REJECT"
+    assert len(authenticator.reauthentication_calls) == 2
+    assert authenticator.reauthentication_calls == [(decision_ref, False), (decision_ref, True)]
 
 
 def test_approval_decision_reference_is_bound_to_the_routed_ticket():
@@ -132,7 +211,7 @@ def test_approval_decision_reference_is_bound_to_the_routed_ticket():
             "csrf_token": csrf_token.group(1), "decision": "APPROVE"}
     before_a = env.store.get(snapshot_a.change_id)
     before_b = env.store.get(snapshot_b.change_id)
-    headers = _headers(origin=ORIGIN, referer=ORIGIN + "/approval/review")
+    headers = _reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review")
 
     wrong_ticket = client.post(
         f"/approval/{snapshot_b.change_id}/decision", data=form, headers=headers,
@@ -214,7 +293,7 @@ def test_approval_page_refuses_preview_and_decision_after_approver_revocation():
     refused_decision = client.post(
         f"/approval/{snapshot.change_id}/decision",
         data=stale_form,
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
 
     assert next_preview.status_code == 403
@@ -265,7 +344,7 @@ def test_amount_equal_to_confirmation_threshold_needs_no_extra_confirmation():
         f"/approval/{snapshot.change_id}/decision",
         data={"decision_ref": decision_ref, "csrf_token": csrf_token,
               "decision": "APPROVE"},
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
 
     assert accepted.status_code == 200
@@ -292,7 +371,7 @@ def test_amount_above_confirmation_threshold_requires_exact_phrase():
         f"/approval/{snapshot.change_id}/decision",
         data={"decision_ref": decision_ref, "csrf_token": csrf_token,
               "decision": "APPROVE"},
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
     assert missing_phrase.status_code == 403
     assert env.store.get(snapshot.change_id).approval is None
@@ -308,7 +387,7 @@ def test_amount_above_confirmation_threshold_requires_exact_phrase():
         f"/approval/{snapshot.change_id}/decision",
         data={"decision_ref": fresh_ref, "csrf_token": fresh_csrf,
               "decision": "APPROVE", "confirmation_text": "CONFIRM CHANGE"},
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
 
     assert accepted.status_code == 200
@@ -332,7 +411,7 @@ def test_approval_post_rejects_target_version_changed_after_preview():
         f"/approval/{snapshot.change_id}/decision",
         data={"decision_ref": decision_ref, "csrf_token": csrf_token,
               "decision": "APPROVE"},
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
 
     assert refused.status_code == 403
@@ -369,7 +448,7 @@ def test_approval_post_rejects_missing_or_foreign_origin_and_keeps_authorization
     assert env.store.get(pending.change_id) == before
     accepted = client.post(
         f"/approval/{pending.change_id}/decision", data=valid_form,
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
     assert accepted.status_code == 200
     assert env.store.get(pending.change_id).approval is not None
@@ -399,7 +478,7 @@ def test_approval_post_rejects_missing_or_foreign_origin_and_keeps_authorization
 def test_approval_post_bounds_body_bytes_and_asgi_message_count_before_service_call():
     env = build_env()
     snapshot = propose(env, request_id="approval-form-bounds")
-    app = create_approval_app(env.approval_service, _SessionAuth(env.session),
+    app = create_approval_app(env.approval_service, _SessionAuth(env),
                               origin=ORIGIN, clock=env.clock)
     submit_calls = []
     env.approval_service.submit_decision = lambda *args, **kwargs: submit_calls.append(args)
@@ -561,7 +640,7 @@ def test_approval_post_rejects_success_receipt_bound_to_another_decision_ref():
     response = client.post(
         f"/approval/{snapshot.change_id}/decision",
         data={"decision_ref": decision_ref, "csrf_token": csrf_token, "decision": "APPROVE"},
-        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+        headers=_reauth_headers(env, origin=ORIGIN, referer=ORIGIN + "/approval/review"),
     )
 
     assert response.status_code == 403

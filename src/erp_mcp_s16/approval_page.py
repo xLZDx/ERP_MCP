@@ -18,7 +18,7 @@ from .contracts import (
     ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionPage, PrincipalRole, Result, TargetScope,
     TokenClass,
 )
-from .core import _valid_approver_session
+from .core import _valid_action_reauthentication, _valid_approver_session
 
 __all__ = ["create_approval_app", "SESSION_COOKIE_NAME"]
 
@@ -45,6 +45,9 @@ class ApprovalServicePort(Protocol):
 
 class ApproverSessionAuthenticator(Protocol):
     def authenticate(self, scope: Mapping[str, Any], headers: Mapping[str, str]) -> ApproverSession | None: ...
+    def reauthenticate(self, scope: Mapping[str, Any], headers: Mapping[str, str],
+                       session: ApproverSession, *, decision_ref: str,
+                       now: datetime) -> ApproverSession | None: ...
 
 
 class Clock(Protocol):
@@ -518,28 +521,57 @@ def create_approval_app(service: ApprovalServicePort,
                                 if not data:
                                     response = await decision_error(ErrorCode.SCHEMA_INVALID, 400, now=now)
                                 else:
-                                    try:
-                                        result = await _invoke(
-                                            service.submit_decision, session.principal, session,
-                                            data["decision_ref"], data["decision"],
-                                            csrf_token=data["csrf_token"],
-                                            confirmation_text=data.get("confirmation_text", ""),
-                                            origin=headers.get("origin", ""), referer=headers.get("referer", ""),
-                                            now=now, expected_change_id=parsed_ticket)
-                                    except Exception:
-                                        result = None
-                                    if (type(result) is not Result or result.error is not None
-                                            or not _valid_decision_result(
-                                                result.value, ticket=parsed_ticket,
-                                                decision_ref=data["decision_ref"], decision=data["decision"],
-                                                session=session, now=now)):
-                                        response = _error(result.error if type(result) is Result and result.error else
-                                                          ErrorCode.AUDIT_UNAVAILABLE)
-                                    else:
-                                        message = ("Rejection recorded." if data["decision"] == "REJECT"
-                                                   else "Decision recorded.")
-                                        response = _page("Decision recorded", "<p role=\"status\">" + message +
-                                                         "</p><p>Return to pending changes.</p>")
+                                    response = None
+                                    decision_session = session
+                                    if data["decision"] == "APPROVE":
+                                        reauthenticate = getattr(authenticator, "reauthenticate", None)
+                                        try:
+                                            proof_session = (await _invoke(
+                                                reauthenticate, scope, headers, session,
+                                                decision_ref=data["decision_ref"], now=now,
+                                            ) if callable(reauthenticate) else None)
+                                        except Exception:
+                                            proof_session = None
+                                        if (type(proof_session) is not ApproverSession
+                                                or proof_session.session_id != session.session_id
+                                                or proof_session.principal != session.principal
+                                                or proof_session.created_at != session.created_at
+                                                or proof_session.last_seen_at != session.last_seen_at
+                                                or proof_session.idle_expires_at != session.idle_expires_at
+                                                or proof_session.expires_at != session.expires_at
+                                                or proof_session.csrf_secret != session.csrf_secret
+                                                or proof_session.credential_generation != session.credential_generation
+                                                or not _valid_approver_session(
+                                                    proof_session, session.principal, now)
+                                                or not _valid_action_reauthentication(
+                                                    proof_session, data["decision_ref"], now)):
+                                            response = await decision_error(
+                                                ErrorCode.NOT_ENTITLED, 403, now=now)
+                                        else:
+                                            decision_session = proof_session
+                                    if response is None:
+                                        try:
+                                            result = await _invoke(
+                                                service.submit_decision, decision_session.principal, decision_session,
+                                                data["decision_ref"], data["decision"],
+                                                csrf_token=data["csrf_token"],
+                                                confirmation_text=data.get("confirmation_text", ""),
+                                                origin=headers.get("origin", ""), referer=headers.get("referer", ""),
+                                                now=now, expected_change_id=parsed_ticket)
+                                        except Exception:
+                                            result = None
+                                        if (type(result) is not Result or result.error is not None
+                                                or not _valid_decision_result(
+                                                    result.value, ticket=parsed_ticket,
+                                                    decision_ref=data["decision_ref"], decision=data["decision"],
+                                                    session=decision_session, now=now)):
+                                            response = _error(result.error if type(result) is Result and result.error else
+                                                              ErrorCode.AUDIT_UNAVAILABLE)
+                                        else:
+                                            message = ("Rejection recorded." if data["decision"] == "REJECT"
+                                                       else "Decision recorded.")
+                                            response = _page("Decision recorded", "<p role=\"status\">" + message +
+                                                             "</p><p>Return to pending changes.</p>")
                         else:
                             response = _error(ErrorCode.SCHEMA_INVALID, 405)
         status, response_headers, content = response

@@ -888,3 +888,8 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: S16's inbound listener probe was described as writer-target route proof even though it only receives the ASGI server address and the S14 writer remains `NotWired`. Rule: keep ingress and egress evidence separate; enforce DNS/redirect/proxy policy at the actual outbound connect boundary and never invent a disconnected probe abstraction.
 
+- 2026-11-18 SHORTCOMING: The S16-01 test author treated the returned `Result` wrapper as the contained page in a new REJECT scenario, and the first correction missed another field access. Rule: inspect the entire new test path for wrapper/value shape, then rerun the exact failed named files before recording acceptance. The corrected named rerun passed (89 tests), but remains dirty-tree evidence until committed.
+
+- 2026-11-18 SUCCESS: When a sprint is bounded-closed with one intentionally deferred external task, close the native sprint state while preserving the deferred task and its evidence. The task remains visible in the report; it is not silently counted as accepted.
+
+- 2026-11-18 SHORTCOMING: The report selected the first native sprint still marked open, so it presented historical S4 instead of the unique reconciled `IN_PROGRESS` sprint S16. Rule: reports must preserve native harness state as a separate layer and choose current work from the reconciled project status when historical rows remain open.

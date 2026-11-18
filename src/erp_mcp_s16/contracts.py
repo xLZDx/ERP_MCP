@@ -96,6 +96,8 @@ class ApproverSession:
     expires_at: datetime
     csrf_secret: str
     credential_generation: int | None = None
+    reauthenticated_at: datetime | None = None
+    reauthentication_digest: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
