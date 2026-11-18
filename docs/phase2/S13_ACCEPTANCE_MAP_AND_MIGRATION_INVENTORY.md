@@ -124,3 +124,8 @@ Migration 027 preserves the granted register_target, bump_epoch, and observe_tar
 
 Retain the existing fenced recovery primitives and migration 036's owner-only entry. The diagnostic preflight rejects malformed base/state fields and scope counts outside one through 64 before constructing any scope objects. It remains read-only and never grants readiness. This completes assembly for disposable qualification of the retained bounded code. Coordinated operational recovery, post-recovery admission and 1C restore skew require the outstanding operational trust and writer evidence. The next stage runs the named tests in the approved order and does not infer acceptance from source assembly.
 
+
+### Bounded S13 engineering closeout
+
+PR 58 merged at 1f0192dd5a549d0605e2cefd2f0fd98d85c89de3 after review of exact head 6dc18f0177f88d8ccfc8f2c5e748385d636712c1. GPT-PM request 01544185-bdaf-4558-bc17-1f6063ed0dda and reply 13a90106-2669-5c18-8f26-10695e08fd67 approved all five bounded engineering stories. Operational S13, actual authority/custody, full registry matrix and adapter cutover, physical 1C fencing, durable READY and production permissions remain open. The test path does not enable operational recovery.
+

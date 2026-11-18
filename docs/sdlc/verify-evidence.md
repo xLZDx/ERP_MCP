@@ -1088,3 +1088,24 @@ Result: 7 passed in 48.89s; exit 0. Fixture teardown reported no error. No unrel
 
 The independent reviewers chosen for the sprint diff were code-reviewer, silent-failure-hunter, python-reviewer, and database-reviewer. They reviewed fc25b8f statically. No BLOCKER or MAJOR was reported. The code reviewer reported one MINOR: current tests cover role-collision refusal at registration and CLI configuration, while historic replay rejection has source evidence only. Track the focused replay regression in the backlog. Database review independently inspected the test fixture and SQL scope but did not run the migrations or tests. The reviewed source remains diagnostic/TEST only; the complete registry race matrix, adapter cutover, operational trust, physical-writer fencing and live recovery remain open.
 
+
+## 2026-11-18 - Exact approved S13 head supplemental and merge receipt
+
+On clean 6dc18f0177f88d8ccfc8f2c5e748385d636712c1, a fresh designated e2e-runner used .venv/Scripts/python.exe -m pytest -q -s with test_s13_release_claim_fence.py::test_s13_uf54_release_claim_wrong_target_owner_refuses_without_delta and test_s13_base_recovery_preflight.py::test_malformed_begin_result_is_rejected_before_any_scope_preflight. With owned fixture enabled and inherited DSN absent, 15 passed in 9.62s; exit 0. The exact owned container was absent afterward. The first malformed CLI attempt failed before test execution; this corrected invocation is the execution receipt. The exact-head code reviewer confirmed no source, database or test changes since fc25b8f; the separate static database review is retained in this log although the ledger did not have a fresh role telemetry record for it.
+
+PR 58 merged the approved head into main at 1f0192d. This is bounded engineering; operational recovery and release acceptance remain NOT_RUN.
+
+## 2026-11-18 - S14 bounded offline acceptance
+
+On source HEAD `2e1778c`, the designated e2e-runner used `PYTHONPATH=src;tests/phase2` and `.venv/Scripts/python.exe -m pytest -q` with these node IDs:
+
+- `tests/phase2/test_s14_simulated_write_port_protocol_e2e.py::SimulatedWritePortProtocolE2ETests::test_protocol_consumer_runs_only_test_lane_create_post_unpost`
+- `tests/phase2/test_s14_simulated_write_port_protocol_e2e.py::SimulatedWritePortProtocolE2ETests::test_unknown_outcomes_are_test_only_and_never_authorize_retry`
+- `tests/phase2/test_s12_reconciliation_immutability_e2e.py::ReconciliationEvidenceImmutabilityE2ETests::test_delayed_unknown_cannot_replace_a_newer_base_hold`
+
+Result: `3 passed in 0.36s`. These cases exercise distinct receipt approvals and movement effects, an unresolved clone hold across adapters while reads continue, and preservation of the active hold after a delayed callback. The e2e-runner also reported an unintended scoped whitespace check. It is excluded from acceptance evidence.
+
+For S14-06, the current role file and `c4ab1ea` resolve to the same Git blob, `2aff3915002ffb43a5e07ffaeae4d731c3af4c65`. This ties the source to the recorded 57-object measurement on `818HA_p2diff`. The selected operational account, licensed channel and fresh 1C read-back remain NOT_RUN.
+
+On the same source HEAD, the designated functional-test-reviewer used `.venv/Scripts/python.exe -m pytest -q tests/phase2/test_s14_simulated_write_port.py tests/test_auth.py`. The first pass identified two fixture defects: a single change identity was reused across distinct operations, and a fixture authority was reused across different clone instances. The corrected final run reported `44 passed, 23 subtests passed in 6.69s`, exit 0. This covers the clone authority, marker and duplicate refusal, unresolved hold, distinct approvals, and both directions of token audience isolation. The normal additional read audience remains covered.
+

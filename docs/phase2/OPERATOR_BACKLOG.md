@@ -1901,3 +1901,35 @@ The existing S13 operator adapter selects directly ungranted versioned registrat
 
 The scoped code review of fc25b8f identified one MINOR coverage gap. Registration and client pin configuration refuse a checkpoint signer colliding with either receipt authority, and startup checks retained key registrations. Add a focused legacy fixture proving startup refuses an otherwise valid historical role collision. This is test coverage work; no current functional defect was established.
 
+
+## S14-01 operational 1C write port qualification
+
+The retained offline simulation has an approved TEST-only contract and the low-level COM draft executor and STA lane remain candidate source. Completing the measured operational port requires a CT14-qualified licensed clone and channel, measured write-account rights including payment/delete denial, a confirmed in-write marker, and authenticated base/tenant/company/organization/version binding. Exercise the exact authorized receipt operations and retain evidence for lookup, queue fencing and recovery. The licensed-channel owner is not assigned in the canonical plan. Continue local technical work without representing simulation receipts or historical draft rollback as full S14 acceptance. No live channel activation is implied.
+
+
+## S14-02 operational marked write and duplicate qualification
+
+Verify that the selected CT14-qualified licensed channel records the change identity and digest in the same receipt write, independently reads them back, and serializes the canonical business-key check with the actual create. Include response loss, edited-marker control, a conflicting proposal, and an independently approved separate document. Historical draft rollback and the governed TEST simulator do not establish those channel-specific properties. The qualified channel owner is unassigned in the current plan.
+
+## S14-03 operational call ownership and deadline proof
+
+Qualify compare-and-write under one 1C lock on the selected licensed test clone. Bind each invocation to the host, worker process, and 1C session, and observe call completion independently of a caller timeout. Keep the base held while execution is possible. A timeout alone provides no termination evidence. The governed TEST hold models this decision locally. The qualified channel owner is unassigned in the current plan.
+
+## S14-04 operational read-back and triage evidence
+
+On the qualified 1C clone, exercise response loss and prove reader health, the settle interval, completeness of the observation, and completion of the original call. Include an edited marker and an unhealthy reader as negative controls. The qualified channel owner is unassigned in the current plan.
+
+Resolve the triage timing discrepancy before operational acceptance. The offline T12 transition and its named test require both five attempts and fifteen minutes. The PostgreSQL sweep can escalate on either threshold, and the frozen transition table summarizes the condition as exhausted attempts/window. Establish a single reviewed rule and cover both single-threshold cases without weakening the hold or absence-proof rules.
+
+## S14-05 operational receipt register read-back
+
+On the qualified 1C clone, execute separate approved create, post, and unpost changes and independently inspect the recorder registers before and after each. Confirm no draft movements, the approved post movements, removal by unpost, and no payment or unexpected register effects. Record the exact clone, channel, receipt shape, and roles. The qualified channel owner is unassigned in the current plan.
+
+## S14-06 effective rights for the selected writer identity
+
+Reuse the measured narrow role on clone `818HA_p2diff` as the reference. The October 12 record covers 53 objects and the October 27 follow-up covers 57 after four catalog read grants in `c4ab1ea`. Before enabling the selected writer, bind its actual account and clone identity, compare effective rights with the measured role, and repeat receipt admission and denied payment/delete controls on that account. The earlier clone measurements do not establish the identity or inherited grants of the selected channel. The qualified channel owner is unassigned in the current plan.
+
+## S14-07 configured identity-provider evidence
+
+Verify that the selected identity provider issues dedicated private-writer tokens and that its read clients use configured read audiences. Exercise both actual listeners against normal, mixed, and wrong-audience tokens and record denial before any 1C call. The authorized deployed identity-provider binding is not in the current evidence.
+

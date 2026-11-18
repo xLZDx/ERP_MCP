@@ -12,6 +12,7 @@ import hmac
 import json
 import re
 from datetime import datetime, timezone
+from threading import RLock
 from typing import Any, Final
 
 from ..change.proposal import canonical_json, payload_digest
@@ -88,19 +89,43 @@ class SyntheticPermitAuthority:
     def __init__(self, simulator_identity: str, test_key: bytes) -> None:
         if not is_identity_text(simulator_identity) or type(test_key) is not bytes or len(test_key) < 32:
             raise ValueError("SYNTHETIC_PERMIT_CONFIGURATION_INVALID")
-        self.simulator_identity = simulator_identity
+        self._simulator_identity = simulator_identity
         self._test_key = bytes(test_key)
         self._signer_key_id = "SIM-TEST:" + simulator_identity
+        self._binding_lock = RLock()
+        self._bound_clone: SimulatedOneC | None = None
+
+    @property
+    def simulator_identity(self) -> str:
+        return self._simulator_identity
+
+    def _bind_to_clone(self, clone: SimulatedOneC, tenant_id: str,
+                       company_id: str, organization: str) -> None:
+        """Bind once to one exact clone; repeated adapters may share that clone."""
+        with self._binding_lock:
+            if self._bound_clone is not None and self._bound_clone is not clone:
+                raise ValueError("SYNTHETIC_PERMIT_AUTHORITY_ALREADY_BOUND")
+            clone.bind_simulation_scope(tenant_id, company_id, organization)
+            if self._bound_clone is None:
+                self._bound_clone = clone
+
+    def _bound_clone_identity(self) -> tuple[SimulatedOneC, str]:
+        with self._binding_lock:
+            clone = self._bound_clone
+            if clone is None:
+                raise ValueError("SYNTHETIC_PERMIT_AUTHORITY_UNBOUND")
+            return clone, clone._simulation_permit_binding_token().hex()
 
     def issue(self, ticket: ApplyTicket, expires_at: datetime, *, checkpoint_seq: int = 0) -> DispatchPermit:
         """Create a synthetic fixture permit. Never suitable for a real writer or ledger."""
+        _, clone_identity = self._bound_clone_identity()
         if (type(ticket) is not ApplyTicket or not is_aware_datetime(expires_at)
                 or not self._valid_ticket_binding(ticket)):
             raise ValueError("SYNTHETIC_PERMIT_INPUT_INVALID")
         if type(checkpoint_seq) is not int or checkpoint_seq < 0:
             raise ValueError("SYNTHETIC_PERMIT_INPUT_INVALID")
         permit_id = "SIM-PERMIT:" + ticket.call_id
-        permit_digest = _ticket_digest(ticket, self.simulator_identity)
+        permit_digest = _ticket_digest(ticket, self.simulator_identity, clone_identity)
         unsigned = DispatchPermit(
             permit_id=permit_id,
             permit_digest=permit_digest,
@@ -114,10 +139,18 @@ class SyntheticPermitAuthority:
             repair_authorization_id=ticket.repair_authorization_id,
             lifecycle_epoch=0,
         )
-        signature = hmac.new(self._test_key, _permit_message(unsigned, ticket, self.simulator_identity), hashlib.sha256).hexdigest()
+        signature = hmac.new(
+            self._test_key,
+            _permit_message(unsigned, ticket, self.simulator_identity, clone_identity),
+            hashlib.sha256,
+        ).hexdigest()
         return DispatchPermit(**{**unsigned.__dict__, "signature": signature})
 
     def verify(self, ticket: ApplyTicket, permit: DispatchPermit, now: datetime) -> bool:
+        try:
+            _, clone_identity = self._bound_clone_identity()
+        except ValueError:
+            return False
         if (type(ticket) is not ApplyTicket or type(permit) is not DispatchPermit
                 or not is_aware_datetime(now) or not is_aware_datetime(permit.expires_at)
                 or not self._valid_ticket_binding(ticket)):
@@ -125,7 +158,7 @@ class SyntheticPermitAuthority:
         if now.utcoffset() is None or permit.expires_at.utcoffset() is None or permit.expires_at <= now:
             return False
         if (permit.permit_id != "SIM-PERMIT:" + ticket.call_id
-                or permit.permit_digest != _ticket_digest(ticket, self.simulator_identity)
+                or permit.permit_digest != _ticket_digest(ticket, self.simulator_identity, clone_identity)
                 or permit.change_id != ticket.change_id or permit.generation != ticket.generation
                 or permit.call_id != ticket.call_id or permit.signer_key_id != self._signer_key_id
                 or permit.repair_authorization_id != ticket.repair_authorization_id
@@ -133,7 +166,11 @@ class SyntheticPermitAuthority:
                 or type(permit.checkpoint_seq) is not int or permit.checkpoint_seq < 0
                 or type(permit.signature) is not str or _HEX64.fullmatch(permit.signature) is None):
             return False
-        expected = hmac.new(self._test_key, _permit_message(permit, ticket, self.simulator_identity), hashlib.sha256).hexdigest()
+        expected = hmac.new(
+            self._test_key,
+            _permit_message(permit, ticket, self.simulator_identity, clone_identity),
+            hashlib.sha256,
+        ).hexdigest()
         return hmac.compare_digest(permit.signature, expected)
 
     @staticmethod
@@ -166,7 +203,7 @@ class SimulatedOneCWritePort:
         self._company_id = company_id
         self._organization = organization
         self._permit_authority = permit_authority
-        clone.bind_simulation_scope(tenant_id, company_id, organization)
+        permit_authority._bind_to_clone(clone, tenant_id, company_id, organization)
 
     async def verify_ticket(self, ticket: ApplyTicket) -> None:
         self._validate_ticket_shape(ticket)
@@ -302,15 +339,21 @@ def _ticket_body(ticket: ApplyTicket) -> dict[str, object]:
     }
 
 
-def _ticket_digest(ticket: ApplyTicket, simulator_identity: str) -> str:
-    body = {"simulator_identity": simulator_identity, "ticket": _ticket_body(ticket)}
+def _ticket_digest(ticket: ApplyTicket, simulator_identity: str, clone_identity: str) -> str:
+    body = {
+        "simulator_identity": simulator_identity,
+        "clone_instance_identity": clone_identity,
+        "ticket": _ticket_body(ticket),
+    }
     encoded = json.dumps(body, sort_keys=True, ensure_ascii=True, separators=(",", ":")).encode("ascii")
     return hashlib.sha256(_PERMIT_DOMAIN + encoded).hexdigest()
 
 
-def _permit_message(permit: DispatchPermit, ticket: ApplyTicket, simulator_identity: str) -> bytes:
+def _permit_message(permit: DispatchPermit, ticket: ApplyTicket, simulator_identity: str,
+                    clone_identity: str) -> bytes:
     body = {
         "simulator_identity": simulator_identity,
+        "clone_instance_identity": clone_identity,
         "ticket": _ticket_body(ticket),
         "permit": {
             "permit_id": permit.permit_id,

@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+import asyncio
 import time
 
 import jwt
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from mcp.server.auth.provider import AccessToken
 
-from business_ai_gateway.auth import JWTTokenVerifier
+from business_ai_gateway.auth import (
+    JWTTokenVerifier,
+    PRIVATE_WRITER_AUDIENCE,
+    PRIVATE_WRITER_SCOPE,
+)
 from business_ai_gateway.settings import Settings
+from erp_mcp_private_writer.private_auth import (
+    PrivateWriterAuthenticationError,
+    PrivateWriterAuthenticator,
+)
 
 
 class FixedJWKS:
@@ -116,6 +126,143 @@ def test_additional_audience_is_accepted():
         aud="https://api.openai.com/v1/mcp/tunnel_example",
     )
     assert verifier._verify_sync(token) is not None
+
+
+def test_read_verifier_rejects_private_writer_only_and_mixed_audiences(auth_setup):
+    verifier, private_key = auth_setup
+    writer_only = token_for(
+        private_key,
+        aud=PRIVATE_WRITER_AUDIENCE,
+        scope=PRIVATE_WRITER_SCOPE,
+    )
+    mixed = token_for(
+        private_key,
+        aud=["https://mcp.example.test/mcp", PRIVATE_WRITER_AUDIENCE],
+    )
+
+    assert verifier._verify_sync(writer_only) is None
+    assert verifier._verify_sync(mixed) is None
+
+
+@pytest.mark.parametrize(
+    "audience,accepted",
+    [
+        (PRIVATE_WRITER_AUDIENCE, True),
+        ([PRIVATE_WRITER_AUDIENCE], True),
+        ([PRIVATE_WRITER_AUDIENCE, "https://mcp.example.test/mcp"], False),
+    ],
+    ids=["writer-string", "writer-singleton-list", "mixed-audience"],
+)
+def test_private_writer_verifier_accepts_only_its_single_audience(auth_setup, audience, accepted):
+    read_verifier, private_key = auth_setup
+    settings = Settings(
+        oauth_enabled=True,
+        oauth_issuer="https://identity.example.test/",
+        oauth_audience="https://mcp.example.test/mcp",
+        oauth_jwks_url="https://identity.example.test/jwks",
+        oauth_required_scope="onec:read",
+        oauth_jwks_timeout_seconds=1.0,
+        oauth_jwks_cache_ttl_seconds=300,
+    )
+    verifier = JWTTokenVerifier(
+        settings,
+        audience=PRIVATE_WRITER_AUDIENCE,
+        required_scope=PRIVATE_WRITER_SCOPE,
+        resource=PRIVATE_WRITER_AUDIENCE,
+        private_writer=True,
+    )
+    verifier._jwks = FixedJWKS(read_verifier._jwks.key)
+    token = token_for(
+        private_key,
+        aud=audience,
+        scope=PRIVATE_WRITER_SCOPE,
+    )
+
+    result = verifier._verify_sync(token)
+
+    assert (result is not None) is accepted
+
+
+def test_private_writer_verifier_rejects_read_scope(auth_setup):
+    verifier, private_key = auth_setup
+    writer = JWTTokenVerifier(
+        verifier.settings,
+        audience=PRIVATE_WRITER_AUDIENCE,
+        required_scope=PRIVATE_WRITER_SCOPE,
+        resource=PRIVATE_WRITER_AUDIENCE,
+        private_writer=True,
+    )
+    writer._jwks = verifier._jwks
+    read_scoped_token = token_for(
+        private_key,
+        aud=PRIVATE_WRITER_AUDIENCE,
+        scope="onec:read",
+    )
+
+    assert writer._verify_sync(read_scoped_token) is None
+
+
+@pytest.mark.parametrize(
+    "audience,accepted",
+    [
+        (PRIVATE_WRITER_AUDIENCE, True),
+        ([PRIVATE_WRITER_AUDIENCE], True),
+        ([PRIVATE_WRITER_AUDIENCE, "https://mcp.example.test/mcp"], False),
+    ],
+    ids=["writer-string", "writer-singleton-list", "mixed-audience"],
+)
+def test_private_authenticator_rechecks_injected_verifier_audience(audience, accepted):
+    class InjectedVerifier:
+        async def verify_token(self, token):
+            return AccessToken(
+                token=token,
+                client_id="writer-client",
+                scopes=[PRIVATE_WRITER_SCOPE],
+                expires_at=int(time.time()) + 120,
+                subject="writer-subject",
+                claims={"aud": audience},
+            )
+
+    authenticator = PrivateWriterAuthenticator(
+        InjectedVerifier(),
+        allowed_client_ids=frozenset({"writer-client"}),
+    )
+
+    async def authenticate():
+        if accepted:
+            caller = await authenticator.authenticate(["Bearer a.b.c"])
+            assert caller.client_id == "writer-client"
+        else:
+            with pytest.raises(PrivateWriterAuthenticationError) as raised:
+                await authenticator.authenticate(["Bearer a.b.c"])
+            assert raised.value.code == "UNAUTHORIZED"
+
+    asyncio.run(authenticate())
+
+
+def test_private_authenticator_rejects_read_scope_from_injected_verifier():
+    class InjectedVerifier:
+        async def verify_token(self, token):
+            return AccessToken(
+                token=token,
+                client_id="writer-client",
+                scopes=["onec:read"],
+                expires_at=int(time.time()) + 120,
+                subject="writer-subject",
+                claims={"aud": PRIVATE_WRITER_AUDIENCE},
+            )
+
+    authenticator = PrivateWriterAuthenticator(
+        InjectedVerifier(),
+        allowed_client_ids=frozenset({"writer-client"}),
+    )
+
+    async def authenticate():
+        with pytest.raises(PrivateWriterAuthenticationError) as raised:
+            await authenticator.authenticate(["Bearer a.b.c"])
+        assert raised.value.code == "UNAUTHORIZED"
+
+    asyncio.run(authenticate())
 
 
 def test_bad_signature_is_denied(auth_setup):

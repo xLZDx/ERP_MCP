@@ -45,3 +45,34 @@ After all in-scope coding is complete, `functional-test-reviewer` and `e2e-runne
 ## Unknowns and acceptance boundary
 
 The canonical S14 sprint requires the measured purchase-receipt path through a CT14-approved channel, atomic marker enforcement, least privilege, and channel-specific evidence. No such channel/owner is recorded in the current repository. Correlated GPT-PM decision `b5f382b5-86b4-4bc1-9e62-52dc762aad23` returned **GO — LOCAL IMPLEMENTATION ONLY**. Conditions: strict simulation-only validation of synthetic ticket/permit bindings and simulator identity; allow only `CREATE_DRAFT`, `POST`, and `UNPOST`; explicit TEST-only result/error types; no signed `FailureEvidence`, T8/T9 interpretation, hidden clone oracle, production wiring, migration, or formal S14/R-01 closure; and atomic expected-version validation plus mutation under simulator-owned synchronization. This story creates no formal S14 pass and does not close R-01. Accountable task owner: operator; execution owner: GPT/Codex; test owners: functional-test-reviewer and e2e-runner; licensed channel owner: unknown in canonical records.
+
+## Exact simulator identity
+
+An instance label and a deterministic state fingerprint describe configuration and contents. They do not distinguish separately allocated simulators. The TEST permit authority binds to a single live clone instance before issuing permits; the same exact clone can serve multiple adapters with the same fixture key and scope. Per-instance binding does not change the business-state fingerprint, does not appear in results, and has no production authority. Separately allocated or restarted simulations require fresh fixture permits. Verification remains scheduled after local source assembly.
+
+
+The named verification should confirm that two adapters on the same live clone remain compatible, an unbound authority refuses issuance, and independently allocated clones never share the same TEST permit identity even when their display labels and state fingerprints match. Treat those identity checks as simulation evidence only.
+
+
+## S14-02 marked receipt draft creation
+
+For the governed TEST port, create the draft and store a private marker carrying the change identity and approved digest in the same clone-owned mutation. Keep the marker on an accepted draft after a simulated response loss or crash. Reject another create for the same marked change while retaining the existing exact-call replay classification. Recheck the canonical receipt business key under the same lock. The clone instance and receipt kind are implicit; compare organization, counterparty, contract, supplier document number and date, and currency. An explicitly approved duplicate override can allow a separate proposal to use the same business key; it cannot bypass the same-change marker. Use the clone's existing TEST data for verification and keep the marker out of public fingerprints, results, and operational evidence. Existing reference-writer behavior and the COM privilege/retention contract stay separate.
+
+
+When preparing the named tests, use distinct change IDs for distinct proposals and retain a single ID for true same-proposal retries. Keep the ordinary duplicate case separate from the same-marker case, including changed-digest refusal, same-key independent proposals, response loss after creation, and a legitimate document whose contract or currency differs. Verify contents on the TEST clone only.
+
+
+## S14-03 unresolved invocation holds the TEST base
+
+When a governed clone write crosses the mutation call boundary and its outcome becomes unknown, preserve consumed call identity and latch a base-wide write hold while still owning the clone lock. Refuse otherwise valid new writes through any adapter on that live clone before consuming another call identity. Retain exact call replay/conflict classification and keep read-only inspection available. A definite simulated pre-write refusal does not create a hold. The TEST adapter has no authority to clear an unresolved hold and never forces termination or turns a timeout into finished-call proof. Separate failure-injection cases use separate fixture instances. No operational deadline, worker-process lifecycle, or 1C-session proof follows from a simulated failure.
+
+## S14-04 delayed notifications in offline outcome recovery
+
+The separate governed-write simulation records an unknown outcome only while the dispatch remains unresolved. A delayed notification after a proven pre-invocation handback, a recorded applied result, or verification preserves the existing snapshot. In particular, a delayed notification for a handed-back attempt cannot take the base hold from a newer attempt.
+
+Named verification should hand back an attempt with valid no-invocation evidence, dispatch a second attempt on the same base, then deliver the old unknown notification and verify that a third attempt still encounters the second attempt's hold. Exercise delayed notifications after an applied result and after verification, as well as a genuinely unresolved interruption that retains its hold. Use the existing offline contracts for these scenarios.
+
+## S14-05 distinct approved receipt operations
+
+Once the governed TEST clone admits a call, bind its change identity to the operation, target, expected version, and approved payload digest under the clone write lock. A fresh call identity or generation may carry the same frozen change. A different operation, target, version, or digest requires its own approval identity. Exercise create, post, and unpost with distinct approvals and verify their movement effects against independent expected counts. Include an attempt to reuse an approval for another operation and confirm that the target and registers stay unchanged.
+

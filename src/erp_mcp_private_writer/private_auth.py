@@ -16,13 +16,15 @@ from typing import Any, Protocol
 
 from mcp.server.auth.provider import AccessToken
 
-from business_ai_gateway.auth import JWTTokenVerifier
+from business_ai_gateway.auth import (
+    JWTTokenVerifier,
+    PRIVATE_WRITER_AUDIENCE,
+    PRIVATE_WRITER_SCOPE,
+)
 from business_ai_gateway.settings import Settings
 
 from .dependency_shape import has_static_callable_method
 
-PRIVATE_WRITER_AUDIENCE = "urn:erp-mcp:private-writer"
-PRIVATE_WRITER_SCOPE = "erp_mcp:private_writer"
 _BEARER_JWT = re.compile(
     r"Bearer ([A-Za-z0-9_-]{1,8192}\.[A-Za-z0-9_-]{1,8192}\.[A-Za-z0-9_-]{1,8192})\Z"
 )
@@ -127,7 +129,7 @@ class PrivateWriterAuthenticator:
         if type(raw) is str:
             return raw == expected
         if type(raw) is list:
-            return bool(raw) and all(type(value) is str for value in raw) and expected in raw
+            return len(raw) == 1 and type(raw[0]) is str and raw[0] == expected
         return False
 
     async def authenticate(self, authorization_values: Sequence[str | bytes]) -> PrivateWriterCaller:
@@ -180,6 +182,7 @@ def build_private_writer_token_verifier(settings: Settings) -> JWTTokenVerifier:
         audience=PRIVATE_WRITER_AUDIENCE,
         required_scope=PRIVATE_WRITER_SCOPE,
         resource=PRIVATE_WRITER_AUDIENCE,
+        private_writer=True,
     )
 
 

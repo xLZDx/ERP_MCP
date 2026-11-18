@@ -76,7 +76,9 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
         organization: str = _ORG,
         digest_payload: DraftPayload | None = None,
         attempt_id: str = "1",
+        clone: SimulatedOneC | None = None,
     ) -> ApplyTicket:
+        target_clone = self.clone if clone is None else clone
         if digest_payload is None and kind in (ChangeKind.CREATE_DRAFT, ChangeKind.UPDATE_DRAFT):
             digest_payload = _typed_payload()
         return ApplyTicket(
@@ -87,14 +89,17 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
             tenant_id=_TENANT,
             company_id=_COMPANY,
             organization=organization,
-            base_fingerprint=self.clone.state_fingerprint(),
+            base_fingerprint=target_clone.state_fingerprint(),
             target_ref=target_ref,
             target_version=target_version,
             digest_set_hash=payload_digest(digest_payload, target_version),
         )
 
-    def _permit(self, ticket: ApplyTicket) -> DispatchPermit:
-        return self.authority.issue(
+    def _permit(
+        self, ticket: ApplyTicket, authority: SyntheticPermitAuthority | None = None,
+    ) -> DispatchPermit:
+        target_authority = self.authority if authority is None else authority
+        return target_authority.issue(
             ticket,
             datetime.now(timezone.utc) + timedelta(minutes=5),
             checkpoint_seq=1,
@@ -126,6 +131,7 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
         created_state = self.clone.read_state(created["target_ref"])
         self.assertEqual(created_state["status"], "DRAFT")
         self.assertEqual(created_state["payload"]["organization_ref"], _ORG)
+        self.assertEqual(created_state["movements"], {})
 
         post_ticket = self._ticket(
             ChangeKind.POST,
@@ -135,7 +141,9 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
         posted = await self.port.post(post_ticket, self._permit(post_ticket))
         self.assertEqual(posted["outcome"], "APPLIED_TEST_ONLY")
         self.assertEqual(posted["operation"], ChangeKind.POST.value)
-        self.assertEqual(self.clone.read_state(posted["target_ref"])["status"], "POSTED")
+        posted_state = self.clone.read_state(posted["target_ref"])
+        self.assertEqual(posted_state["status"], "POSTED")
+        self.assertEqual(posted_state["movements"], {"НДСПредъявленный": 1, "Хозрасчетный": 1})
 
         unpost_ticket = self._ticket(
             ChangeKind.UNPOST,
@@ -145,7 +153,10 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
         unposted = await self.port.unpost(unpost_ticket, self._permit(unpost_ticket))
         self.assertEqual(unposted["outcome"], "APPLIED_TEST_ONLY")
         self.assertEqual(unposted["operation"], ChangeKind.UNPOST.value)
-        self.assertEqual(self.clone.read_state(unposted["target_ref"])["status"], "DRAFT")
+        unposted_state = self.clone.read_state(unposted["target_ref"])
+        self.assertEqual(unposted_state["status"], "DRAFT")
+        self.assertEqual(unposted_state["movements"], {})
+        self.assertEqual(unposted["effects"]["movement_rows_removed"], 2)
         self.assertEqual(self.clone.write_count, 3)
 
     async def test_organization_binding_and_update_are_refused_before_write(self) -> None:
@@ -192,20 +203,54 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.clone.write_count, 0)
         self.assertEqual(len(self.clone.truth_log()), 1)  # test-only oracle; not exposed by the port
 
-        # Rebuild the ticket after the timeout; this is an explicitly separate test attempt,
-        # not an adapter retry. A crash after application is still unknown to the caller.
+        # A separate adapter can still inspect the held TEST base, but its new
+        # write is refused before another call identity is consumed.
+        other_authority = SyntheticPermitAuthority(self.clone.label, _KEY)
+        other_port = SimulatedOneCWritePort(
+            self.clone,
+            tenant_id=_TENANT,
+            company_id=_COMPANY,
+            organization=_ORG,
+            permit_authority=other_authority,
+        )
+        next_ticket = self._ticket(
+            ChangeKind.CREATE_DRAFT,
+            digest_payload=_typed_payload(document_number="SIM-RECEIPT-002"),
+            attempt_id="2",
+        )
+        next_permit = self._permit(next_ticket, other_authority)
+        self.assertTrue((await other_port.authenticate_base(next_ticket)).startswith("TEST:"))
+        with self.assertRaisesRegex(SyntheticPortRefusal, "BASE_WRITE_HELD"):
+            await other_port.create_draft(next_ticket, next_permit, _payload(document_number="SIM-RECEIPT-002"))
+        self.assertEqual(self.clone.write_count, 0)
+        self.assertEqual(self.clone.target_refs(), ())
+
+        # A separate base exercises the crash-after-write case because the first
+        # base remains held after its timeout.
+        crash_clone = SimulatedOneC("SIM-CLONE-E2E-CRASH")
+        crash_authority = SyntheticPermitAuthority(crash_clone.label, _KEY)
+        crash_port = SimulatedOneCWritePort(
+            crash_clone,
+            tenant_id=_TENANT,
+            company_id=_COMPANY,
+            organization=_ORG,
+            permit_authority=crash_authority,
+        )
         retry_ticket = self._ticket(
             ChangeKind.CREATE_DRAFT,
             digest_payload=_typed_payload(),
-            attempt_id="2",
+            attempt_id="1",
+            clone=crash_clone,
         )
-        retry_permit = self._permit(retry_ticket)
-        self.clone.fail_next("crash_after_write")
+        retry_permit = self._permit(retry_ticket, crash_authority)
+        crash_clone.fail_next("crash_after_write")
         with self.assertRaises(SyntheticOutcomeUnknown) as crash:
-            await self.port.create_draft(retry_ticket, retry_permit, _payload())
+            await crash_port.create_draft(retry_ticket, retry_permit, _payload())
         self.assertFalse(crash.exception.retry_permitted)
-        self.assertEqual(self.clone.write_count, 1)
-        self.assertEqual(len(self.clone.truth_log()), 2)  # only test-side oracle sees the applied write
+        self.assertEqual(crash_clone.write_count, 1)
+        self.assertEqual(len(crash_clone.truth_log()), 1)  # only test-side oracle sees the applied write
+        target_ref = crash_clone.target_refs()[0]
+        self.assertEqual(crash_clone.read_state(target_ref)["status"], "DRAFT")
 
 
 if __name__ == "__main__":
