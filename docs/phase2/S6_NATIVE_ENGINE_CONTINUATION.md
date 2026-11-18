@@ -1,6 +1,6 @@
 # S6 standard report engine continuation
 
-Status: design candidate for review. Baseline: efe3e99969924636e15eea418fccc28e6ec399e9.
+Status: GPT-PM approved bounded implementation on design head 5f163e1 (request ba02e918-b262-4f8c-986e-b23e1bbaf2bd). Baseline: efe3e99969924636e15eea418fccc28e6ec399e9.
 
 R2-US-0231 in the current plan and native ledger is the execution record for the R2-US-023 story in the requirements and scenario catalog. Both name TC067–TC069. Use R2-US-0231 for new task receipts. Keep the specification ID in evidence to preserve traceability.
 

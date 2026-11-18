@@ -2223,3 +2223,7 @@ PR #61 merged exact GPT-PM-approved head 52ef731adf81d2e0266378f0929264af0eb9d98
 ### 2026-11-18 - Prepare the S6 standard report engine contract
 
 S5 merged through PR #61. The next ledger record is R2-US-0231, which the specification names R2-US-023. Prepare one bounded contract for its three acceptance criteria around the existing standard report runner. Preserve the fixed reader, disposable clone, comparison-only evidence class and external processing denial. Real clone and accountant qualification are separate from offline tests. The existing plan sync had reopened six prior sprint states; restored the previously recorded bounded closures after comparing the backup with the current ledger.
+
+### 2026-11-18 - Record wrapper-owned standard report provenance
+
+GPT-PM approved the bounded S6 design at 5f163e1 (request ba02e918-b262-4f8c-986e-b23e1bbaf2bd). Store the allowlisted configuration object and standard data-composition route beside the generated report digest. Keep the existing reader, period, clone and fingerprint context in the enclosing manifest. Record pre/post metadata fingerprints and omit provenance for an invalidated run. The runner remains comparison-only; native qualification is tracked separately.

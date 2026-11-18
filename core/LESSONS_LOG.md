@@ -682,3 +682,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: S5's first push attempt was rejected because four historical approvals were visible in the plan but still recorded as implemented in the native ledger. Rule: preview the standard plan sync and confirm historical verified states before the final sprint push; preserve review and test receipts.
 
 - 2026-11-18 SHORTCOMING: The S5 historical plan sync preserved approval and task receipts but reopened previously closed sprint flags. Rule: compare sprint flags with the sync backup and restore documented prior closures before using the next-task selection.
+
+- 2026-11-18 SUCCESS: The standard report manifest links provenance to the existing digest and run context without duplicating its reader, period or clone identifiers. Rule: store each provenance fact at the level where it is authoritative and omit report provenance when the enclosing run is invalid.

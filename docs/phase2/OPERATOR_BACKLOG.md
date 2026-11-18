@@ -1870,3 +1870,7 @@ PR #60 closed the bounded engineering work. Open separately: qualify an immutabl
 ## S5 native capture qualification after the offline slice
 
 The reference vault does not accept native XLSX/MXL originals. Establish an immutable original-byte adapter with authenticated full-scope access, then verify it against the exact selected disposable 1C database/company, without converting the export. Separately qualify real permit issuance and revocation, a supported UI executor and exclusive session/output ownership. The release path requires independent manual evidence and comparison with the controlled native capture, followed by canonical TC061-TC066 execution. The offline CSV/PDF and synthetic executor work can proceed independently. No native storage or provider owner is assigned.
+
+## S6 native standard-report qualification
+
+After the bounded runner contract, qualify the exact 1C configuration, report object and data route on an authorized disposable clone. Retain authenticated configuration identity, private original export bytes and the exact company/period bindings. For profile validation, acquire separate native UI reports with independent accountant attestation. Empty standard reports remain missing evidence, including module-driven reports that cannot generate rows through the external connection. Keep product TC067-TC069 NOT_RUN until the required live scope is demonstrated. The bounded contract does not introduce an external processing loader. No configuration qualification or attestation owner is assigned.
