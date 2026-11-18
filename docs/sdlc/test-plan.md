@@ -51,6 +51,16 @@ Assert the delegated design decisions at their service boundary: approver sessio
 
 For all five tools, cover valid authenticated request, invalid identity/token class, foreign tenant/company/base ACL, unknown/revoked target, safe input validation, upstream refusal, unexpected port exception, and repeated request where idempotency/replay applies. Assert externally visible code/state/call count; avoid asserting private helper calls. S16 approval store and route fakes must not be the only source of decision correctness. No test may use a model-supplied URL/SQL/credential or accidentally contact a production endpoint.
 
+## S17-01 untrusted-file parser boundary
+
+Use `tests/phase2/test_safe_parser.py` for the existing parser boundary; the assigned functional-test-reviewer owns additions and runs these named cases only after all S17 stories are coded. Keep the evidence split between parser behavior and the later S17-05 upload/workbench integration.
+
+- Oversized XLSX and CSV input is rejected before parser/materialization entry. XLSX ZIP entry count is checked before constructing the per-entry list where the central-directory count is available; keep the documented ZIP64 fallback limitation explicit.
+- XLSX decompression/member/total/ratio, XML depth/node, row/cell/text and deadline limits return fixed `BOUND_EXCEEDED` with no partial sheets. Hostile/malformed package parts return fixed denial codes without echoing source content.
+- Formula cells are not evaluated and formula text is not returned from XLSX; CSV formula-looking text stays literal and is never evaluated by this parser. External relationships/content types are denied; no URL, file, socket or other external target is opened or fetched.
+- Exercise isolated XLSX timeout/child failure and memory-cap setup. POSIX uses `RLIMIT_AS`; Windows uses the Job Object per-process memory cap. If the applicable cap cannot be established, parsing must fail closed (`BOUND_MEMORY`) instead of continuing unbounded. Do not skip Windows memory-cap evidence on the obsolete claim that Windows has no cap.
+- These tests prove the byte-parser contract only. They do not prove an upload endpoint, browser flow, Office safety, OS sandboxing, changed privileges, or workbench integration.
+
 ## Required final verification selections
 
 The post-code phase must include (a) the specifically required S12 SQL code parity test and exhausted-budget SQL behavior; (b) the finisher brief's required slow SQL/E2E selected set, including the relevant producer/list-status integration paths; and (c) the required selected S15 suites from `docs/phase2/S15_SPRINT_PLAN_2026-10-27.md` §9. Test owners resolve exact existing test paths and run commands from those source documents after implementation. This plan does not expand the requirement to `pytest` without selection or a full repository suite. If exact suite selection conflicts across records, preserve the source and resolve it in the execution report rather than silently choosing a smaller set.

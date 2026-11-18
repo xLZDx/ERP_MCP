@@ -2646,3 +2646,7 @@ The live report showed 42 tasks on review because 62 ledger task records had no 
 
 GPT-PM approved exact S16 HEAD `12df2ca369d694860d16317ef97fc20a41905e8c` for bounded integration, with S16-04 explicitly PARTIAL. PR #68 merged to `main` as `ffa1a0b2759469e4a1266c98a056f69b6295bdda`; native S16 administrative closure is recorded with the one prohibited residual retained as a blocker. Project status is CLOSED_BOUNDED_SPRINT 4/5, not 5/5 or operationally complete. Continue in S17 under its existing upload/manual-entry-only scope; do not add Drive integration.
 
+## 2026-11-18 — Correct S17 parser containment record
+
+Source inspection found the approved parser already applies a Windows Job Object per-process memory limit and refuses parsing if setup fails; the preparation document and an old platform test skip incorrectly claimed Windows had no memory cap. Correct those records and specify named parser-boundary evidence. Keep the limitation explicit: process-level resource control is not an OS sandbox, and the current parser has no upload/workbench caller; S17-05 owns integration.
+

@@ -271,7 +271,7 @@ Goal: Document intake and workbench.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| S17-01 | untrusted-file boundary | untrusted-file boundary; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S16 |  |
+| S17-01 | untrusted-file boundary | S17-01 AC: reject size/decompression excess before unbounded extraction; formulas are never evaluated; external content is never fetched; parser authority/target stays unchanged. | IN_REVIEW | Existing `safe_parser.py` source provides bounded value-only parsing; Windows Job Object memory limit is implemented and fails closed, contrary to the stale prep note. No upload caller exists; S17-05 owns integration. Named parser tests are scoped in `docs/sdlc/test-plan.md` and remain NOT_RUN until all S17 stories are coded. Not sandbox, Office safety, or app-level upload acceptance. | Codex | S16 |  |
 | S17-02 | extraction | extraction; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S16 |  |
 | S17-03 | entity resolution | entity resolution; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S16 |  |
 | S17-04 | hostile corpus | hostile corpus; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S16 |  |

@@ -911,3 +911,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: The program report fell back to stale native `verified` states for tasks whose project reconciliation was missing, inflating the “on review” count after the plan had already accepted them. Rule: after any project-plan change, reconcile every task against project records and all current branch refs before rendering the report; keep harness test/review evidence as a separate column/state layer.
 
 - 2026-11-18 SUCCESS: A sprint with one plan-prohibited residual can close only as a bounded sprint when GPT-PM explicitly approves that exception and the residual remains PARTIAL, blocked and traceable in the backlog. Never roll it into accepted or operational status.
+
+- 2026-11-18 SHORTCOMING: The S17 preparation note and Windows test skip were stale about parser memory containment even though source used a Job Object. Rule: reconcile platform-specific code and tests before prescribing a new mitigation; distinguish memory/resource limits from sandboxing and from app-level upload integration.
