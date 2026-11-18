@@ -10,7 +10,9 @@ from business_ai_gateway.phase2.change.errors import ErrorCode
 from business_ai_gateway.phase2.change.killswitch import KillMode, SwitchReading
 from business_ai_gateway.phase2.change.proposal import approval_canonical_text, digest_of_canonical_text
 from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
-from erp_mcp_s16.contracts import ClaimToken, PrincipalRole, TokenClass, canonical_preview_bytes
+from erp_mcp_s16.contracts import (
+    ClaimToken, DecisionAuditOutcome, PrincipalRole, TokenClass, canonical_preview_bytes,
+)
 from erp_mcp_s16.fakes import FakeBeginApplyEvidencePort, InMemoryChangeStore
 from tests.phase2.s16_helpers import NOW, approve, build_env, positive_begin_apply_evidence, propose
 
@@ -23,6 +25,15 @@ def test_server_issued_preview_bytes_match_digest_and_valid_human_approval_is_on
     assert hashlib.sha256(page.canonical_preview_bytes).hexdigest() == page.preview_digest == snap.preview_digest
     saved = env.store.get(snap.change_id)
     assert saved.approval is not None and saved.approval.decision == "APPROVE"
+    success_audit = env.store.decision_audit
+    assert len(success_audit) == 1
+    assert success_audit[0].outcome is DecisionAuditOutcome.APPROVE
+    assert success_audit[0].error_code is None
+    assert success_audit[0].correlation_digest == saved.approval.decision_ref_digest
+    audit_repr = repr(success_audit)
+    for secret in (page.decision_ref, page.csrf_token, env.session.session_id,
+                   env.session.csrf_secret):
+        assert secret not in audit_repr
     assert page.lifecycle_status == "VALIDATED"
     assert page.authorization_status == "NONE"
     assert page.snapshot_version == snap.version
@@ -35,6 +46,40 @@ def test_server_issued_preview_bytes_match_digest_and_valid_human_approval_is_on
         now=NOW + timedelta(seconds=2))
     assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
     assert env.store.get(snap.change_id).approval == saved.approval
+    refusal_audit = env.store.decision_audit
+    assert len(refusal_audit) == 2
+    assert refusal_audit[0] == success_audit[0]
+    assert refusal_audit[1].outcome is DecisionAuditOutcome.REFUSED
+    assert refusal_audit[1].error_code is ErrorCode.APPROVAL_NONCE_INVALID
+    audit_repr = repr(refusal_audit)
+    for secret in (page.decision_ref, page.csrf_token, env.session.session_id,
+                   env.session.csrf_secret):
+        assert secret not in audit_repr
+
+
+def test_refusal_audit_append_failure_fails_closed_without_authorizing_decision():
+    class RefusalAuditUnavailableStore(InMemoryChangeStore):
+        def append_decision_refusal(self, _audit_event):
+            raise OSError("refusal audit unavailable")
+
+    store = RefusalAuditUnavailableStore()
+    env = build_env(permissive=True, store=store)
+    snap = propose(env)
+    page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
+    assert page.error is None
+
+    result = env.core.decide(
+        env.approver, env.session, page.value.decision_ref, "APPROVE",
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token="wrong-csrf", now=NOW + timedelta(seconds=1),
+    )
+
+    persisted = store.get(snap.change_id)
+    assert result.error is ErrorCode.AUDIT_UNAVAILABLE
+    assert result.value is None
+    assert persisted.approval is None
+    assert store.decision_audit == ()
+    assert env.apply_port.calls == 0
 
 
 def test_approver_alias_for_requester_person_is_refused_before_any_apply_call():
@@ -90,6 +135,12 @@ def test_decision_readback_failure_is_refused_then_persisted_approval_recovers_w
     persisted = store.get(snap.change_id)
     assert persisted.approval is not None
     assert persisted.approval.decision == "APPROVE"
+    uncertain_audit = store.decision_audit
+    assert len(uncertain_audit) == 2
+    assert uncertain_audit[0].outcome is DecisionAuditOutcome.APPROVE
+    assert uncertain_audit[0].correlation_digest == persisted.approval.decision_ref_digest
+    assert uncertain_audit[1].outcome is DecisionAuditOutcome.ATTEMPT_UNCERTAIN
+    assert uncertain_audit[1].error_code is ErrorCode.AUDIT_UNAVAILABLE
 
     replay = env.core.decide(env.approver, env.session, page.value.decision_ref,
                              "APPROVE", **decision_args)
@@ -102,6 +153,11 @@ def test_decision_readback_failure_is_refused_then_persisted_approval_recovers_w
     assert store.consume_calls == 1
     assert store.claim_count == 1
     assert env.apply_port.calls == 1
+    final_audit = store.decision_audit
+    assert len(final_audit) == 3
+    assert final_audit[:2] == uncertain_audit
+    assert final_audit[2].outcome is DecisionAuditOutcome.REFUSED
+    assert final_audit[2].error_code is ErrorCode.APPROVAL_NONCE_INVALID
 
 
 def test_ambiguous_decision_consume_recovers_from_exact_persisted_readback():
@@ -140,6 +196,14 @@ def test_ambiguous_decision_consume_recovers_from_exact_persisted_readback():
     decision = env.core.decide(env.approver, env.session, page.value.decision_ref,
                                "APPROVE", **decision_args)
     persisted = store.get(snap.change_id)
+    committed_audit = store.decision_audit
+    assert len(committed_audit) == 1
+    assert committed_audit[0].outcome is DecisionAuditOutcome.APPROVE
+    assert committed_audit[0].correlation_digest == persisted.approval.decision_ref_digest
+    audit_repr = repr(committed_audit)
+    for secret in (page.value.decision_ref, page.value.csrf_token, env.session.session_id,
+                   env.session.csrf_secret):
+        assert secret not in audit_repr
     replay = env.core.decide(env.approver, env.session, page.value.decision_ref,
                              "APPROVE", **decision_args)
     status = env.core.status(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
@@ -152,6 +216,11 @@ def test_ambiguous_decision_consume_recovers_from_exact_persisted_readback():
     assert status.value is not None and status.value.approval == decision.value
     assert applied.value is not None
     assert env.apply_port.calls == 1
+    final_audit = store.decision_audit
+    assert len(final_audit) == 2
+    assert final_audit[0] == committed_audit[0]
+    assert final_audit[1].outcome is DecisionAuditOutcome.REFUSED
+    assert final_audit[1].error_code is ErrorCode.APPROVAL_NONCE_INVALID
 
 
 @pytest.mark.parametrize("mutation,expected", [

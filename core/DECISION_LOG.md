@@ -2544,3 +2544,9 @@ Read the canonical preview from the rendered page and compare its independently 
 
 The offline page regression also obtains a real preview, revokes the approver in the injected registry and asserts that the next preview and the outstanding decision both refuse, without issuing another reference or changing the receipt.
 
+At exact `cc65e8e2c876665dfa9caf35044e1acd65957872`, the designated test owner ran the rendered-digest/approval/replay and revoked-approver page nodes: 2 passed in 0.87s. A separate named selection ran six nodes for cross-session reference and nonce expiry, stored preview tampering, session expiry, direct requester denial, origin/CSRF, and bounded request receive: 6 passed in 1.36s. Both exited 0. All fixtures use the isolated approval service; no authenticated browser or durable store integration is implied.
+
+## 2026-11-18 - Add a sanitized audit boundary for core approval decisions
+
+The current change store has one atomic decision/ref/nonce operation but no audit event, and the separate gateway audit sink does not share that transaction. Add a reduced event at the core boundary. Persist accepted decisions and the final audit record atomically in the store, and append refused core-call outcomes without changing the receipt. A caller may observe a refusal after an ambiguous store response even when the final decision committed. Keep that attempt outcome distinct from the committed event. HTTP rejections before a call to the core and durable adapter qualification remain outstanding.
+

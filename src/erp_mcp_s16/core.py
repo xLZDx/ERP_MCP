@@ -27,6 +27,7 @@ from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationRe
 from .contracts import (
     ApprovalDecision, ApproverSession, ApplyPort, ApplyReceipt, AuthenticatedPrincipal,
     BeginApplyEvidencePort, ChangeStore, ClaimRefused, Claimed, ClaimToken, Clock, DecisionBinding, DomainReceipt,
+    DecisionAuditEvent, DecisionAuditOutcome,
     KillSwitchPort, canonical_preview_bytes,
     PrincipalRecord, PrincipalRegistryPort, PrincipalRole, Result, TargetRecord, TargetRegistryPort,
     TargetVersion, VerifyPort, TargetScope, VerifyRequest,
@@ -318,6 +319,49 @@ class S16Core:
                decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
                origin: str, referer: str, confirmation_text: str, now: datetime,
                csrf_token: str = "") -> Result[ApprovalDecision]:
+        """Audit refusals at the core boundary and rely on the store for atomic decisions."""
+        audit_state = {"consume_ambiguous": False}
+        result = self._decide(approver, session, decision_ref, decision, origin=origin,
+                              referer=referer, confirmation_text=confirmation_text, now=now,
+                              csrf_token=csrf_token, audit_state=audit_state)
+        if type(result) is not Result:
+            result = Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        if result.error is None:
+            return result
+        # A consume may have committed the final decision/event before raising, or it
+        # may have failed before commit. Record this as a non-terminal uncertain attempt
+        # rather than appending a contradictory second final decision.
+        safe_code = result.error if type(result.error) is ErrorCode else ErrorCode.AUDIT_UNAVAILABLE
+        correlation = _sha(decision_ref) if _valid_wire_text(decision_ref, limit=512) else None
+        outcome = (DecisionAuditOutcome.ATTEMPT_UNCERTAIN if audit_state["consume_ambiguous"]
+                   else DecisionAuditOutcome.REFUSED)
+        event = DecisionAuditEvent(outcome, self._decision_audit_time(now),
+                                   safe_code, correlation)
+        try:
+            self.store.append_decision_refusal(event)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        return Result.refused(safe_code)
+
+    def _decision_audit_time(self, supplied: object) -> datetime:
+        if _aware(supplied):
+            try:
+                return supplied.astimezone(timezone.utc)
+            except Exception:
+                pass
+        if self.clock is not None:
+            try:
+                value = self.clock.now()
+                if _aware(value):
+                    return value.astimezone(timezone.utc)
+            except Exception:
+                pass
+        return datetime.now(timezone.utc)
+
+    def _decide(self, approver: AuthenticatedPrincipal, session: ApproverSession,
+               decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
+               origin: str, referer: str, confirmation_text: str, now: datetime,
+                csrf_token: str = "", audit_state: dict[str, bool]) -> Result[ApprovalDecision]:
         """Validate every binding before the atomic store operation; retain local replay defense."""
         from .contracts import TokenClass, PrincipalRole
         if not _aware(now):
@@ -496,15 +540,21 @@ class S16Core:
                                       approver.epoch, session.session_id, binding.nonce_digest,
                                       binding.decision_ref_digest, binding.preview_digest,
                                       binding.approval_digest, decision, binding.expires_at)
+            audit_event = DecisionAuditEvent(DecisionAuditOutcome(decision),
+                                             self._decision_audit_time(now),
+                                             correlation_digest=binding.decision_ref_digest)
             consume_raised = False
+            audit_state["consume_ambiguous"] = True
             try:
                 consumed = self.store.consume_decision_ref_and_nonce(
-                    decision_ref, expected=binding, decision=result, s12_record=transitioned.record)
+                    decision_ref, expected=binding, decision=result, s12_record=transitioned.record,
+                    audit_event=audit_event)
             except Exception:
                 # The store may have committed atomically before the call failed.
                 # Resolve that ambiguous outcome with an authoritative read below.
                 consume_raised = True
             if not consume_raised and consumed is not True:
+                audit_state["consume_ambiguous"] = False
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
             if not consume_raised and consumed is True:
                 # The atomic store operation has consumed the ref/nonce and persisted

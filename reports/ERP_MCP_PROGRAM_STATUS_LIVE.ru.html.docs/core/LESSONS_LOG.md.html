@@ -858,4 +858,8 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: Checking that escaped text occurs somewhere in the page leaves the canonical result section and displayed digest independently mutable. Rule: extract the text from the designated section and compare its bytes and hash against the approved snapshot.
 
+- 2026-11-18 SUCCESS: Two named runs verified both rendered evidence and denial after identity changes on the same exact source. Rule: exercise the page and core boundaries explicitly while keeping durable audit evidence separate.
+
+- 2026-11-18 SHORTCOMING: Reusing the gateway tool logger for S16 would put decision state and audit evidence in separate transactions. Rule: keep the final decision and its audit record in one store operation and record ambiguous response outcomes separately.
+
 </pre></main></body></html>

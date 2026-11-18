@@ -130,6 +130,39 @@ class ApprovalDecision:
     expires_at: datetime
 
 
+class DecisionAuditOutcome(StrEnum):
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    REFUSED = "REFUSED"
+    ATTEMPT_UNCERTAIN = "ATTEMPT_UNCERTAIN"
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionAuditEvent:
+    """Sanitized decision evidence; correlations are digests, never source references."""
+    outcome: DecisionAuditOutcome
+    occurred_at: datetime
+    error_code: ErrorCode | None = None
+    correlation_digest: str | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.outcome) is not DecisionAuditOutcome:
+            raise ValueError("DECISION_AUDIT_OUTCOME_INVALID")
+        if type(self.occurred_at) is not datetime or self.occurred_at.tzinfo is None:
+            raise ValueError("DECISION_AUDIT_TIME_INVALID")
+        if self.occurred_at.utcoffset() is None:
+            raise ValueError("DECISION_AUDIT_TIME_INVALID")
+        if (self.correlation_digest is not None
+                and (type(self.correlation_digest) is not str or len(self.correlation_digest) != 64
+                     or any(char not in "0123456789abcdef" for char in self.correlation_digest))):
+            raise ValueError("DECISION_AUDIT_CORRELATION_INVALID")
+        if self.outcome in (DecisionAuditOutcome.REFUSED, DecisionAuditOutcome.ATTEMPT_UNCERTAIN):
+            if type(self.error_code) is not ErrorCode:
+                raise ValueError("DECISION_AUDIT_ERROR_INVALID")
+        elif self.error_code is not None:
+            raise ValueError("DECISION_AUDIT_ERROR_UNEXPECTED")
+
+
 @dataclass(frozen=True, slots=True)
 class DecisionPage:
     decision_ref: str
@@ -266,7 +299,11 @@ class ChangeStore(Protocol):
     def get_decision_binding(self, decision_ref: str) -> DecisionBinding | None: ...
     def issue_decision_ref(self, decision_ref: str, binding: DecisionBinding) -> None: ...
     def consume_decision_ref_and_nonce(self, decision_ref: str, *, expected: DecisionBinding,
-                                       decision: ApprovalDecision, s12_record: ChangeRecord) -> bool: ...
+                                       decision: ApprovalDecision, s12_record: ChangeRecord,
+                                       audit_event: DecisionAuditEvent) -> bool:
+        """Atomically persist the decision, consume its ref/nonce, and append its final audit event."""
+        ...
+    def append_decision_refusal(self, audit_event: DecisionAuditEvent) -> None: ...
 
 
 class PrincipalRegistryPort(Protocol):

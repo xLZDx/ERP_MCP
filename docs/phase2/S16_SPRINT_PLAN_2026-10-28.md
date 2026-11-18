@@ -215,6 +215,12 @@ Assertions:
     before `submit_decision` is called.
 Open: whether the page is server-rendered HTML only or includes scripts (affects CSP); a11y requirements (Q3, Q4).
 
+### 2026-11-18 bounded approval-page evidence and remaining contracts
+
+The isolated page and core fixtures cover canonical rendered bytes, an independently recomputed displayed digest, script-text escaping, one-use references, cross-session and expiry denials, direct requester denial, revocation before the next preview and decision, cross-origin and CSRF refusal, and bounded body receive. The preview and decision share a confirmation rule. End-to-end session cookie issuance and action-bound re-authentication remain adapter qualification items.
+
+For the decision audit, distinguish the atomic domain receipt from the audit event. The current change-store contract consumes the reference and nonce with the persisted decision. Extend that atomic operation to include the final-decision audit record before treating it as durable acceptance evidence. A rejected decision attempt needs an append-only refusal record with a safe reason code and a digest-based correlation, while leaving authorization and reference state intact. Neither audit record should serialize raw references, session identifiers, CSRF values or the entire domain receipt. Verify database failure and commit-with-lost-response outcomes against the same atomic decision and audit pair.
+
 ### Epic E16-3 MCP tools (V2-S16-03: propose, status, apply, verify, rollback_propose; no approve; safe errors)
 
 Assertions:
