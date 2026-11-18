@@ -2763,3 +2763,7 @@ Run `python .harness-tools/ledger.py reconcile-project` after the plan audit. It
 ## 2026-11-18 — Refresh program status after full plan/branch reconciliation
 
 Regenerate the standard Russian live report after the reconciliation event and S17 status-boundary commits. The current bounded project counts are 91 accepted, 1 in review, 2 blocked, 6 in progress, and 11 not started across 111 task IDs. The generated page snapshot names source HEAD `6544966a`; it preserves “accepted in bounded scope” separately from runtime/product acceptance. Report generation does not run tests or change acceptance.
+
+## 2026-11-18 — Recheck Admin source role before S17 ledger disclosure
+
+`AdminContext.bindings` is a request-start snapshot. The S17 change-status routes already re-resolve the exact company grant and ledger identity after the PostgreSQL read, but the source role was checked against that stale snapshot. `ledger_scope_for_company` now reloads active role bindings by the verified token subject and groups on every call; because routes call it before and after the ledger read, revocation during the read prevents disclosure. Preserve fixed not-found responses and the same exact-company allow/deny checks. Add a named revoke-during-read case; execution remains NOT_RUN.

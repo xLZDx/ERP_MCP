@@ -339,7 +339,7 @@ class AdminRepository:
     async def ledger_scope_for_company(
         self, ctx: AdminContext, company_id: UUID
     ) -> tuple[str, str] | None:
-        """Resolve explicit keys only after the current exact-company allow/deny check."""
+        """Resolve ledger keys only after current source-role and exact-company checks."""
         if not isinstance(ctx.token.subject, str) or not ctx.token.subject:
             return None
         row = await self.db.require_pool().fetchrow(
@@ -370,10 +370,17 @@ class AdminRepository:
             ctx.token.subject,
             sorted(ctx.groups),
         )
-        if (row is not None and not ctx.can_admin_source(
-                row["source_id"], "PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"
-        )):
-            return None
+        if row is not None:
+            # Do not trust the role-binding snapshot attached during authentication: a
+            # binding can be revoked while a ledger read is in flight. This method is
+            # called both before and after each read, so re-resolve it from the registry.
+            bindings = await self.resolve_bindings(ctx.token.subject, ctx.groups)
+            allowed_roles = {"PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"}
+            matching = [binding for binding in bindings if binding.role_name in allowed_roles]
+            global_admin = any(binding.source_id is None for binding in matching)
+            source_admin = any(binding.source_id == row["source_id"] for binding in matching)
+            if not matching or not (global_admin or source_admin):
+                return None
         if (row is None or not row["has_allow"] or row["has_deny"]
                 or row["tenant_id"] is None or row["ledger_company_id"] is None):
             return None
