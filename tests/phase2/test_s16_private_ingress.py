@@ -199,6 +199,124 @@ def test_private_ingress_rejects_malformed_approver_principal_before_approval_di
     assert calls == []
 
 
+def test_private_ingress_rejects_unknown_and_near_prefix_paths_before_auth_or_dispatch():
+    env = build_env()
+    calls = []
+    probe = _RouteProbe()
+
+    class CountingAuthenticator(_Authenticator):
+        def __init__(self, value):
+            super().__init__(value)
+            self.calls = 0
+
+        def authenticate(self, scope, headers):
+            self.calls += 1
+            return super().authenticate(scope, headers)
+
+    auth = CountingAuthenticator(env)
+    app = create_private_s16_app(
+        lambda scope, receive, send: _record_downstream(calls, "tool", scope, send),
+        lambda scope, receive, send: _record_downstream(calls, "approval", scope, send),
+        auth, probe, PrivateNetworkConfig(origin=ORIGIN),
+    )
+    client = TestClient(app, base_url=ORIGIN, client=("127.0.0.1", 49000))
+
+    responses = [
+        client.get(path, headers={**_host(), "authorization": "Bearer synthetic-write"})
+        for path in ("/unrelated", "/mcpx", "/approval-x")
+    ]
+
+    assert all(response.status_code in {400, 404} for response in responses)
+    assert auth.calls == 0
+    assert probe.calls == []
+    assert calls == []
+
+
+@pytest.mark.parametrize("header,value", [
+    (b"forwarded", b"for=198.51.100.7"),
+    (b"x-real-ip", b"198.51.100.7"),
+    (b"x-forwarded-for", b"198.51.100.7"),
+])
+def test_private_ingress_rejects_forwarded_header_families_before_route_or_dispatch(header, value):
+    env = build_env()
+    calls = []
+    probe = _RouteProbe()
+    app = _asgi_app(env, probe, calls)
+    scope = _post_scope(_host())
+    scope["headers"].append((b"authorization", b"Bearer synthetic-write"))
+    scope["headers"].append((header, value))
+
+    sent = _run_asgi(app, scope, [])
+
+    assert sent[0]["status"] == 400
+    assert probe.calls == []
+    assert calls == []
+
+
+def test_private_ingress_rejects_duplicate_host_before_route_or_dispatch():
+    env = build_env()
+    calls = []
+    probe = _RouteProbe()
+    app = _asgi_app(env, probe, calls)
+    scope = _post_scope(_host())
+    scope["headers"].append((b"authorization", b"Bearer synthetic-write"))
+    scope["headers"].append((b"host", b"public.example"))
+
+    sent = _run_asgi(app, scope, [])
+
+    assert sent[0]["status"] == 400
+    assert probe.calls == []
+    assert calls == []
+
+
+@pytest.mark.parametrize("mutation", [
+    "principal_id", "person_id", "epoch", "mfa", "lane", "scope_target_class", "scope_tenant",
+])
+def test_private_ingress_rejects_malformed_chat_write_principal_before_downstream(mutation):
+    env = build_env()
+    principal = env.requester
+    if mutation == "principal_id":
+        principal = replace(principal, principal_id="")
+    elif mutation == "person_id":
+        principal = replace(principal, person_id="")
+    elif mutation == "epoch":
+        principal = replace(principal, epoch=True)
+    elif mutation == "mfa":
+        principal = replace(principal, mfa_authenticated="false")
+    elif mutation == "lane":
+        principal = replace(principal, lane="PRODUCTION")
+    elif mutation == "scope_target_class":
+        principal = replace(principal, scope=replace(principal.scope, target_class="PRODUCTION"))
+    else:
+        principal = replace(principal, scope=replace(principal.scope, tenant=""))
+    calls = []
+    probe = _RouteProbe()
+
+    class Authenticator:
+        def authenticate(self, _scope, _headers):
+            return principal
+
+    app = create_private_s16_app(
+        lambda scope, receive, send: _record_downstream(calls, "tool", scope, send),
+        lambda scope, receive, send: _record_downstream(calls, "approval", scope, send),
+        Authenticator(), probe, PrivateNetworkConfig(origin=ORIGIN),
+    )
+    client = TestClient(app, base_url=ORIGIN, client=("127.0.0.1", 49000))
+
+    response = client.post(
+        "/mcp", headers={**_host(), "authorization": "Bearer synthetic-write"}, json={})
+
+    assert response.status_code == 403
+    assert probe.calls == [("127.0.0.1", 8443)]
+    assert calls == []
+
+
+async def _record_downstream(calls, label, scope, send):
+    calls.append((label, scope["path"]))
+    await send({"type": "http.response.start", "status": 200, "headers": []})
+    await send({"type": "http.response.body", "body": b"ok"})
+
+
 def test_private_ingress_rejects_missing_auth_forwarding_host_and_foreign_origin_before_downstream():
     env = build_env()
     calls = []
@@ -230,6 +348,8 @@ def test_private_ingress_refuses_proxy_redirect_and_unresolved_route_assessments
     for assessment in (
         RouteAssessment(("127.0.0.1",), redirects=True),
         RouteAssessment(("127.0.0.1",), proxy_used=True),
+        RouteAssessment(("8.8.8.8",)),
+        RouteAssessment(("127.0.0.1", "8.8.8.8")),
         RouteAssessment((), unresolved=True),
     ):
         calls = []

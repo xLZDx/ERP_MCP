@@ -878,3 +878,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The S16 tool operation map is checked against the shared requester matrix at import, with approval and rejection kept outside the model surface. Rule: encode the operation boundary and make policy drift fail closed before any tool registration.
 
+- 2026-11-18 SHORTCOMING: The private ASGI wrapper sent every non-approval path to the tool app, including unknown paths. Rule: reject paths outside the exact protected prefixes before authentication or downstream dispatch, and keep inbound listener routing separate from outbound writer-target routing proof.
+
