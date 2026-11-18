@@ -14,7 +14,7 @@ from starlette.testclient import TestClient
 from business_ai_gateway.phase2.change.errors import ErrorCode, render
 from erp_mcp_s16.approval_page import create_approval_app
 from erp_mcp_s16.contracts import ApprovalDecision, Result
-from s16_helpers import ORIGIN, build_env, propose
+from s16_helpers import ORIGIN, build_env, propose, raw_create
 
 
 class _SessionAuth:
@@ -106,6 +106,58 @@ def test_approval_page_renders_service_preview_and_accepts_one_origin_checked_de
     decided = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
     assert decided.status_code == 403
     assert "<form" not in decided.text
+
+
+def test_approval_decision_reference_is_bound_to_the_routed_ticket():
+    env = build_env()
+    payload_a = raw_create()["payload"]
+    payload_b = {**payload_a, "supplier_document_number": "N-2"}
+    snapshot_a = propose(env, request_id="approval-route-binding-a", payload=payload_a)
+    snapshot_b = propose(env, request_id="approval-route-binding-b", payload=payload_b)
+    assert snapshot_a.change_id != snapshot_b.change_id
+    client = _client(env)
+
+    preview_a = client.get(f"/approval/{snapshot_a.change_id}", headers=_headers())
+    assert preview_a.status_code == 200
+    decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', preview_a.text)
+    csrf_token = re.search(r'name="csrf_token" value="([^"]+)"', preview_a.text)
+    assert decision_ref is not None and csrf_token is not None
+    form = {"decision_ref": decision_ref.group(1),
+            "csrf_token": csrf_token.group(1), "decision": "APPROVE"}
+    before_a = env.store.get(snapshot_a.change_id)
+    before_b = env.store.get(snapshot_b.change_id)
+    headers = _headers(origin=ORIGIN, referer=ORIGIN + "/approval/review")
+
+    wrong_ticket = client.post(
+        f"/approval/{snapshot_b.change_id}/decision", data=form, headers=headers,
+    )
+
+    assert wrong_ticket.status_code == 403
+    assert "Decision recorded." not in wrong_ticket.text
+    assert env.store.get(snapshot_a.change_id) == before_a
+    assert env.store.get(snapshot_b.change_id) == before_b
+    assert env.apply_port.calls == 0
+
+    correct_ticket = client.post(
+        f"/approval/{snapshot_a.change_id}/decision", data=form, headers=headers,
+    )
+
+    assert correct_ticket.status_code == 200
+    assert "Decision recorded." in correct_ticket.text
+    approved_a = env.store.get(snapshot_a.change_id)
+    assert approved_a.approval is not None
+    assert approved_a.approval.decision == "APPROVE"
+    assert env.store.get(snapshot_b.change_id) == before_b
+    assert env.apply_port.calls == 0
+
+    replay = client.post(
+        f"/approval/{snapshot_a.change_id}/decision", data=form, headers=headers,
+    )
+
+    assert replay.status_code == 403
+    assert env.store.get(snapshot_a.change_id) == approved_a
+    assert env.store.get(snapshot_b.change_id) == before_b
+    assert env.apply_port.calls == 0
 
 
 def test_preview_rejects_truthy_integer_independence_before_issuing_nonce():

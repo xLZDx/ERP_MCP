@@ -38,7 +38,8 @@ class ApprovalServicePort(Protocol):
     def submit_decision(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                         decision_ref: str, decision: str, *, csrf_token: str = "", confirmation_text: str,
                         origin: str, referer: str,
-                        now: datetime | None = None) -> Result[ApprovalDecision, ErrorCode]: ...
+                        now: datetime | None = None,
+                        expected_change_id: UUID | None = None) -> Result[ApprovalDecision, ErrorCode]: ...
 
 
 class ApproverSessionAuthenticator(Protocol):
@@ -501,7 +502,8 @@ def create_approval_app(service: ApprovalServicePort,
                                             data["decision_ref"], data["decision"],
                                             csrf_token=data["csrf_token"],
                                             confirmation_text=data.get("confirmation_text", ""),
-                                            origin=headers.get("origin", ""), referer=headers.get("referer", ""), now=now)
+                                            origin=headers.get("origin", ""), referer=headers.get("referer", ""),
+                                            now=now, expected_change_id=parsed_ticket)
                                     except Exception:
                                         result = None
                                     if (type(result) is not Result or result.error is not None

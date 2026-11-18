@@ -318,12 +318,13 @@ class S16Core:
     def decide(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
                origin: str, referer: str, confirmation_text: str, now: datetime,
-               csrf_token: str = "") -> Result[ApprovalDecision]:
+               csrf_token: str = "", expected_change_id: UUID | None = None) -> Result[ApprovalDecision]:
         """Audit refusals at the core boundary and rely on the store for atomic decisions."""
         audit_state = {"consume_ambiguous": False}
         result = self._decide(approver, session, decision_ref, decision, origin=origin,
                               referer=referer, confirmation_text=confirmation_text, now=now,
-                              csrf_token=csrf_token, audit_state=audit_state)
+                              csrf_token=csrf_token, expected_change_id=expected_change_id,
+                              audit_state=audit_state)
         if type(result) is not Result:
             result = Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
         if result.error is None:
@@ -361,7 +362,8 @@ class S16Core:
     def _decide(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
                origin: str, referer: str, confirmation_text: str, now: datetime,
-                csrf_token: str = "", audit_state: dict[str, bool]) -> Result[ApprovalDecision]:
+                csrf_token: str = "", expected_change_id: UUID | None = None,
+                audit_state: dict[str, bool]) -> Result[ApprovalDecision]:
         """Validate every binding before the atomic store operation; retain local replay defense."""
         from .contracts import TokenClass, PrincipalRole
         if not _aware(now):
@@ -371,6 +373,7 @@ class S16Core:
                 or not _valid_approver_session(session, approver, now)
                 or type(decision_ref) is not str or not decision_ref
                 or type(decision) is not str or decision not in ("APPROVE", "REJECT")
+                or (expected_change_id is not None and type(expected_change_id) is not UUID)
                 or type(csrf_token) is not str or not re.fullmatch(r"[0-9a-f]{64}", csrf_token)
                 or type(origin) is not str or type(referer) is not str or not origin or not referer
                 or type(confirmation_text) is not str):
@@ -391,6 +394,8 @@ class S16Core:
                 or type(binding.confirmation_required) is not bool
                 or (binding.confirmation_phrase is not None
                     and type(binding.confirmation_phrase) is not str)):
+            return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
+        if expected_change_id is not None and binding.change_id != expected_change_id:
             return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
         binding_expires_at = _as_utc(binding.expires_at)
         now_utc = _as_utc(now)

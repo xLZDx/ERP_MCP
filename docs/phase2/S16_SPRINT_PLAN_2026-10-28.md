@@ -206,8 +206,8 @@ Assertions:
     the core accept it; the page cannot alter the digest.
 14. The preview shown is rendered from the same canonical bytes the digest covers. Test: the digest recomputed from the rendered source text equals
     the approved digest; a preview field differing from the canonical text is a defect caught by this test.
-15. The nonce is bound to the approver session and to the approver person: a nonce issued to session S1/person P1 is refused for S2 or P2
-    (`APPROVAL_NONCE_INVALID`).
+15. The nonce is bound to the approver session and person: a nonce issued to session S1/person P1 is refused for S2 or P2
+    (`APPROVAL_NONCE_INVALID`). The request's approval ticket must match the decision binding before any attempt to consume the reference.
 16. The preview page response carries `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 17. Every state-changing POST checks `Origin`/`Referer` against the approval origin; missing or foreign values are refused, in addition to the CSRF token.
 18. Nonce, CSRF token and session id never appear in logs, tool responses or audit records (audit carries digests, per spec section 4 item 5).

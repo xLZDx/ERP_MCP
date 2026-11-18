@@ -402,7 +402,7 @@ class ApprovalService:
                         decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
                         csrf_token: str = "", confirmation_text: str,
                         origin: str, referer: str,
-                        now: datetime | None = None) -> Result[ApprovalDecision]:
+                        now: datetime | None = None, expected_change_id: UUID | None = None) -> Result[ApprovalDecision]:
         try:
             timestamp = _now(self.clock, now)
         except Exception:
@@ -412,7 +412,8 @@ class ApprovalService:
         return self.core.decide(approver, session, decision_ref, decision,
                                 csrf_token=csrf_token,
                                 confirmation_text=confirmation_text, origin=origin,
-                                referer=referer, now=timestamp)
+                                referer=referer, now=timestamp,
+                                expected_change_id=expected_change_id)
 
 
 def _scope_from_proposal(scope, target: TargetRecord):

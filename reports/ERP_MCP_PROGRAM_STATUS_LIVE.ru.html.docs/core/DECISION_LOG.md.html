@@ -2552,4 +2552,10 @@ At exact `cc65e8e2c876665dfa9caf35044e1acd65957872`, the designated test owner r
 
 The current change store has one atomic decision/ref/nonce operation but no audit event, and the separate gateway audit sink does not share that transaction. Add a reduced event at the core boundary. Persist accepted decisions and the final audit record atomically in the store, and append refused core-call outcomes without changing the receipt. A caller may observe a refusal after an ambiguous store response even when the final decision committed. Keep that attempt outcome distinct from the committed event. HTTP rejections before a call to the core and durable adapter qualification remain outstanding.
 
+At exact `208dc2cedac3b0576fff65fec830c01820bbda40`, seven named tests passed in 0.82s, exit 0. They cover final and refused records, replay, an uncertain response after commit, recovery without a duplicate final record, storage refusal and retained page behavior.
+
+## 2026-11-18 - Validate the approval route before consuming its reference
+
+The HTTP handler used to compare the URL ticket with the returned receipt after the core finalized the decision. Pass the route ticket to the core and validate it against the stored decision binding before reading or writing the receipt. An inconsistent request must leave the original reference available to the correct route.
+
 </pre></main></body></html>
