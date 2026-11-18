@@ -894,6 +894,8 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: A follow-up run by the explicitly assigned functional-test-reviewer produced the agent-visibility receipt required by `ledger.py verify`; two earlier follow-up executions were not visible to the ledger. Rule: run the required test role directly for verification that must be entered in the native ledger.
 
+- 2026-11-18 SHORTCOMING: `safe_non_code_path` did not recognize the report generator's browsable `*.html.docs/` copies, so a documentation commit incorrectly made product-test evidence stale. Rule: include generated report document copies in docs-only classification and confirm evidence freshness after report commits.
+
 - 2026-11-18 SUCCESS: When a sprint is bounded-closed with one intentionally deferred external task, close the native sprint state while preserving the deferred task and its evidence. The task remains visible in the report; it is not silently counted as accepted.
 
 - 2026-11-18 SHORTCOMING: The report selected the first native sprint still marked open, so it presented historical S4 instead of the unique reconciled `IN_PROGRESS` sprint S16. Rule: reports must preserve native harness state as a separate layer and choose current work from the reconciled project status when historical rows remain open.
