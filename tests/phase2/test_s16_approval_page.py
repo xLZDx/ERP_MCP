@@ -387,7 +387,7 @@ def test_approval_post_rejects_missing_or_foreign_origin_and_keeps_authorization
     assert all(event.occurred_at == env.clock.now() for event in events)
     assert all(event.correlation_digest is None for event in events[:2])
     audit_repr = repr(events)
-    for private_value in (decision_ref.group(1), csrf_token.group(1),
+    for private_value in (decision_ref, csrf_token,
                           env.session.session_id, env.session.csrf_secret):
         assert private_value not in audit_repr
     accepted_receipt = env.store.get(pending.change_id)
