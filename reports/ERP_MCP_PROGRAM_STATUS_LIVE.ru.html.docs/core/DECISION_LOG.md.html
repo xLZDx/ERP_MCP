@@ -2636,4 +2636,8 @@ The S16-01 approval contract now requires a fresh TEST IdP proof bound to the ex
 
 The deterministic S16-05 replay must traverse the same decision-bound re-authentication step as the approval page. Its test authenticator delegates the supplied TEST credential and decision reference to the fake IdP, then replaces its in-memory session only when proof succeeds. This is synthetic contract evidence and does not qualify a deployed IdP or HTTP cookie adapter.
 
+## 2026-11-18 — Record S16 exact-head named test results
+
+After committing the S16 approval-helper and replay-fixture corrections, the assigned functional tester ran the six named S16 functional files at clean exact HEAD `ab1a88d919fc3b033d9e32824b540e5a65eaab74` (168 passed, one `httpx2` deprecation warning), and the assigned E2E runner ran `test_s16_replay.py` at the same HEAD (4 passed). Record these as synthetic TEST-only results; they do not establish real IdP, durable database, listener or writer-egress qualification.
+
 </pre></main></body></html>

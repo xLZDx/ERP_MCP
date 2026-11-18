@@ -907,4 +907,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 FAILURE: S16 approval test helpers submitted decisions without the newly required fresh action-bound TEST IdP proof and failed with NOT_ENTITLED. Rule: update synthetic approval helpers to exercise the same decision-bound re-authentication contract as the page; never relax production validation to accommodate a stale fixture.
 
 - 2026-11-18 SUCCESS: The S16 replay fixture can cover fresh action-bound re-authentication without adding a real identity service: pass the TEST credential through the fake authenticator to the fake IdP and replace the synthetic session only on success. Keep that evidence labeled synthetic.
+
+- 2026-11-18 SUCCESS: Rerunning assigned named test files on one clean committed HEAD gives a precise acceptance boundary across S16-01/03/04/05. Preserve the one deprecation warning and keep external IdP, durable-store and outbound-writer claims explicitly unproven.
 </pre></main></body></html>
