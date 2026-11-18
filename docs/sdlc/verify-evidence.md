@@ -932,3 +932,7 @@ At d748a3d72bf454d9c3305801a74b5797588d9e3f the e2e-runner ran test_release_migr
 ## 2026-11-18 - S9 retained restore, export and retention modules
 
 At b20e6a1e6200d5fb4884c678dc31f433d4cdda98 the e2e-runner ran test_restore_verify.py, test_export_safety.py and test_retention_hold.py with the S9 scratch source and root on PYTHONPATH. Result: 376 passed in 3.02s, exit 0. These are in-memory behavioral cases. No actual backup restore, export delivery, deletion or external authority was tested.
+
+## 2026-11-18 - Final S9 bounded acceptance
+
+The release migration, rollback and SQL text modules passed 356 tests in 1.57s, exit 0, at clean 2531847f08dbd2cb31741967a25c6d232f0b8921. Run location D:/Repo/ERP_MCP with checkout root and source on PYTHONPATH using its .venv interpreter. The initial expanded-run attempt in the unregistered scratch checkout was refused before test execution. GPT-PM approved the documentation contract on the registered checkout (request b60fba4e-93a6-4fe1-97d2-21d0e8c83dc3), and the exact rerun succeeded. Recovery modules passed 376 at b20e6a1 with all six source and test files unchanged through final head, as verified by Git. Four routed roles found no actionable issue in reviewed scope; database review of restore was limited to supplied excerpts, with no database execution. GPT-PM final APPROVE (request 75e3f0db-cb39-44b1-96eb-bfca5a576172, reply 905a7bcc-6c55-5be9-83ca-45c584a1d87c) authorized exact merge and bounded S9 4/4. PR #64 merged as dfb0205aa84a52e39f0b847de9282abb597d8bac. Live operations NOT_RUN.

@@ -2259,3 +2259,7 @@ The 352 named release compatibility tests passed at d748a3d. Advance in order to
 ### 2026-11-18 - Exercise retained migration checksum refusals
 
 Current plan_rehearsal binds an applied version to the recorded file checksum and rejects changed checksums within a repeat of one version. The named S9 release tests cover matching checksums and idempotent replay but did not explicitly assert the checksum mismatch result. Add the missing named regression without changing the decision implementation. Recovery verification ran separately and its source and tests remain unchanged.
+
+### 2026-11-18 - Close bounded S9 on main
+
+PR #64 merged exact GPT-PM-approved head 2531847f08dbd2cb31741967a25c6d232f0b8921 into main as dfb0205aa84a52e39f0b847de9282abb597d8bac (request 75e3f0db-cb39-44b1-96eb-bfca5a576172, reply 905a7bcc-6c55-5be9-83ca-45c584a1d87c). Close S9 as 4/4 bounded, preserve the separate 356 and 376 evidence receipts and leave G6-pre/live qualification in the backlog. The historical integration PR #49 was already merged. Project plan and native ledger now reflect the bounded scope.
