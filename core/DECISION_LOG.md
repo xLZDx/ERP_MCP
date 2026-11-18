@@ -2336,3 +2336,8 @@ Retain the exact test additions from 82f7620 for a missing, mismatched or failed
 
 Compared preserved 65c4086 migration 027 function bodies with current migration 030. Keep migration 030's role-scope conflict target, lifecycle epoch binding and terminalization lock plan. The latter two retain the branch behavior and add a separate lifecycle read after acquiring the row lock. Rewriting migration 027 would duplicate those fixes and would change historical migration bytes.
 
+
+## 2026-11-18 - Retain the disposable recovery-evidence verifier scenario
+
+Restore the standalone verifier and resolver tests from 1083e7e. The four modules under test are unchanged from that revision, and the shared scenario seed is retained. The tests grant specific loader permissions inside their invocation-owned disposable database for verification of signed synthetic evidence. Their fixture grants are not evidence of deployed database grants or operational trust. Test execution remains pending sprint verification.
+
