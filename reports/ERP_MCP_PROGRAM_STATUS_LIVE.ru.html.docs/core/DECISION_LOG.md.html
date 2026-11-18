@@ -2229,4 +2229,8 @@ S5 merged through PR #61. The next ledger record is R2-US-0231, which the specif
 ### 2026-11-18 - Record wrapper-owned standard report provenance
 
 GPT-PM approved the bounded S6 design at 5f163e1 (request ba02e918-b262-4f8c-986e-b23e1bbaf2bd). Store the allowlisted configuration object and standard data-composition route beside the generated report digest. Keep the existing reader, period, clone and fingerprint context in the enclosing manifest. Record pre/post metadata fingerprints and omit provenance for an invalidated run. The runner remains comparison-only; native qualification is tracked separately.
+
+### 2026-11-18 - Pin the standard report engine acceptance cases
+
+Use the existing fake COM report and the named runner test module to cover the exact allowlisted object and export digest, stable metadata, zero rows and zero columns, drift invalidation, and early refusal of an external processing file. Run the module from the S6 worktree on the committed candidate. These tests must not connect to 1C.
 </pre></main></body></html>

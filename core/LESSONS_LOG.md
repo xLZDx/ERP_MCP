@@ -684,3 +684,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: The S5 historical plan sync preserved approval and task receipts but reopened previously closed sprint flags. Rule: compare sprint flags with the sync backup and restore documented prior closures before using the next-task selection.
 
 - 2026-11-18 SUCCESS: The standard report manifest links provenance to the existing digest and run context without duplicating its reader, period or clone identifiers. Rule: store each provenance fact at the level where it is authoritative and omit report provenance when the enclosing run is invalid.
+
+- 2026-11-18 SUCCESS: Distinguish a reported zero balance from an empty generated sheet by asserting both dimensions and the absence of an exported artifact, digest and provenance. Rule: exercise each missing dimension through the same report-generation adapter used for a nonempty result.
