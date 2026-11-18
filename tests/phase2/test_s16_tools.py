@@ -13,7 +13,7 @@ from erp_mcp_s16.tools import (
 )
 from erp_mcp_s16.fakes import InMemoryChangeStore
 from business_ai_gateway.phase2.change.types import Verification
-from tests.phase2.s16_helpers import NOW, approve, build_env, raw_create
+from tests.phase2.s16_helpers import NOW, ORIGIN, build_env, propose, raw_create
 from erp_mcp_s15.verifier import Finding, VerificationResult, VerificationStatus
 import pytest
 
@@ -24,6 +24,28 @@ class Server:
 
     def register_tool(self, name, handler, schema, annotations):
         self.handlers[name] = (handler, schema, annotations)
+
+
+def approve(env, snapshot=None, *, confirmation_text=""):
+    """Approve through the test IdP's decision-bound reauthentication flow."""
+    snapshot = snapshot or propose(env)
+    page = env.approval_service.open_preview(
+        env.approver, env.session, snapshot.change_id, now=NOW
+    )
+    assert page.error is None, page.error
+    now = NOW + timedelta(seconds=1)
+    session = env.idp.reauthenticate(
+        env.session, page.value.decision_ref, now, credential=env.test_credential
+    )
+    assert session is not None
+    env.session = session
+    result = env.approval_service.submit_decision(
+        env.approver, session, page.value.decision_ref, "APPROVE",
+        confirmation_text=confirmation_text, csrf_token=page.value.csrf_token,
+        origin=ORIGIN, referer=ORIGIN + "/approval/", now=now,
+    )
+    assert result.error is None, result.error
+    return snapshot, page.value
 
 
 def test_tool_list_is_exactly_five_and_annotations_are_not_read_only():

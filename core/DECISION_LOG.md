@@ -2626,3 +2626,7 @@ Accept S16-01 only for its verified TEST-backed approval core/page contract at e
 
 Resolve S16 design questions Q2 and Q7 to their documented strict defaults: expose no S16 change tools through a public/tunnel listener (including read-only `status` and `verify`); use loopback by default and permit only explicitly configured private ranges. The existing app factory remains inert and starts no listener.
 
+## 2026-11-18 — Align approval test fixtures with action-bound re-authentication
+
+The S16-01 approval contract now requires a fresh TEST IdP proof bound to the exact decision reference. Update test-only helpers that submit approval decisions to obtain that proof and replace their session before submission; do not weaken the application check to preserve old fixture behavior. No production adapter or runtime credential is introduced.
+
