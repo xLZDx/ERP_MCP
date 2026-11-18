@@ -884,3 +884,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SUCCESS: The first S16-05 replay run caught two malformed test-fixture assignments before acceptance; the corrected named E2E file passed. Rule: treat test-authoring defects as failures, fix them in the owning test file, and rerun the exact failed target before recording acceptance.
 
+- 2026-11-18 SUCCESS: S16-05 replay fixtures now instantiate their environment and fake server according to the actual helper return contract. Rule: keep acceptance evidence tied to the committed fixture version by rerunning after test-only corrections are committed.
+

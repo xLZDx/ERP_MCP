@@ -2598,3 +2598,7 @@ S16-05 requires identical fake-state responses when a recorded transcript is rep
 
 At HEAD `107a6f2174bfd1dbf8e29df6ffbcdd2ddf68b2f9`, the assigned functional reviewer passed the four named S16 modules (130 tests, one deprecation warning) and the assigned E2E runner passed `test_s16_replay.py` (4 tests). An initial E2E run found two test-only fixture unpacking errors; those were corrected and the named file passed on rerun. Mark S16-05 `ACCEPTED_BOUNDED` for hand-authored fake transcripts and the fake approval/apply/verify journey only. Keep real clients, deployed gateway, IdP handshake and runtime NOT_RUN. S16-04 remains partial because current route checks cover only the ASGI listener, not the registered 1C writer target.
 
+## 2026-11-18 — Commit the corrected S16-05 replay fixture
+
+The first S16-05 replay test draft unpacked `build_env()` as though it returned a pair, while it returns one `S16Environment`. Correct both setup sites to create `Server()` explicitly. The assigned E2E runner passed the corrected working-tree file, but that result must be repeated after the test-only correction is committed before it is recorded as exact-HEAD verification.
+

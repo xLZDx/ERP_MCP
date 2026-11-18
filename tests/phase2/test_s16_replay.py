@@ -98,7 +98,7 @@ def test_labeled_client_shape_transcripts_cover_the_entire_registered_tool_surfa
 
 def test_full_fake_approval_journey_replays_through_page_and_serialized_tools():
     """The requester surface proposes/applies; only the TEST IdP session approves."""
-    env, server = build_env()
+    env, server = build_env(), Server()
     register_s16_tools(server, env.change_service, lambda context: context)
 
     # A fresh test-IdP issuance models the approver login step; no production IdP is involved.
@@ -182,7 +182,7 @@ def test_same_hand_authored_transcript_has_identical_response_with_injected_fake
     }
 
     def replay_once(messages):
-        env, server = build_env()
+        env, server = build_env(), Server()
         env.change_service = ChangeService(
             env.core, env.store, FakeProposalPort(env.targets, env.principals),
             env.nonce_source, env.clock, id_source=FakeIdSource("s16-replay-change-id"),
