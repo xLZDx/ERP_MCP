@@ -443,6 +443,7 @@ def test_external_processing_file_is_refused_before_password_clone_or_com(monkey
     password = Mock(side_effect=AssertionError("must not read the reader secret"))
     clone = Mock(side_effect=AssertionError("must not prepare a clone"))
     connector = Mock(side_effect=AssertionError("must not connect to COM"))
+    monkeypatch.setattr(ner, "PRIVATE_ROOT", tmp_path)
     monkeypatch.setattr(ner, "_reader_password", password)
     monkeypatch.setattr(ner, "prepare_report_clone", clone)
 
@@ -554,10 +555,11 @@ def test_run_refuses_an_output_root_inside_the_repository(monkeypatch):
 
 def test_the_default_component_list_and_the_loops_that_use_it():
     common = (ROOT_DIR / "scripts" / "e2e" / "_common.ps1").read_text(encoding="utf-8")
-    assert "@('fake1c', 'sidecar', 'idp', 'gateway')" in common
+    assert "@('fake1c', 'sidecar', 'idp', 'capability_acceptor', 'capability_observer', 'gateway')" in common
+    assert "@('idp', 'capability_acceptor', 'capability_observer', 'gateway')" in common
     for name in ("up.ps1", "reset.ps1"):
         text = (ROOT_DIR / "scripts" / "e2e" / name).read_text(encoding="utf-8")
-        assert "$script:ProcessComponents" in text or name == "reset.ps1"
+        assert "$script:ProcessComponents" in text
         assert "'fake1c'" not in text and "'sidecar'" not in text, name
 
 

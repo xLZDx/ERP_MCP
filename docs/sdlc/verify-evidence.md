@@ -912,3 +912,7 @@ The baseline module passed 18 cases in 0.23s at dcbc263. The baseline source and
 The named historical regressions at 52ef731 were independent runs: test_capture_permit.py (48 passed), test_side_effect_boundary.py (91 passed), test_artifact_vault.py (42 passed), and test_safe_parser.py (165 passed, one skipped). These supplement the prior bounded acceptance records and do not establish all platform-specific behavior. The native ledger's standard plan sync restored the four historical verified states from documented acceptance without fabricating agent receipts.
 
 GPT-PM approved the bounded offline implementation and S5 closure (request da9afc1b-383f-468a-b33b-3bf86a2b8326, reply a4d9b070-f98b-59d0-9c40-9b09c1d8dd80). PR #61 merged the approved head as f0d082e751cc87a772f4b0477f42943e8b169774. Native 1C UI, actual native original files, durable authority and product acceptance were NOT_RUN.
+
+## 2026-11-18 - First named S6 standard engine run
+
+The e2e-runner ran test_native_engine_reports.py at b398851c85f2ed39e7d120a3989460e7e82a21d4. Result: 2 failed, 59 passed in 1.08s, exit 1. The new external processing test failed before report selection because its private root was not configured to use the temporary fixture. The existing component-list assertion still expected the historical four-service fake lane, while the current orchestrator includes capability_acceptor and capability_observer. The module uses test doubles and did not connect to 1C.

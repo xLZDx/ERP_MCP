@@ -2233,4 +2233,8 @@ GPT-PM approved the bounded S6 design at 5f163e1 (request ba02e918-b262-4f8c-986
 ### 2026-11-18 - Pin the standard report engine acceptance cases
 
 Use the existing fake COM report and the named runner test module to cover the exact allowlisted object and export digest, stable metadata, zero rows and zero columns, drift invalidation, and early refusal of an external processing file. Run the module from the S6 worktree on the committed candidate. These tests must not connect to 1C.
+
+### 2026-11-18 - Correct the S6 test fixture and lane expectation
+
+The first named run found two test failures and no observed runner regression. Configure the private root for the external-processing refusal scenario so its allowlist gate is reached. Preserve the PowerShell component-loop guard but assert the current fake-lane list, including the two capability services added by b1e2605. Rerun the same named module on the corrected commit.
 </pre></main></body></html>

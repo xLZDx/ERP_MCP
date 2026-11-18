@@ -686,3 +686,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SUCCESS: The standard report manifest links provenance to the existing digest and run context without duplicating its reader, period or clone identifiers. Rule: store each provenance fact at the level where it is authoritative and omit report provenance when the enclosing run is invalid.
 
 - 2026-11-18 SUCCESS: Distinguish a reported zero balance from an empty generated sheet by asserting both dimensions and the absence of an exported artifact, digest and provenance. Rule: exercise each missing dimension through the same report-generation adapter used for a nonempty result.
+
+- 2026-11-18 FAILURE: The first named S6 run failed because the negative fixture hit private-root validation and a preserved test still expected the historical component list. Rule: prove a negative test reaches the intended gate and reconcile inherited exact-list assertions with the recorded integration change.
