@@ -1951,5 +1951,5 @@ The isolated store now commits the decision, consumed reference and final audit 
 
 ## S16-02 operational identity and credential lifecycle
 
-The isolated test provider and in-memory registries exercise principal and session revocation. The current secret-store fake reports an unconfigured store and never supplies credentials. Bind a configured provider and authoritative identity registry, qualify credential versions and revocation, and show that rotation and revocation invalidate sessions derived from the prior credential. Keep credentials out of diagnostic output and persisted application artifacts. The provider owner is unassigned.
+The isolated test provider and in-memory registries exercise principal and session revocation. On 2026-11-18, S16-02 added a TEST-only keyed-digest credential authority and generation-bound session invalidation; six named functional cases passed at source HEAD `e6e5ececc4c4817a48538e5ed6156437098cf02f`. This is bounded synthetic evidence only. The current production-facing secret-store fake remains unconfigured and does not establish a real provider or authoritative identity registry. At final project verification, qualify the configured provider, credential version/revocation and artifact-leakage boundaries; keep credentials out of diagnostics and persisted application artifacts. The provider owner is unassigned.
 

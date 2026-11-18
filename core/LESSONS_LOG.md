@@ -876,3 +876,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-18 SHORTCOMING: TEST sessions could be issued without verifying a credential. The first generation-binding draft allowed a caller to obtain the current generation without presenting a credential, bypassing the new login check. Require credential proof for every public issue call when the TEST authority is configured, and preserve session rotation only after validating the predecessor. Rule: never let a session-creation API infer authentication from the authority's current state alone.
 
+- 2026-11-18 SUCCESS: The S16 tool operation map is checked against the shared requester matrix at import, with approval and rejection kept outside the model surface. Rule: encode the operation boundary and make policy drift fail closed before any tool registration.
+

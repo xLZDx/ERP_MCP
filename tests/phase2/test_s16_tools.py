@@ -5,7 +5,12 @@ from datetime import timedelta
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode
-from erp_mcp_s16.tools import S16_TOOL_MANIFEST, register_s16_tools
+from business_ai_gateway.phase2.change.policy import CALLER_MATRIX, LedgerOperation
+from business_ai_gateway.phase2.change.types import CallerClass, KillMode
+from business_ai_gateway.phase2.change.killswitch import SwitchReading
+from erp_mcp_s16.tools import (
+    S16_MODEL_OPERATION_ALLOWLIST, S16_TOOL_MANIFEST, S16_TOOL_OPERATION_MAP, register_s16_tools,
+)
 from erp_mcp_s16.fakes import InMemoryChangeStore
 from business_ai_gateway.phase2.change.types import Verification
 from tests.phase2.s16_helpers import NOW, approve, build_env, raw_create
@@ -206,6 +211,76 @@ def test_escape_expansion_argument_budget_refuses_before_calling_the_service():
     arguments = {"request": request}
     assert sum(len(value.encode("utf-8")) for value in request.values()) < 64 * 1024
     assert len(repr(arguments).encode("utf-8")) > 64 * 1024
+
+    response = asyncio.run(server.handlers["propose"][0](arguments, env.requester))
+
+    assert response["isError"] is True
+    assert response["error"]["code"] == ErrorCode.SCHEMA_INVALID.value
+    assert service_calls == []
+
+
+def test_model_operation_allowlist_matches_requester_matrix_without_approval_operations():
+    requester_operations = CALLER_MATRIX[CallerClass.REQUESTER]
+    mapped_operations = frozenset().union(*S16_TOOL_OPERATION_MAP.values())
+
+    assert set(S16_TOOL_OPERATION_MAP) == {spec.name for spec in S16_TOOL_MANIFEST}
+    assert mapped_operations == requester_operations
+    assert S16_MODEL_OPERATION_ALLOWLIST == requester_operations
+    assert not ({LedgerOperation.APPROVE, LedgerOperation.REJECT} & mapped_operations)
+
+
+def test_apply_tool_kill_switch_denial_does_not_claim_or_call_apply_port():
+    env, server = build_env(), Server()
+    snapshot, _ = approve(env)
+    env.kill_switch.value = SwitchReading(available=True, mode=KillMode.STOP_ADMIT)
+    register_s16_tools(server, env.change_service, lambda context: context)
+
+    response = asyncio.run(server.handlers["apply"][0]({"change_id": str(snapshot.change_id)}, env.requester))
+
+    assert response["isError"] is True
+    assert ErrorCode.KILL_SWITCH_ACTIVE.value in repr(response)
+    assert env.store.claim_count == 0
+    assert env.apply_port.calls == 0
+
+
+def test_apply_tool_refuses_change_from_another_company_scope_without_effect():
+    from dataclasses import replace
+
+    env, server = build_env(), Server()
+    snapshot, _ = approve(env)
+    foreign_scope = replace(env.requester.scope, company="company-2", organization="org-2",
+                            base_fingerprint="base-2")
+    foreign_company_principal = replace(env.requester, scope=foreign_scope)
+    register_s16_tools(server, env.change_service, lambda context: context)
+
+    response = asyncio.run(server.handlers["apply"][0](
+        {"change_id": str(snapshot.change_id)}, foreign_company_principal
+    ))
+
+    assert response["isError"] is True
+    assert ErrorCode.SCOPE_MISMATCH.value in repr(response)
+    assert env.store.claim_count == 0
+    assert env.apply_port.calls == 0
+
+
+_INVALID_TOOL_ARGUMENTS = [
+    ("invalid_utf8_surrogate", {"request": {"reason": "\ud800"}}),
+    ("non_finite_float", {"request": {"amount": float("inf")}}),
+    ("excessive_nesting", {"request": {"payload": [[[[[[[[[[[[[None]]]]]]]]]]]]]}}),
+    ("excessive_node_count", {
+        "request": {"first": [None] * 2048, "second": [None] * 2048},
+    }),
+    ("forbidden_identity_key", {"request": {"principal_id": "caller-controlled"}}),
+    ("forbidden_effect_key", {"request": {"effects": ["POST"]}}),
+]
+
+
+@pytest.mark.parametrize("_case,arguments", _INVALID_TOOL_ARGUMENTS, ids=[case for case, _ in _INVALID_TOOL_ARGUMENTS])
+def test_invalid_aggregate_arguments_refuse_before_service_call(_case, arguments):
+    env, server = build_env(), Server()
+    service_calls = []
+    env.change_service.propose = lambda *args, **kwargs: service_calls.append(args)
+    register_s16_tools(server, env.change_service, lambda context: context)
 
     response = asyncio.run(server.handlers["propose"][0](arguments, env.requester))
 

@@ -2580,3 +2580,9 @@ Refreshed the ledger's project reconciliation against the current project plan, 
 
 Keep the configured S16 identity credential seam fail-closed: issuing a TEST approver session requires a credential accepted by the TEST-only authority; the session records only the authority's positive generation, and validation checks that generation on every access. Rotation or revocation therefore invalidates sessions derived from the prior credential. The in-memory test authority stores a salted keyed digest, not credential values. Do not treat this fake as a production IdP or SecretProvider qualification; the existing operational backlog entry for the configured provider and owner remains open. Six assigned named functional cases passed at source HEAD `e6e5ececc4c4817a48538e5ed6156437098cf02f`; only the synthetic path was exercised.
 
+Classify S16-02 as `ACCEPTED_BOUNDED`: the synthetic contract is verified, while the configured production identity and secret providers remain an operational backlog item.
+
+## 2026-11-18 — Derive the S16 requester operation allowlist from policy
+
+The exact five-tool adapter had a fixed tool manifest but no executable mapping to the shared caller policy. Map each tool to its requester operations, derive the exposed union from `CALLER_MATRIX[REQUESTER]`, and fail module initialization if the mapping diverges or exposes `APPROVE`/`REJECT`. `verify` uses the scoped status read before S15 VerifyPort; `rollback_propose` creates a new admitted proposal. Nine assigned named cases passed on the dirty worktree based at `adbfe52a5bae46f911dc3ffc5df93b0ccb0d4d86`. This accepts only the isolated adapter contract; gateway and client behavior remain separate.
+

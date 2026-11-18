@@ -16,6 +16,8 @@ from typing import Annotated, Any, Callable, Mapping, Protocol
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, render
+from business_ai_gateway.phase2.change.policy import CALLER_MATRIX, LedgerOperation
+from business_ai_gateway.phase2.change.types import CallerClass
 from erp_mcp_s15.verifier import VerificationResult
 
 from .contracts import (
@@ -29,7 +31,8 @@ from .contracts import (
     VerifyRequest,
 )
 
-__all__ = ["S16_TOOL_MANIFEST", "ToolSpec", "register_s16_tools"]
+__all__ = ["S16_MODEL_OPERATION_ALLOWLIST", "S16_TOOL_MANIFEST", "S16_TOOL_OPERATION_MAP",
+           "ToolSpec", "register_s16_tools"]
 
 
 class ChangeServicePort(Protocol):
@@ -106,6 +109,28 @@ S16_TOOL_MANIFEST: tuple[ToolSpec, ...] = (
         "required": ["change_id"], "additionalProperties": False,
     }, {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": False}),
 )
+
+# Keep the user-facing operation surface tied to the policy matrix. `verify` reads
+# the scoped ledger state and delegates the evidence check to the S15 verifier port.
+# `rollback_propose` is a new proposal, never an implicit reversal.
+S16_TOOL_OPERATION_MAP = MappingProxyType({
+    "propose": frozenset({LedgerOperation.PROPOSE, LedgerOperation.VALIDATE}),
+    "status": frozenset({LedgerOperation.READ_STATUS}),
+    "apply": frozenset({LedgerOperation.CLAIM, LedgerOperation.RELEASE_CLAIM,
+                         LedgerOperation.BEGIN_APPLY}),
+    "verify": frozenset({LedgerOperation.READ_STATUS}),
+    "rollback_propose": frozenset({LedgerOperation.PROPOSE, LedgerOperation.VALIDATE}),
+})
+_APPROVER_ONLY = frozenset({LedgerOperation.APPROVE, LedgerOperation.REJECT})
+_REQUESTER_ALLOWED = CALLER_MATRIX[CallerClass.REQUESTER]
+S16_MODEL_OPERATION_ALLOWLIST = frozenset().union(
+    *(operations & _REQUESTER_ALLOWED for operations in S16_TOOL_OPERATION_MAP.values())
+)
+if (set(S16_TOOL_OPERATION_MAP) != {spec.name for spec in S16_TOOL_MANIFEST}
+        or any(operations & _APPROVER_ONLY for operations in S16_TOOL_OPERATION_MAP.values())
+        or any(operations - _REQUESTER_ALLOWED for operations in S16_TOOL_OPERATION_MAP.values())
+        or S16_MODEL_OPERATION_ALLOWLIST != _REQUESTER_ALLOWED):
+    raise RuntimeError("S16_TOOL_OPERATION_MAP_INVALID")
 
 
 def _freeze(value: object) -> object:
