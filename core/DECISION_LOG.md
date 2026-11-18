@@ -2361,3 +2361,8 @@ Recover the historical completion, ownership refusal, pre-write terminal replay 
 
 Recover the scoped budget-revoke scenarios from 5655a2c on the byte-equivalent migration 027 routine. Retain the exact role-scope conflict scenario from f93b6aa in the fixture that applies through 039, including the explicit conflict target from migration 030. The scoped grant tests check transaction and replay behavior. The role-scope test checks that repeating the same tuple yields one row. Both are pending execution on disposable PostgreSQL.
 
+
+## 2026-11-18 - Integrate S13 pull request history into the local candidate
+
+Merge the exact PR 58 source head 9bd6d3840437a811db4f3f8ad7e12619e102c57b into the sprint continuation. Retain the current source versions: anchor client behavior is unchanged, checkpoint replay verifies the retained signature, and the lifecycle retains the more complete diagnostic base preflight and receipt validation. Keep the earlier package under dev_anchor_service_s13 to avoid shadowing the separate dev_anchor_service.py entry point. Keep the current restore, suffix, HTTP preflight and refusal scenarios, and retain historical dev-service contract and review records in the design, acceptance map and merged commit history. No product behavior changed in this merge. Exact-head tests and review remain pending.
+
