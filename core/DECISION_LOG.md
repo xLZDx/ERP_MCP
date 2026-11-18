@@ -2247,3 +2247,7 @@ Historical PR #48 merged bb6ef080 to the integration branch as 5672c9c. The inte
 ### 2026-11-18 - Record restored S8 bounded closure
 
 PR #63 merged exact GPT-PM-approved head f831457971f9af8c1186d4ec1c90e6f4259affc4 into main as 8a12aa207d81462411d25580e21abc9568d10b7d. Review request 741aeebe-638c-477f-9817-485ef7569bbf and reply 2d72fba9-1d4e-53ff-945a-0d06feb8f6f5 authorize reestablishing bounded 3/3 closure. The 235 named cases verify the restored regression in current main; retain historic engineering decisions and separate live qualification.
+
+### 2026-11-18 - Prepare the remaining S9 bounded acceptance
+
+S8 bounded closure was restored after PR #63. The current S9 work joins earlier bounded acceptance of R2-US-043 and R2-US-044 with exact-current verification of R2-US-045 followed by R2-US-046. Preserve the existing offline E3 and E4 design. Review the inherited migrations/rollback and restore/export/retention paths before changing code, and retain prior evidence without substituting its test counts for exact-current proof. PR #49 is merged on its original integration branch.
