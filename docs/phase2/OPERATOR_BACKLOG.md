@@ -1874,3 +1874,7 @@ The reference vault does not accept native XLSX/MXL originals. Establish an immu
 ## S6 native standard-report qualification
 
 After the bounded runner contract, qualify the exact 1C configuration, report object and data route on an authorized disposable clone. Retain authenticated configuration identity, private original export bytes and the exact company/period bindings. For profile validation, acquire separate native UI reports with independent accountant attestation. Empty standard reports remain missing evidence, including module-driven reports that cannot generate rows through the external connection. Keep product TC067-TC069 NOT_RUN until the required live scope is demonstrated. The bounded contract does not introduce an external processing loader. No configuration qualification or attestation owner is assigned.
+
+## S9 live operations and recovery qualification
+
+The S9 decision modules do not execute migrations, rollback, backup restore, export delivery or deletion. Keep the authorized Release 1 rehearsal and production cutover, authenticated restore with measured recovery time and recovery point, external export-key management and legal-hold enforcement, real load and delivery alarms, and G6-pre in the backlog. Evidence must bind the respective deployed schema, scoped runtime authority and test dataset. No runtime qualification owners are assigned for this entry. Proceed with the remaining technical sprint tasks using the bounded offline contracts.

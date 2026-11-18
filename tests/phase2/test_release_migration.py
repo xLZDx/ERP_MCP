@@ -211,6 +211,25 @@ def test_rehearsal_reapply_of_applied_versions_is_an_idempotent_noop():
     assert [a.apply for a in twice.actions] == [True, False]
 
 
+def test_rehearsal_refuses_applied_version_when_candidate_checksum_differs_from_record():
+    refused(plan_rehearsal([add("001", checksum=D2)], ["001"], IDS, {"001": D1}),
+            OpsReason.MIGRATION_CHECKSUM_MISMATCH)
+
+
+@pytest.mark.parametrize("units,applied_checksums", [
+    ([add("001")], {"001": D1}),  # candidate omits the checksum for an applied version
+    ([add("001", checksum=D1)], {}),  # applied-version evidence omits its recorded checksum
+])
+def test_rehearsal_refuses_applied_version_without_both_checksum_evidence_sides(
+        units, applied_checksums):
+    refused(plan_rehearsal(units, ["001"], IDS, applied_checksums), OpsReason.INPUT_INVALID)
+
+
+def test_rehearsal_refuses_duplicate_planned_version_with_a_changed_checksum():
+    refused(plan_rehearsal([add("001", checksum=D1), add("001", checksum=D2)], [], IDS),
+            OpsReason.MIGRATION_CHECKSUM_MISMATCH)
+
+
 def test_rehearsal_missing_requires_is_refused():
     refused(plan_rehearsal([add("002", ["001"])], [], IDS), OpsReason.REHEARSAL_REQUIRES_UNMET)
     refused(plan_rehearsal([add("001"), add("003", ["002"])], [], IDS),

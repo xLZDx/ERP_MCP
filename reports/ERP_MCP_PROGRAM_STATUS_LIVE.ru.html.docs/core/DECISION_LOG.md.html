@@ -2245,4 +2245,20 @@ PR #62 merged exact GPT-PM-approved head 9591e781505d75769e80f182e90972972f9f9fb
 ### 2026-11-18 - Restore the S8 source ownership regression on main
 
 Historical PR #48 merged bb6ef080 to the integration branch as 5672c9c. The integrated timeline implementation retains the same independent source ownership check, but the accepted mislabeled event-feed regression and its positive fixture binding are absent on main. Restore those two test hunks without changing product code. Reverify the named timeline and view modules to establish that consolidation preserved TC120, then retain the historical bounded scope; live source ownership and user acceptance still require separate qualification.
+
+### 2026-11-18 - Record restored S8 bounded closure
+
+PR #63 merged exact GPT-PM-approved head f831457971f9af8c1186d4ec1c90e6f4259affc4 into main as 8a12aa207d81462411d25580e21abc9568d10b7d. Review request 741aeebe-638c-477f-9817-485ef7569bbf and reply 2d72fba9-1d4e-53ff-945a-0d06feb8f6f5 authorize reestablishing bounded 3/3 closure. The 235 named cases verify the restored regression in current main; retain historic engineering decisions and separate live qualification.
+
+### 2026-11-18 - Prepare the remaining S9 bounded acceptance
+
+S8 bounded closure was restored after PR #63. The current S9 work joins earlier bounded acceptance of R2-US-043 and R2-US-044 with exact-current verification of R2-US-045 followed by R2-US-046. Preserve the existing offline E3 and E4 design. Review the inherited migrations/rollback and restore/export/retention paths before changing code, and retain prior evidence without substituting its test counts for exact-current proof. PR #49 is merged on its original integration branch.
+
+### 2026-11-18 - Preserve separate S9 recovery verification
+
+The 352 named release compatibility tests passed at d748a3d. Advance in order to R2-US-046 for synthetic restore verification, export safety and decision-only retention. Keep runtime execution and its prerequisites in the backlog. No product source, migrations or live data changed.
+
+### 2026-11-18 - Exercise retained migration checksum refusals
+
+Current plan_rehearsal binds an applied version to the recorded file checksum and rejects changed checksums within a repeat of one version. The named S9 release tests cover matching checksums and idempotent replay but did not explicitly assert the checksum mismatch result. Add the missing named regression without changing the decision implementation. Recovery verification ran separately and its source and tests remain unchanged.
 </pre></main></body></html>

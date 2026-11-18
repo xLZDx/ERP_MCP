@@ -920,3 +920,15 @@ The e2e-runner ran test_native_engine_reports.py at b398851c85f2ed39e7d120a39894
 ## 2026-11-18 - Final S6 bounded acceptance
 
 The e2e-runner ran D:/Repo/ERP_MCP/.venv/Scripts/python.exe -m pytest -q --confcutdir=tests/real1c tests/real1c/test_native_engine_reports.py from the clean S6 worktree at 9591e781505d75769e80f182e90972972f9f9fbe with that worktree's source and root on PYTHONPATH. Result: 61 passed in 0.87s, exit 0. This module used fake COM objects. Code, Python and silent-failure reviewers found no actionable issue in the exact source/test delta. GPT-PM approved bounded implementation and 8/8 engineering closure (request 9504fced-efe7-4bef-b2fc-8c8e8cc41387, reply 9a9b32c3-c18e-509c-a796-6876488f07c8). PR #62 merged that head as dbfa62d2f74838300108f7424f45111e3a986c62. Native product qualification remains NOT_RUN.
+
+## 2026-11-18 - S8 source ownership regression retained on main
+
+At f831457971f9af8c1186d4ec1c90e6f4259affc4 the e2e-runner ran the named test_timeline_view.py and test_s8_gpt_fix_views.py modules from the clean S8 worktree with scratch source and root imports. Result: 235 passed in 2.02s, exit 0. The routed reviewer found no actionable issue. GPT-PM authorized the test-only restoration and bounded closure 3/3 (request 741aeebe-638c-477f-9817-485ef7569bbf, reply 2d72fba9-1d4e-53ff-945a-0d06feb8f6f5). PR #63 merged that head as 8a12aa207d81462411d25580e21abc9568d10b7d. Live source, UI acceptance and G5 were NOT_RUN.
+
+## 2026-11-18 - S9 retained release compatibility modules
+
+At d748a3d72bf454d9c3305801a74b5797588d9e3f the e2e-runner ran test_release_migration.py, test_release_rollback.py and test_release_sql_guard.py in one named invocation with PYTHONPATH set to the S9 scratch source and root. Result: 352 passed in 1.36s. The SQL guard reads the retained migration statements as text. No migration or rollback was applied.
+
+## 2026-11-18 - S9 retained restore, export and retention modules
+
+At b20e6a1e6200d5fb4884c678dc31f433d4cdda98 the e2e-runner ran test_restore_verify.py, test_export_safety.py and test_retention_hold.py with the S9 scratch source and root on PYTHONPATH. Result: 376 passed in 3.02s, exit 0. These are in-memory behavioral cases. No actual backup restore, export delivery, deletion or external authority was tested.
