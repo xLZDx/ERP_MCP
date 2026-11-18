@@ -2674,3 +2674,7 @@ Replace the S11 I8 digest-equality disjunction with the source-derived per-file 
 
 Compose bounded upload extraction and optional server-injected company-scoped alias resolution behind `WorkbenchSession.intake_preview`, after the existing session, entitlement and expiry gate. The view preserves per-cell provenance, marks materiality `UNCLASSIFIED`, requires field review and keeps proposal/apply disabled. The parser accepts bytes only. Extend the same authenticated facade with bounded `manual_preview`; its ordered fields receive a deterministic source digest and one-based provenance and remain review-required. This is a service preview contract, not a completed UI: the interactive change list with retry/rollback-proposal affordances remains open. Named tests are documented but NOT_RUN until all S17 story code is complete.
 
+## 2026-11-18 — Implement a value-free H3 scorecard without fabricating lane results
+
+Implement only the frozen calculation and evidence-shape guard in `h3_scorecard.py`: 30 unique file hashes frozen before extraction, exact integer comparison for the 10% material-field correction limit, separate file-format strata, and hard failure when a material field lacks human review or a confidently wrong material field is approved without human review. A synthetic-only or missing-lane record is `NOT_ACCEPTANCE`. No 30-file evaluation dataset, test-lane run, H3 measurement, or acceptance is claimed.
+

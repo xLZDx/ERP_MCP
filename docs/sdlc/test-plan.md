@@ -118,6 +118,18 @@ The assigned functional-test-reviewer and e2e-runner own these named cases after
 - Every preview has `proposal_allowed == false` and `apply_allowed == false`; no approve/apply/write tool or 1C call is reachable from the preview operation.
 - Existing `cards`, `read_job`, and `read_result` endpoints must continue to report authoritative current service state after failure/retry. The interactive change-list/retry/rollback-proposal screen is not yet implemented by this preview slice and must be completed before S17-05 acceptance.
 
+## S17-06 frozen H3 measurement
+
+The assigned functional-test-reviewer owns these named cases after all S17 story code is complete; do not run them before then. Use `h3_scorecard.py` only to aggregate a pre-frozen evidence record; its `PASS` is a metric result, not by itself sprint acceptance.
+
+- Require exactly 30 invoices with unique source SHA-256 values and timezone-aware freeze timestamps earlier than extraction start. Duplicate hashes or malformed evidence return a fixed invalid code without document content.
+- Count only human semantic corrections to fields marked material; formatting-only changes are not corrections. Compute the ratio by integer counts so exactly 10% passes and any larger ratio fails without rounding.
+- Report per-format strata separately. A zero material-field denominator is `NOT_READY`, not a zero correction rate.
+- Every material field must have a human-review record regardless of confidence; any unreviewed material field in a qualified test-lane sample fails.
+- Any confidently wrong material field approved without human review fails regardless of the aggregate correction rate.
+- `SYNTHETIC_ONLY` data or a missing test-lane run id can never produce acceptance; the result remains `NOT_ACCEPTANCE` even if the numeric rate is below 10%.
+- The scorecard contains counts, fixed codes and file hashes only; never include invoice values, filenames, credentials or user identities. The evaluation dataset and real/realistic lane evidence must remain external evidence artifacts referenced by hash.
+
 ## Required final verification selections
 
 The post-code phase must include (a) the specifically required S12 SQL code parity test and exhausted-budget SQL behavior; (b) the finisher brief's required slow SQL/E2E selected set, including the relevant producer/list-status integration paths; and (c) the required selected S15 suites from `docs/phase2/S15_SPRINT_PLAN_2026-10-27.md` §9. Test owners resolve exact existing test paths and run commands from those source documents after implementation. This plan does not expand the requirement to `pytest` without selection or a full repository suite. If exact suite selection conflicts across records, preserve the source and resolve it in the execution report rather than silently choosing a smaller set.
