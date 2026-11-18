@@ -2299,3 +2299,7 @@ The current PR #54 head is 2629aa2 and diverges from main. Test-only entry remai
 ### 2026-11-18 - Approve an early governed-operation admission guard
 
 GPT-PM approved the S12-01 compatibility design at 1ac5bdf (request 974f286e-724a-4e02-ac17-bacd68839510). Use an immutable server-owned set of the three frozen operations at the governed facade before target/provider work, nonce issuance and persistence, and at the independently called proposal builder. Retain exact parser and digest behavior for historical simulation. This approval is for bounded implementation only and does not authorize merging PR #54 or completing G8.
+
+### 2026-11-18 - Advance to retained S12 transition taxonomy verification
+
+S12-01's isolated admission and canonicalization checks passed (54 passed, 21 disposable database cases skipped). The broader named four-file probe at the same head found two unrelated inherited transition fixtures. Reconcile the fixtures with retained source: an incompletely bound returned outcome keeps the T9 call-ownership hold, and the T16 witness cannot be the prior approver. Both are fail-closed existing semantics; no reducer or signer authority change is needed for these two failures.
