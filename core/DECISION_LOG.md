@@ -2706,3 +2706,5 @@ Commit `adf5d2dd` revealed that this machine's installed pre-commit plan-to-ledg
 
 The authenticated S17 preview API has no persistent company-scoped entity-directory provider. Return a fixed `NOT_CONFIGURED` marker and show a fixed browser explanation so a raw label cannot be mistaken for a resolved entity. Do not inject the offline in-memory resolver or synthesize directory matches; keep fields review-required and proposal/apply disabled. Persistent directory composition and the interactive change-list/retry/rollback-proposal flow remain open; named tests stay `NOT_RUN` until S17 code is complete.
 
+The remaining S17-05 service composition is recorded in `docs/phase2/OPERATOR_BACKLOG.md`: keep preview transient, and implement the authenticated list/retry/rollback-proposal workflow through the application service rather than claiming the offline `WorkbenchSession` is wired. Current preview slice is committed as `420747fe`.
+
