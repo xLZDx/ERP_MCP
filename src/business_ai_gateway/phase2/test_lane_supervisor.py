@@ -6,7 +6,7 @@ observes its exit, records sanitized lifecycle evidence, and bounds restarts.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -16,7 +16,7 @@ from .ops_types import is_aware_datetime, is_identity_text
 
 __all__ = [
     "ComponentHandlePort", "ComponentRunnerPort", "LifecycleEvidence", "LifecycleEvent",
-    "SupervisorFailure", "TestLaneSupervisor",
+    "SupervisorCancelled", "SupervisorFailure", "TestLaneSupervisor",
 ]
 
 MAX_COMPONENT_ID_CHARS = 128
@@ -62,6 +62,14 @@ class SupervisorFailure(RuntimeError):
         super().__init__(code)
 
 
+class SupervisorCancelled(asyncio.CancelledError):
+    """Caller cancellation delivered only after component exit has been observed."""
+
+    def __init__(self, evidence: tuple[LifecycleEvidence, ...]) -> None:
+        self.evidence = evidence
+        super().__init__("SUPERVISOR_CANCELLED")
+
+
 class TestLaneSupervisor:
     """One-shot supervisor for one stable, preconfigured test-lane component.
 
@@ -95,6 +103,29 @@ class TestLaneSupervisor:
             raise SupervisorFailure("CLOCK_INVALID", ())
         return value.astimezone(UTC)
 
+    @staticmethod
+    async def _await_owned(awaitable: Awaitable[object]) -> tuple[object | None, bool, bool]:
+        """Keep observing an adapter operation after caller cancellation.
+
+        Returns (value, cancellation_requested, completed_successfully). Adapter errors
+        are intentionally returned as a boolean so their text never crosses this boundary.
+        """
+        task = asyncio.create_task(awaitable)
+        cancellation_requested = False
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                if task.cancelled():
+                    break
+                cancellation_requested = True
+            except Exception:  # noqa: BLE001 - adapter detail may be sensitive
+                break
+        try:
+            return task.result(), cancellation_requested, True
+        except (asyncio.CancelledError, Exception):
+            return None, cancellation_requested, False
+
     async def run(self) -> tuple[LifecycleEvidence, ...]:
         """Start, observe exits and restart the same ID no more than the configured bound."""
         async with self._lock:
@@ -123,11 +154,14 @@ class TestLaneSupervisor:
                     pre_start_at = self._timestamp()
                 except SupervisorFailure as exc:
                     raise SupervisorFailure(exc.code, tuple(evidence)) from None
-                try:
-                    handle = await self._runner.start(self._component_id, generation)
-                except Exception:  # noqa: BLE001 - no restart when start outcome is uncertain
+                started_handle, start_cancelled, start_ok = await self._await_owned(
+                    self._runner.start(self._component_id, generation))
+                if not start_ok:
                     record(generation, LifecycleEvent.START_UNCERTAIN)
+                    if start_cancelled:
+                        raise SupervisorCancelled(tuple(evidence))
                     raise SupervisorFailure("COMPONENT_START_UNCERTAIN", tuple(evidence)) from None
+                handle = started_handle
                 if not callable(getattr(handle, "wait", None)):
                     record(generation, LifecycleEvent.START_UNCERTAIN)
                     raise SupervisorFailure("COMPONENT_START_UNCERTAIN", tuple(evidence))
@@ -136,22 +170,25 @@ class TestLaneSupervisor:
                 except SupervisorFailure as exc:
                     # A child may now be running. Never retry or return while its exit is
                     # unobserved just because the evidence clock failed after start.
-                    try:
-                        await handle.wait()
-                    except Exception:  # noqa: BLE001 - child may still be alive
+                    _, clock_cancelled, exit_observed = await self._await_owned(handle.wait())
+                    if not exit_observed:
                         raise SupervisorFailure("COMPONENT_EXIT_UNOBSERVED", tuple(evidence)) from None
+                    if start_cancelled or clock_cancelled:
+                        raise SupervisorCancelled(tuple(evidence))
                     raise SupervisorFailure(exc.code, tuple(evidence)) from None
                 record_at(generation, LifecycleEvent.STARTED, started_at)
-                try:
-                    exit_code = await handle.wait()
-                except Exception:  # noqa: BLE001 - old component may still be alive
+                exit_value, wait_cancelled, exit_observed = await self._await_owned(handle.wait())
+                if not exit_observed:
                     record(generation, LifecycleEvent.WAIT_FAILED)
                     raise SupervisorFailure("COMPONENT_EXIT_UNOBSERVED", tuple(evidence)) from None
+                exit_code = exit_value
                 if (type(exit_code) is not int
                         or not -(2 ** 31) <= exit_code < 2 ** 31):
                     record(generation, LifecycleEvent.WAIT_FAILED)
                     raise SupervisorFailure("COMPONENT_EXIT_INVALID", tuple(evidence))
                 record(generation, LifecycleEvent.EXITED, exit_code)
+                if start_cancelled or wait_cancelled:
+                    raise SupervisorCancelled(tuple(evidence))
                 if generation == self._max_restarts:
                     record(generation, LifecycleEvent.RESTART_LIMIT_REACHED, exit_code)
                     return tuple(evidence)

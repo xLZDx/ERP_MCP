@@ -1,12 +1,14 @@
 """Regressions for S18 test-lane supervision lifecycle evidence."""
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from business_ai_gateway.phase2.test_lane_supervisor import (
     LifecycleEvent,
+    SupervisorCancelled,
     SupervisorFailure,
     TestLaneSupervisor as Supervisor,
 )
@@ -62,6 +64,35 @@ class UncertainStartRunner:
     async def start(self, component_id: str, generation: int) -> Handle:
         self.starts.append((component_id, generation))
         raise RuntimeError("private runner error with process details")
+
+
+class GatedHandle:
+    def __init__(self, clock: Clock) -> None:
+        self.clock = clock
+        self.wait_entered = asyncio.Event()
+        self.release_wait = asyncio.Event()
+        self.wait_calls = 0
+
+    async def wait(self) -> int:
+        self.wait_calls += 1
+        self.wait_entered.set()
+        await self.release_wait.wait()
+        self.clock.current += timedelta(seconds=2)
+        return 0
+
+
+class GatedStartRunner:
+    def __init__(self, handle: GatedHandle) -> None:
+        self.handle = handle
+        self.start_entered = asyncio.Event()
+        self.release_start = asyncio.Event()
+        self.starts: list[tuple[str, int]] = []
+
+    async def start(self, component_id: str, generation: int) -> GatedHandle:
+        self.starts.append((component_id, generation))
+        self.start_entered.set()
+        await self.release_start.wait()
+        return self.handle
 
 
 @pytest.mark.asyncio
@@ -130,4 +161,59 @@ async def test_uncertain_start_failure_is_sanitized_recorded_and_never_retried()
     ]
     assert failure.value.evidence[0].at == START
     assert "private runner error" not in str(failure.value)
+    assert runner.starts == [("component-a", 0)]
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_handle_wait_waits_for_exit_before_raising():
+    clock = Clock()
+    handle = GatedHandle(clock)
+    runner = Runner(clock, handle)
+    supervisor = Supervisor("component-a", runner, max_restarts=3, clock=clock)
+    task = asyncio.create_task(supervisor.run())
+    await handle.wait_entered.wait()
+
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    assert handle.wait_calls == 1
+
+    handle.release_wait.set()
+    with pytest.raises(SupervisorCancelled) as cancelled:
+        await task
+
+    assert [item.event for item in cancelled.value.evidence] == [
+        LifecycleEvent.STARTED, LifecycleEvent.EXITED,
+    ]
+    assert cancelled.value.evidence[-1].exit_code == 0
+    assert runner.starts == [("component-a", 0)]
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_start_observes_returned_handle_exit_before_raising():
+    clock = Clock()
+    handle = GatedHandle(clock)
+    runner = GatedStartRunner(handle)
+    supervisor = Supervisor("component-a", runner, max_restarts=3, clock=clock)
+    task = asyncio.create_task(supervisor.run())
+    await runner.start_entered.wait()
+
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    assert runner.starts == [("component-a", 0)]
+    assert handle.wait_calls == 0
+
+    runner.release_start.set()
+    await handle.wait_entered.wait()
+    assert not task.done()
+    assert handle.wait_calls == 1
+    handle.release_wait.set()
+    with pytest.raises(SupervisorCancelled) as cancelled:
+        await task
+
+    assert [item.event for item in cancelled.value.evidence] == [
+        LifecycleEvent.STARTED, LifecycleEvent.EXITED,
+    ]
+    assert cancelled.value.evidence[-1].exit_code == 0
     assert runner.starts == [("component-a", 0)]
