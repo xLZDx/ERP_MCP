@@ -1,0 +1,69 @@
+{
+  "artifacts": [
+    {
+      "category": "check_result",
+      "item": "S19 E46 fixture-run output",
+      "path": null,
+      "reason": "The recorded E46 output is not present in the committed Git tree at this exact source HEAD.",
+      "sha256": null,
+      "status": "NOT_RUN"
+    },
+    {
+      "category": "check_result",
+      "item": "S19 exact-head runtime boundary result set",
+      "path": null,
+      "reason": "No adjudicated exact-head runtime boundary results exist; prior synthetic tests are checker/fixture evidence, not I1-I15 runtime proof.",
+      "sha256": null,
+      "status": "NOT_RUN"
+    },
+    {
+      "category": "configuration",
+      "item": "Formal gate manifest at indexed source HEAD; statuses preserved as committed",
+      "path": "governance/GATE_MANIFEST.json",
+      "reason": null,
+      "sha256": "0b682a33232ccf370b3b6c06acfd38cf0c7fc6a8e8ad202483fe94128e8b3baa",
+      "status": "RECORDED_UNVERIFIED"
+    },
+    {
+      "category": "recipe",
+      "item": "S19 production-canary recipe",
+      "path": null,
+      "reason": "The preparation-only recipe exists only as an uncommitted working-tree file at this source HEAD; do not index uncommitted bytes.",
+      "sha256": null,
+      "status": "NOT_RUN"
+    },
+    {
+      "category": "schema",
+      "item": "S19 exact-head evidence-index JSON schema",
+      "path": "governance/schemas/S19_EXACT_HEAD_MANIFEST.schema.json",
+      "reason": null,
+      "sha256": "29981619a14f5999f3afb04d8ccdaa1d14834ac3c11865b520fea634c0019988",
+      "status": "RECORDED_UNVERIFIED"
+    },
+    {
+      "category": "source",
+      "item": "S19 exact-head manifest builder implementation",
+      "path": "scripts/assemble_s19_exact_head_manifest.py",
+      "reason": null,
+      "sha256": "1043bd02c2da90d20a15df53edbff64ed7041031c44cfa4160e47371b4dc4501",
+      "status": "RECORDED_UNVERIFIED"
+    },
+    {
+      "category": "source",
+      "item": "S19 invariant matrix checker implementation",
+      "path": "scripts/check_s19_invariant_matrix.py",
+      "reason": null,
+      "sha256": "e16cbbdf4a59f754e4a943d881a40e83c7836439ae11d7b5ff3c97a907270f2d",
+      "status": "RECORDED_UNVERIFIED"
+    }
+  ],
+  "assessment": "INDEX_ONLY_UNVERIFIED",
+  "authorization": "NONE",
+  "limitations": [
+    "Artifact presence and SHA-256 binding do not validate result contents, pass a gate, establish C1/engineering completion or release readiness, or authorize production."
+  ],
+  "manifest_kind": "EXACT_HEAD_EVIDENCE_INDEX",
+  "schema_version": 1,
+  "source_head": "0fd877eda305644d23b224f23ae0af77f8c08f9b",
+  "sprint_id": "S19"
+}
