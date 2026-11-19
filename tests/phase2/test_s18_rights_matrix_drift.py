@@ -1,6 +1,8 @@
 """Focused contract coverage for the S18-06 rights-matrix read boundary."""
 from __future__ import annotations
 
+import asyncio
+import inspect
 from datetime import datetime, timezone
 
 import pytest
@@ -282,6 +284,36 @@ def test_periodic_should_stop_and_sleep_callback_errors_propagate_unchanged():
         next(scans)
     assert sleep_failure.value is sleep_error
     assert reader_calls == ["read"]
+
+
+def test_periodic_rejects_async_sleep_result_and_closes_coroutine():
+    class Reader:
+        calls = 0
+
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            self.calls += 1
+            return snapshot(())
+
+    reader = Reader()
+    created = []
+
+    def async_sleep_callback(seconds: float):
+        coroutine = asyncio.sleep(seconds)
+        created.append(coroutine)
+        return coroutine
+
+    scans = iter_rights_periodically(
+        baseline(()), reader, 5, should_stop=lambda: False, sleep=async_sleep_callback)
+
+    assert next(scans).status is RightsMatrixStatus.COMPARABLE
+    with pytest.raises(RightsMatrixInputError) as refusal:
+        next(scans)
+
+    assert str(refusal.value) == RightsMatrixInputError.INVALID_PERIODIC_CONTROL
+    assert reader.calls == 1
+    assert len(created) == 1
+    assert inspect.getcoroutinestate(created[0]) == inspect.CORO_CLOSED
+    scans.close()
 
 
 def test_closing_periodic_generator_after_yield_stops_without_another_scan_or_sleep():

@@ -5,6 +5,7 @@ and provenance validation. This module performs no source reads or grant changes
 """
 from __future__ import annotations
 
+import inspect
 import math
 import re
 from dataclasses import dataclass
@@ -287,14 +288,15 @@ def iter_rights_periodically(
     interval_seconds: int | float,
     *,
     should_stop: Callable[[], bool],
-    sleep: Callable[[float], object],
+    sleep: Callable[[float], None],
 ) -> Iterator[RightsMatrixDriftResult]:
     """Yield read-only comparisons sequentially until the caller requests a stop.
 
     This is a caller-driven scheduling primitive, not a service/runtime integration.
     Each iteration finishes ``scan_rights_once`` before sleeping, so reads never
-    overlap. The caller owns the source adapter, authentication, persistence and
-    reporting. Exceptions from the callbacks and generator cancellation propagate.
+    overlap. ``sleep`` must be a synchronous callback. The caller owns the source
+    adapter, authentication, persistence and reporting. Exceptions from the
+    callbacks and generator cancellation propagate.
     A stop request is observed between scans; it cannot interrupt a blocking reader.
     """
     if type(interval_seconds) not in (int, float):
@@ -313,4 +315,8 @@ def iter_rights_periodically(
         yield scan_rights_once(baseline, reader)
         if should_stop():
             return
-        sleep(interval)
+        sleep_result = sleep(interval)
+        if inspect.isawaitable(sleep_result):
+            if inspect.iscoroutine(sleep_result):
+                sleep_result.close()
+            raise RightsMatrixInputError(RightsMatrixInputError.INVALID_PERIODIC_CONTROL)
