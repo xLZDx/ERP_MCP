@@ -2,8 +2,8 @@
 <!-- harness-report document v1 -->
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:1rem/1.55 system-ui;margin:2rem auto;padding:0 1rem;max-width:76rem}pre{overflow:auto}table{display:block;overflow:auto;border-collapse:collapse}td,th{border:1px solid;padding:.35rem}img{max-width:100%}</style><title>next-sprint-preparation</title></head><body><nav aria-label="Документация проекта"><section class="panel" id="project-documents" aria-labelledby="project-documents-title"><h2 id="project-documents-title">Документация проекта</h2><p><a href="../../../ERP_MCP_PROGRAM_STATUS_LIVE.ru.html">Программный отчёт</a></p><div><strong>Мастер-план</strong><ul><li><a href="../../PROJECT_PLAN.md.html">PROJECT_PLAN.md</a> · <a href="../../../../PROJECT_PLAN.md">исходник</a></li><li><a href="../MASTER_PLAN.md.html">MASTER_PLAN.md</a> · <a href="../../../../docs/MASTER_PLAN.md">исходник</a></li></ul></div><div><strong>Технический дизайн (TDD)</strong><ul><li><a href="../TDD.md.html">TDD.md</a> · <a href="../../../../docs/TDD.md">исходник</a></li><li><a href="../phase2/TDD_PHASE2_RU.md.html">TDD_PHASE2_RU.md</a> · <a href="../../../../docs/phase2/TDD_PHASE2_RU.md">исходник</a></li></ul></div><div><strong>Архитектура</strong><ul><li><a href="../ARCHITECTURE.md.html">ARCHITECTURE.md</a> · <a href="../../../../docs/ARCHITECTURE.md">исходник</a></li></ul></div><div><strong>Журнал решений</strong><ul><li><a href="../../core/DECISION_LOG.md.html">DECISION_LOG.md</a> · <a href="../../../../core/DECISION_LOG.md">исходник</a></li></ul></div><div><strong>Ретроспективы</strong><ul><li>RETROSPECTIVE.md — источник отсутствует</li></ul></div><div><strong>Сопроводительные документы</strong><ul><li><a href="../../README.md.html">README.md</a> · <a href="../../../../README.md">исходник</a></li><li><a href="../../core/LESSONS_LOG.md.html">LESSONS_LOG.md</a> · <a href="../../../../core/LESSONS_LOG.md">исходник</a></li><li><a href="../DEFINITION_OF_DONE.md.html">DEFINITION_OF_DONE.md</a> · <a href="../../../../docs/DEFINITION_OF_DONE.md">исходник</a></li><li><a href="../TEST_STRATEGY.md.html">TEST_STRATEGY.md</a> · <a href="../../../../docs/TEST_STRATEGY.md">исходник</a></li><li><a href="next-sprint-preparation.md.html">next-sprint-preparation.md</a> · <a href="../../../../docs/sdlc/next-sprint-preparation.md">исходник</a></li><li><a href="../phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md.html">PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md</a> · <a href="../../../../docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md">исходник</a></li><li><a href="../phase2/S18_SLO_AND_FAILURE_TABLE.md.html">S18_SLO_AND_FAILURE_TABLE.md</a> · <a href="../../../../docs/phase2/S18_SLO_AND_FAILURE_TABLE.md">исходник</a></li></ul></div></section></nav><main><p><a href="../../../../docs/sdlc/next-sprint-preparation.md">Открыть исходник</a></p><pre># Next-sprint preparation — S17–S19
 
-**Purpose:** record the smallest actionable scope for work after the current `beea27520b33`
-finisher sprint. This is a planning artifact. It does not accept a story, pass a gate, or claim
+**Purpose:** preserve the S17–S19 scope and handoff evidence. S17 and S18 are closed in bounded
+engineering scope; S19 is next. This planning artifact does not pass a formal gate or claim
 runtime evidence.
 
 ## Scope decision
@@ -17,19 +17,19 @@ Therefore no new scope approval or intermediate GPT-PM gate is needed to prepare
 inside those existing boundaries. The original finisher brief&#x27;s S16-only scope bounded that
 sprint; it does not cancel the later stages authorized by the current direction.
 
-Use dependency order for implementation: S17, then S18, then S19. The plan allows S18 to overlap
-S17 after S13–S16, but this preparation recommends sequential sprint slices to keep one PR per
-sprint and to complete S17&#x27;s intake security review before S19 acceptance. This is sequencing,
-not added approval.
+S17 and S18 have now closed as bounded engineering sprints. S17-06 H3 remains `PARTIAL`; its
+measurement and trusted receipt verification are still final-acceptance residuals. S19 is the next
+sprint, beginning with S19-01 exact-head manifest work. This does not advance the formal manifest
+or imply G8/C1 acceptance.
 
 ## Evidence snapshot and limits
 
 | Item | State | Evidence | Remaining acceptance / dependency | Owner and next action |
 |---|---|---|---|---|
 | S12/S13/S15 formal acceptance | Not accepted by this artifact; reconcile from current gate evidence | `docs/phase2/S16_SPRINT_PLAN_2026-10-28.md` §§2–4 says upstream formal acceptance is absent/unknown; `CHANGE_RECORD_403.md` says SQL/source work is implemented but database/runtime evidence is `NOT_RUN` | Use current exact-head test and review evidence against `governance/GATE_MANIFEST.json`; do not infer acceptance from source | Codex: reconcile evidence at current sprint close |
-| S16 code slice | Implemented in source; tests/reviews and acceptance remain pending | `docs/phase2/CHANGE_RECORD_404.md`, `405.md`, and `406.md`; `src/erp_mcp_s16/` contains the isolated core, approval page, five tools, and inert ingress | Current sprint phase-7 tests/reviews and required final GPT-PM exact-head approval; no listener, production binding, or real 1C activity is evidenced | Codex: finish current sprint closure; GPT-PM: required final exact-head review |
+| S16 code slice | Bounded sprint acceptance is recorded in `PROJECT_PLAN.md`; production/runtime evidence remains separate | `docs/phase2/CHANGE_RECORD_404.md`, `405.md`, and `406.md`; `src/erp_mcp_s16/` contains the isolated core, approval page, five tools, and inert ingress | No listener, production binding, or real 1C activity is evidenced; formal gates remain governed by the manifest | S19: reconcile exact-head evidence without promoting formal gates from source records alone |
 | Manifest sprint states | Stale relative to implementation records; not acceptance | `governance/GATE_MANIFEST.json` still labels S12 `IN_PROGRESS` and S13–S19 `NOT_STARTED` with null evidence; CR403–406 record later implementation work but explicitly do not claim acceptance | Keep formal manifest status unchanged until evidence is reconciled and any authorized manifest update is supported | Codex: reconcile after current required evidence; never promote from code records alone |
-| S17–S19 implementation landscape | **Partial reusable components exist; stories are not thereby delivered** | S17: `src/business_ai_gateway/phase2/safe_parser.py` exposes bounded values-only `parse_workbook`/`parse_csv` and `run_isolated`; `aliases.py` has scoped `AliasResolver`; `workbench_session.py` has in-memory cards/annotate/rerun/enqueue. S18: `scheduler.py`/`ports.py` define `SourceScheduler`/`JobQueuePort`; `alert_rules.py` has `AlertEngine`/`deliver_events`. S19: `scripts/validate_gate_manifest.mjs` already validates schema-2 manifest structure, evidence digests, predecessor DAG and waivers. | Integrate only where contracts fit; close the gaps below and provide each sprint&#x27;s tests, reviews and evidence. Existing modules are offline/evaluation-only where stated; none alone proves the planned story accepted. | Codex: reuse and extend the listed components; do not rebuild an existing validator or treat existing source as acceptance |
+| S17–S19 implementation landscape | **S17 and S18 are closed bounded; S19 remains next and unstarted** | S17: five bounded stories accepted; S17-06 H3 remains `PARTIAL`. S18: six bounded stories accepted and PR #70 merged after exact-head GPT-PM approval. Reusable S17 components include the parser, scoped resolver and in-memory workbench; S18 components include the scheduler/queue, alert delivery seam and rights-drift comparator. S19: `scripts/validate_gate_manifest.mjs` validates schema-2 structure, evidence digests, predecessor DAG and waivers. | S18 evidence is synthetic-only; live 1C rights, OS process restart/COM, real human alert receipt, production readiness and measured SLOs remain unproven. S19 must bind exact-head evidence and preserve all `NOT_RUN`/`PARTIAL` residuals. | Start S19-01; reuse the validator, do not treat existing source as S19 acceptance |
 
 `S16_SPRINT_PLAN` §5 explicitly excludes S17 from S16. That is a sprint boundary, not a
 cancellation of S17&#x27;s separately listed, approved scope. GO-1 through GO-4 are taken from the
@@ -39,9 +39,9 @@ responses.
 
 | Sprint | Plain-language outcome | Planning state | Evidence / completed preparation | Remaining acceptance | Dependency or blocker | Recommended next action / owner |
 |---|---|---|---|---|---|---|
-| S17 | Uploaded-document intake and reviewed workbench | **SELECTED for next sprint; scope ready** | Existing S17 row and six canonical story IDs in the 2026-10-17 map and S11 register; reusable parser, resolver and workbench facade noted below | Assemble upload-to-provenance-to-human-review flow; address platform containment gap; complete exact-head functional/E2E, security, UX/a11y, and H3 evidence | S16 source phase must close before intake integration; current S16 acceptance evidence remains in the current sprint | Start after current sprint gate; Codex |
-| S18 | Queue reliability, recovery, alerts, measured service objectives, security and rights drift | **CARRIED; approved scope, later sprint** | Existing S18 row and six story IDs in the map/register; per-source scheduler and in-memory alert engine exist | Build per-base capacity-20 queue/parking and independently delivered human alerts; measure/review required lane behavior; add rights-matrix drift read | Depends on S13–S16 contracts/evidence; call termination remains conditional on exact CT14 evidence | Prepare after S17 code is complete; Codex |
-| S19 | Release evidence, gate G8, engineering-complete C1 | **CARRIED; approved scope, final sprint** | Existing S19 row and five story IDs in the map/register; schema-2 validator already handles DAG/digests/waivers | Reuse validator; add exact-head evidence binding and invariant-to-passing-boundary matrix completeness; reconcile 46 active scenarios and reviews | Depends on S17, S18 and earlier sprint evidence; missing lane evidence stays `NOT_RUN` | Begin after S17/S18 evidence; Codex; GPT-PM owns final exact-head approval |
+| S17 | Uploaded-document intake and reviewed workbench | **CLOSED_BOUNDED_SPRINT (5/6 accepted; S17-06 PARTIAL)** | Exact-head GPT-PM approval and bounded closure are recorded in `PROJECT_PLAN.md`; S17-06 H3 remains a final-acceptance residual | No further S17 implementation is scheduled in this handoff; preserve the H3 denominator/receipt requirement in S19 residuals | Bounded-only; no real-accountant UAT is inferred | Carry S17-06 into S19-04; Codex |
+| S18 | Queue reliability, recovery, alerts, measured service objectives, security and rights drift | **CLOSED_BOUNDED_SPRINT (6/6 ACCEPTED_BOUNDED; PR #70 merged)** | GPT-PM round 2 approved exact HEAD `e4894685a2700978e2f09ecaceab15ab54b22dfb`; PR #70 merged as `ae219852fc5ccae783223e239fe6aa2d9b2fd78e`. Named synthetic tests and bounded evidence are itemized in `PROJECT_PLAN.md`. | All nine unmeasured SLO objectives remain `NOT_RUN`; no production readiness, live 1C rights, OS process restart/COM or real human alert receipt is established | The completed acceptance is synthetic-only and bounded | Preserve residuals in S19-04; do not reopen S18 for those out-of-scope runtime qualifications |
+| S19 | Release evidence, gate G8, engineering-complete C1 | **NEXT SPRINT; NOT_STARTED** | Existing S19 row and five canonical story IDs in the map/register; schema-2 validator already handles DAG/digests/waivers | Begin exact-head manifest (S19-01), then validator evidence, invariant matrix, residual-risk record and canary recipe; preserve all unavailable lane results as `NOT_RUN` | Depends on exact-head evidence from prior bounded sprints; S17-06 H3 remains `PARTIAL`; S18 synthetic limits remain explicit | Start S19-01; Codex; GPT-PM owns final exact-head approval |
 
 ## Prioritized stories
 
@@ -68,13 +68,15 @@ security review after implementation; UX/a11y review for workbench changes; H3 e
 with the frozen denominator and counting rule. Real accountant/user UAT remains gate G5 evidence,
 not an inferred pass.
 
-#### Minimal S17 implementation queue from current source
+#### S17 bounded closeout and residual
 
-| Order | Reuse / gap | Evidence and boundary | Smallest next implementation action | Owner |
-|---|---|---|---|---|
-| 1 | Reuse `safe_parser.py` value extraction (`parse_workbook`, `parse_csv`) and `run_isolated` process boundary | Current source bounds input before parsing; checks ZIP entry count before `ZipFile` metadata construction (with documented ZIP64 residual); limits decompressed member/total bytes, ratios, rows, cells and text; never evaluates formulas; denies external relationships/content types; runs XLSX in a scrubbed child with bounded JSON and timeout. POSIX uses `RLIMIT_AS`; Windows uses a per-process Job Object memory cap and returns `BOUND_MEMORY` without parsing if it cannot be established. This is a crash/resource boundary, not a sandbox: the child retains caller privileges. `parse_csv` is currently bounded in-process. No application upload caller exists yet. | Keep the parser contract; correct the stale Windows-cap statement; add final S17 named evidence for the Windows Job Object setup/fail-closed path and for no formula evaluation/external fetch. Compose upload/manual entry later through S17-05 without describing this parser as a sandbox. | Codex |
-| 2 | Reuse scoped `AliasResolver` and `WorkbenchSession` | `aliases.py:186,237` resolves under `AliasScope`; it is not connected to intake. `workbench_session.py:166,271–317` supplies in-memory `EVALUATION_ONLY` cards, annotation, rerun and enqueue APIs; it is not an assembled upload/provenance flow. | Compose parser output with field provenance, company-scoped entity confirmation, and the existing review/session boundary; keep proposal/apply decisions in S16 service contracts. | Codex |
-| 3 | Add only missing end-to-end flow and measured acceptance | S11 test package §C S17 row defines E7/E27/E40, extraction cross-checks, company-overlap case and H3 `N=30`, `X≤10%`; approved S17 map row defines upload/manual entry, no Drive. | Implement upload/manual entry through review and proposal with hostile-file and provenance checks; then run mapped tests/security/UX review and H3 measurement under the test ownership rules. | Codex; test agents; relevant reviewers |
+S17-01 through S17-05 are `ACCEPTED_BOUNDED` after GPT-PM round 2 approval of exact HEAD
+`6b12a4603e0e2958a64e4c53bd1cd449481c8d4f`; the bounded scope covers file safety, extraction,
+company-scoped resolution, hostile corpus handling and a review-required workbench. S17-06 remains
+`PARTIAL`: the named tests use a deterministic verifier and do not provide the qualified external
+verifier, fixed N=30 dataset, or authenticated lane receipt required for H3 acceptance. Host-wide
+process/token telemetry also remains a separate residual. The accepted implementation criteria
+remain below as the approved baseline; this is not an instruction to reopen completed S17 work.
 
 ### Sprint S18 — reliability and independent security verification
 
@@ -95,18 +97,20 @@ database/reliability/security reviews as applicable, R1 compatibility and migrat
 External lane unavailability leaves only its dependent evidence `NOT_RUN`; it does not suspend
 independent code or documentation preparation.
 
-#### Minimal S18 implementation queue from current source
+The bounded S18 closure did not satisfy those runtime-measurement objectives: the nine unmeasured
+SLO objectives and live alert receipt remain `NOT_RUN`. The sprint is closed only for the accepted
+synthetic engineering slice, as detailed below.
 
-- Reuse `SourceScheduler` (`scheduler.py:257,367`) and `JobQueuePort` (`ports.py:210`) as a
-  per-source lease/job foundation. The current shape is not the approved per-base queue with
-  capacity target 20, verification-read priority and cross-job target parking; add that contract
-  deliberately rather than relabelling the source scheduler.
-- Reuse `AlertEngine` and `deliver_events` (`alert_rules.py:288,487`) for event/rule evaluation.
-  Its documented `EVALUATION_ONLY` in-memory sinks are not an independent human delivery path;
-  provide and measure the separate delivery boundary and delivery-failure reporting.
-- `drift.py` models capture/failure drift, not rights-matrix drift. Add the periodic read-only
-  rights comparison specified by V2-S18-06. Measure SLOs only on an observed lane; no target value
-  is invented in this preparation.
+#### S18 bounded closeout and residuals
+
+S18-01 through S18-06 are accepted for the synthetic bounded scope. The named functional set at
+`47fcf188` reported 38 passed; disposable-PostgreSQL recovery E2E at that head reported 2 passed;
+the S18-06 named test at code HEAD `ce0ec626fff53d8726163b7271ce542fc9824c32` reported 28 passed.
+GPT-PM approved exact final HEAD `e4894685a2700978e2f09ecaceab15ab54b22dfb` and PR #70 merged at
+`ae219852fc5ccae783223e239fe6aa2d9b2fd78e`. S18-04&#x27;s contract check preserves all nine unmeasured
+objectives as `NOT_RUN`. This closeout does not establish production readiness, live 1C rights,
+OS-level process restart or COM behavior, actual human alert receipt, or measured SLOs. These are
+not silently converted to passes; S19-04 must carry them as residuals where applicable.
 
 ### Sprint S19 — release candidate, gate G8 and engineering-complete C1
 
@@ -153,10 +157,10 @@ remains explicitly `NOT_RUN`; no canary, production write, or real-money action 
 
 | Order | Action | Owner | Effect / dependency |
 |---|---|---|---|
-| 1 | Finish current sprint test/review and final approval work without changing this scope note | Codex; test agents; GPT-PM | Current sprint closure evidence; this preparation does not delay it |
-| 2 | Start S17 implementation from the six canonical stories and this DoD | Codex | Upload/manual-entry workbench only; no Drive |
-| 3 | After S17 code, complete its test and intake-security review evidence; then implement/close S18 | Codex and assigned test/reviewer roles | Test-lane-specific gaps remain `NOT_RUN`; safe local engineering proceeds |
-| 4 | After S17/S18 evidence, execute S19 evidence reconciliation and closure work | Codex; GPT-PM for exact-head approval | G8/C1 only if required exact evidence passes |
-| 5 | Reserve production/go-live authorization and any production canary decision | Operator | Required only for the separate production action; not a blocker for S17–S19 local engineering |
+| 1 | Prepare S19-01 exact-head manifest against the approved evidence already recorded for closed bounded sprints | Codex | Bind exact revisions and digests; do not advance formal manifest states from plans or source alone |
+| 2 | Implement and verify S19-02 closure-validator behavior on its named acceptance cases | Codex; assigned test owner | Refuse missing predecessors and invalid waivers; retain `NOT_RUN` for unavailable lane evidence |
+| 3 | Complete S19-03 invariant-to-passing-boundary matrix and S19-04 residual-risk record | Codex; reviewers as routed | Include S17-06 H3 `PARTIAL` and S18&#x27;s synthetic-only/runtime limits |
+| 4 | Prepare S19-05 canary recipe without executing it; obtain exact-head GPT-PM approval for sprint delivery | Codex; GPT-PM | Recipe is not a production authorization or evidence that a canary ran |
+| 5 | Keep production/go-live authorization and any production canary decision separate | Operator | No production action is part of bounded S19 engineering |
 
 </pre></main></body></html>
