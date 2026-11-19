@@ -5,10 +5,12 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from typing import Protocol
 
 __all__ = [
-    "H3EvidenceClass", "H3FileFormat", "H3FieldEvidence", "H3InvoiceEvidence",
-    "H3Scorecard", "H3Status", "H3Stratum", "evaluate_h3",
+    "H3EvidenceClass", "H3EvidenceReceiptVerifier", "H3FileFormat", "H3FieldEvidence",
+    "H3InvoiceEvidence", "H3MetricStatus", "H3Scorecard", "H3Status", "H3Stratum",
+    "evaluate_h3",
 ]
 
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
@@ -34,6 +36,19 @@ class H3Status(StrEnum):
     NOT_READY = "NOT_READY"
     NOT_ACCEPTANCE = "NOT_ACCEPTANCE"
     INVALID = "INVALID"
+
+
+class H3MetricStatus(StrEnum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    NOT_READY = "NOT_READY"
+    INVALID = "INVALID"
+
+
+class H3EvidenceReceiptVerifier(Protocol):
+    """Trusted host adapter that authenticates the frozen external lane artifacts."""
+
+    def verify(self, source_hashes: tuple[str, ...], run_ids: tuple[str, ...]) -> bool: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +88,8 @@ class H3Stratum:
 
 @dataclass(frozen=True, slots=True)
 class H3Scorecard:
+    """Acceptance status is separate from `metric_status`, which describes arithmetic only."""
+
     status: H3Status
     code: str
     document_count: int = 0
@@ -81,21 +98,28 @@ class H3Scorecard:
     unreviewed_material_field_count: int = 0
     confidently_wrong_unreviewed_approved_count: int = 0
     strata: tuple[H3Stratum, ...] = ()
+    metric_status: H3MetricStatus = H3MetricStatus.NOT_READY
 
 
-def evaluate_h3(evidence: object) -> H3Scorecard:
-    """Evaluate counts only; never retain values, filenames, actors, or document content."""
+def evaluate_h3(
+    evidence: object, *, receipt_verifier: H3EvidenceReceiptVerifier | None = None,
+) -> H3Scorecard:
+    """Score counts; require a trusted receipt verifier before reporting acceptance status."""
     if type(evidence) is not tuple or any(type(row) is not H3InvoiceEvidence for row in evidence):
-        return H3Scorecard(H3Status.INVALID, "EVIDENCE_SHAPE_INVALID")
+        return H3Scorecard(H3Status.INVALID, "EVIDENCE_SHAPE_INVALID",
+                           metric_status=H3MetricStatus.INVALID)
     if len(evidence) != H3_SAMPLE_SIZE:
-        return H3Scorecard(H3Status.NOT_READY, "SAMPLE_SIZE_NOT_30", document_count=len(evidence))
+        return H3Scorecard(H3Status.NOT_READY, "SAMPLE_SIZE_NOT_30",
+                           document_count=len(evidence), metric_status=H3MetricStatus.NOT_READY)
     hashes: set[str] = set()
     synthetic_only = False
     for row in evidence:
         if not _invoice_valid(row):
-            return H3Scorecard(H3Status.INVALID, "INVOICE_EVIDENCE_INVALID")
+            return H3Scorecard(H3Status.INVALID, "INVOICE_EVIDENCE_INVALID",
+                               metric_status=H3MetricStatus.INVALID)
         if row.source_sha256 in hashes:
-            return H3Scorecard(H3Status.INVALID, "DUPLICATE_SOURCE_HASH")
+            return H3Scorecard(H3Status.INVALID, "DUPLICATE_SOURCE_HASH",
+                               metric_status=H3MetricStatus.INVALID)
         hashes.add(row.source_sha256)
         synthetic_only |= row.evidence_class is H3EvidenceClass.SYNTHETIC_ONLY
 
@@ -124,21 +148,43 @@ def evaluate_h3(evidence: object) -> H3Scorecard:
     unsafe_count = sum(item.confidently_wrong_unreviewed_approved_count for item in strata)
     if material_count == 0:
         return H3Scorecard(H3Status.NOT_READY, "NO_MATERIAL_FIELDS", H3_SAMPLE_SIZE,
-                           strata=tuple(strata))
+                           strata=tuple(strata), metric_status=H3MetricStatus.NOT_READY)
     if synthetic_only:
-        status, code = H3Status.NOT_ACCEPTANCE, "SYNTHETIC_ONLY_EVIDENCE"
+        acceptance_status, code = H3Status.NOT_ACCEPTANCE, "SYNTHETIC_ONLY_EVIDENCE"
     elif any(row.test_lane_run_id is None for row in evidence):
-        status, code = H3Status.NOT_ACCEPTANCE, "TEST_LANE_EVIDENCE_MISSING"
-    elif unreviewed_count:
-        status, code = H3Status.FAIL, "MATERIAL_FIELD_NOT_HUMAN_REVIEWED"
-    elif unsafe_count:
-        status, code = H3Status.FAIL, "CONFIDENTLY_WRONG_FIELD_APPROVED_UNREVIEWED"
-    elif corrected_count * 10 > material_count:
-        status, code = H3Status.FAIL, "CORRECTED_FIELD_RATE_OVER_10_PERCENT"
+        acceptance_status, code = H3Status.NOT_ACCEPTANCE, "TEST_LANE_EVIDENCE_MISSING"
+    elif receipt_verifier is None:
+        acceptance_status, code = H3Status.NOT_ACCEPTANCE, "TEST_LANE_EVIDENCE_UNVERIFIED"
     else:
-        status, code = H3Status.PASS, "H3_THRESHOLD_MET"
-    return H3Scorecard(status, code, H3_SAMPLE_SIZE, material_count, corrected_count,
-                       unreviewed_count, unsafe_count, tuple(strata))
+        try:
+            receipt_verified = receipt_verifier.verify(
+                tuple(row.source_sha256 for row in evidence),
+                tuple(row.test_lane_run_id for row in evidence if row.test_lane_run_id is not None),
+            ) is True
+        except Exception:  # noqa: BLE001 - an unavailable verifier cannot establish acceptance
+            receipt_verified = False
+        if receipt_verified:
+            if unreviewed_count:
+                acceptance_status, code = H3Status.FAIL, "MATERIAL_FIELD_NOT_HUMAN_REVIEWED"
+            elif unsafe_count:
+                acceptance_status, code = H3Status.FAIL, "CONFIDENTLY_WRONG_FIELD_APPROVED_UNREVIEWED"
+            elif corrected_count * 10 > material_count:
+                acceptance_status, code = H3Status.FAIL, "CORRECTED_FIELD_RATE_OVER_10_PERCENT"
+            else:
+                acceptance_status, code = H3Status.PASS, "H3_THRESHOLD_MET"
+        else:
+            acceptance_status, code = H3Status.NOT_ACCEPTANCE, "TEST_LANE_EVIDENCE_UNVERIFIED"
+
+    if unreviewed_count:
+        metric_status = H3MetricStatus.FAIL
+    elif unsafe_count:
+        metric_status = H3MetricStatus.FAIL
+    elif corrected_count * 10 > material_count:
+        metric_status = H3MetricStatus.FAIL
+    else:
+        metric_status = H3MetricStatus.PASS
+    return H3Scorecard(acceptance_status, code, H3_SAMPLE_SIZE, material_count, corrected_count,
+                       unreviewed_count, unsafe_count, tuple(strata), metric_status)
 
 
 def _invoice_valid(row: H3InvoiceEvidence) -> bool:

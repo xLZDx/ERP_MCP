@@ -1104,8 +1104,7 @@ class AdminAPI:
     async def _intake_scope_allowed(self, ctx: AdminContext, source_id: str, company_id: UUID) -> bool:
         """Require source-scoped admin authority and the actor's current business allow grant."""
         if (not source_id or len(source_id) > 128
-                or any(not (char.isascii() and (char.isalnum() or char in "._-")) for char in source_id)
-                or not ctx.can_admin_source(source_id, "PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR")):
+                or any(not (char.isascii() and (char.isalnum() or char in "._-")) for char in source_id)):
             return False
         subject = ctx.token.subject
         if not isinstance(subject, str) or not subject:
@@ -1113,6 +1112,15 @@ class AdminAPI:
         row = await self.repository.db.require_pool().fetchrow(
             """
             SELECT c.enabled AND s.enabled AS active,
+                   EXISTS (
+                     SELECT 1 FROM bag.platform_role_bindings b
+                     WHERE b.revoked_at IS NULL
+                       AND (b.expires_at IS NULL OR b.expires_at>now())
+                       AND (b.source_id IS NULL OR b.source_id=s.source_id)
+                       AND b.role_name=ANY($5::text[])
+                       AND ((b.principal_kind='subject' AND b.principal_id=$3)
+                         OR (b.principal_kind='group' AND b.principal_id=ANY($4::text[])))
+                   ) AS has_admin_role,
                    EXISTS (
                      SELECT 1 FROM bag.access_grants a
                      WHERE a.effect='allow' AND a.revoked_at IS NULL
@@ -1135,8 +1143,12 @@ class AdminAPI:
             WHERE c.company_id=$1 AND c.source_id=$2
             """,
             company_id, source_id, subject, sorted(ctx.groups),
+            ["PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"],
         )
-        return bool(row and row["active"] and row["has_allow"] and not row["has_deny"])
+        return bool(
+            row and row["active"] and row["has_admin_role"]
+            and row["has_allow"] and not row["has_deny"]
+        )
 
     async def intake_preview(self, request: Request):
         ctx = await self.authenticate(request)

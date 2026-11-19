@@ -768,13 +768,47 @@ def test_run_isolated_spawn_failure_closes_both_pipe_ends(monkeypatch):
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="RLIMIT_AS does not exist on Windows: the child memory bound is NOT enforced "
-    "there and is reported NOT_RUN",
+    sys.platform != "win32",
+    reason="Windows Job Object memory enforcement requires a Windows runner",
 )
-def test_run_isolated_memory_limit_posix_only():
-    result = run_isolated(normal_book(), timeout_s=120.0, memory_bytes=64 << 20)
-    assert result.code in (sp.BOUND_MEMORY, sp.CHILD_ABORTED)
+def test_run_isolated_windows_job_object_cap_is_applied_or_fails_closed():
+    # A successful parse is only possible after _child_main establishes the configured
+    # Job Object cap; setup failure has the single fixed BOUND_MEMORY response.
+    result = run_isolated(normal_book(), timeout_s=120.0, memory_bytes=512 << 20)
+    assert (result.status, result.code) in {
+        (Status.OK, "OK"),
+        (Status.BOUND_EXCEEDED, sp.BOUND_MEMORY),
+    }
+
+
+def test_windows_job_object_setup_failure_fails_closed_before_parse(monkeypatch):
+    class CapturingConnection:
+        payload = b""
+        closed = False
+
+        def send_bytes(self, payload):
+            self.payload = payload
+
+        def close(self):
+            self.closed = True
+
+    def fail_job_setup(_memory_bytes):
+        raise OSError("job setup unavailable")
+
+    def parse_must_not_run(*_args, **_kwargs):
+        pytest.fail("workbook parsing ran without a Windows memory cap")
+
+    monkeypatch.setattr(sp.os, "name", "nt")
+    monkeypatch.setattr(sp, "_set_windows_process_memory_limit", fail_job_setup)
+    monkeypatch.setattr(sp, "parse_workbook", parse_must_not_run)
+    connection = CapturingConnection()
+
+    sp._child_main(connection, b"untrusted", ParseLimits(), 512 << 20)
+
+    result = sp._decode_result(connection.payload)
+    assert result is not None
+    assert (result.status, result.code) == (Status.BOUND_EXCEEDED, sp.BOUND_MEMORY)
+    assert connection.closed
 
 
 # --- second batch: canonical attributes, text budget, active parts ----------

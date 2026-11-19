@@ -106,7 +106,7 @@ The assigned functional-test-reviewer and e2e-runner own these named cases after
 | H-09 | Malformed XML or package structure | Fixed denial (`MALFORMED_XML`, `UNSUPPORTED_FORMAT`, or `NOT_A_ZIP` according to the failing boundary); no source bytes or parser exception text in output. | Minimal valid package with equivalent ordinary cell data parses normally. |
 | H-10 | Hidden worksheet/row/column content | XLSX parser returns `DENIED` with fixed `HIDDEN_CONTENT`, no sheets and no partial extraction. Malformed visibility metadata returns fixed `MALFORMED_XML`. | Visible clean twin confirms the ordinary extraction path. |
 | H-11 | Hostile uploaded filename | Not a parser input: `safe_parser` accepts bytes, not a path or filename. Do not claim filename traversal is covered here; S17-05 must keep filename handling inert and never use a supplied name as a filesystem path. | Ordinary filename and hostile-name metadata must produce the same byte-parser result. |
-| H-12 | Canary listener and sentinel outside the parser process | E2E observation records zero outbound connections and an unchanged sentinel; no content-triggered process or privilege change. The parser's own bounded XLSX child is expected and is not sandbox evidence. | H-01 positive twin still yields non-empty review-only extraction. |
+| H-12 | Canary listener and sentinel outside the parser process | The named E2E observation can prove zero observed outbound connections to its canary and an unchanged sentinel. It does not prove host-wide absence of other processes or privilege changes; those require independent process/token telemetry and remain open. The parser's own bounded XLSX child is expected and is not sandbox evidence. | H-01 positive twin still yields non-empty review-only extraction. |
 
 Per-file results must record case ID, exact input hash, parser status/code, extraction state/count, proposal-disabled result, and E2E I/O/sentinel observations where applicable. Do not compare only the clean digest: an implementation that ignores every file must fail H-01.
 
@@ -143,7 +143,17 @@ The assigned functional-test-reviewer owns these named cases after all S17 story
 - Every material field must have a human-review record regardless of confidence; any unreviewed material field in a qualified test-lane sample fails.
 - Any confidently wrong material field approved without human review fails regardless of the aggregate correction rate.
 - `SYNTHETIC_ONLY` data or a missing test-lane run id can never produce acceptance; the result remains `NOT_ACCEPTANCE` even if the numeric rate is below 10%.
+- Caller-provided `TEST_LANE_REAL` / `TEST_LANE_REALISTIC` labels and nonblank run IDs are claims, not proof. Without a trusted host-injected receipt verifier over the exact source hashes and run IDs, `evaluate_h3` must return `NOT_ACCEPTANCE`; a verifier test double exercises the interface only and is not real-lane acceptance evidence. Verifier false, exception, or unavailable state fails closed.
+- Assert the metric outcome is separately available as `metric_status`, while acceptance `status` stays `NOT_ACCEPTANCE` until the verifier validates the exact evidence set. Exercise verifier false/exception, an unverified metric pass, a verified exact-10% metric pass, and a verified metric failure.
 - The scorecard contains counts, fixed codes and file hashes only; never include invoice values, filenames, credentials or user identities. The evaluation dataset and real/realistic lane evidence must remain external evidence artifacts referenced by hash.
+
+## S17-05 authorization race regression
+
+- Revoke the actor's active source-role binding while file parsing is in progress. The post-parse authorization check must read current role bindings and current exact-company grants, then return the fixed denial without disclosing extracted values. The request-start `AdminContext.bindings` snapshot is not current authorization evidence.
+
+## S17 named verification run — 2026-11-18
+
+The assigned test roles ran the named S17 files after implementation at code HEAD `6e633cd5fef0129f6ab9a746b69cece967ec44c7`. Parser boundary: 165 passed, 1 POSIX-only `RLIMIT_AS` case skipped on Windows; no named test exercises Windows Job Object memory-limit enforcement. Functional extraction, entity-resolution, and H3 contract tests: 28 passed. Hostile corpus E2E: 23 passed, including the local canary/sentinel observation. A workbench browser run was previously reported as 1 passed on a fresh isolated bootstrap-only synthetic stack after schema and privilege verification. A fresh run for current ledger binding was NOT_RUN because `go_gate.py` denied startup of a new isolated stack without a separate qualifying GO/ГО in the preceding 6 hours; existing stacks and volumes were untouched. These results are synthetic contract evidence; they do not qualify production IdP/PostgreSQL composition, a persistent entity directory, real-document H3 accuracy, Windows Job Object memory-limit enforcement, or host-wide process/privilege absence. The H-12 telemetry residual is tracked in `docs/phase2/OPERATOR_BACKLOG.md`.
 
 ## Required final verification selections
 
