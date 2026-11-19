@@ -1,6 +1,6 @@
 ---
 project: ERP_MCP
-as_of: 2026-11-18
+as_of: 2026-11-19
 active_sprint: S18
 scope: single_sprint
 approved_sprints: FIN, REBASELINE, MAIN_CONSOLIDATION
@@ -65,7 +65,7 @@ The audit/preparation sprint completed locally in its bounded scope. Its PM appr
 | S15 | Verification and reconciliation | CLOSED_BOUNDED_SPRINT (5/5) | PR #67 merged at bfd2661e after exact-head approval of 22dea9b. All five stories have bounded offline acceptance. Authenticated live 1C readers and ledger integration remain in the operational backlog. |
 | S16 | Independent approval and MCP | CLOSED_BOUNDED_SPRINT (4/5; S16-04 remains PARTIAL) | PR #68 merged at `ffa1a0b2759469e4a1266c98a056f69b6295bdda` after GPT-PM APPROVE for exact HEAD `12df2ca369d694860d16317ef97fc20a41905e8c`. S16-01/02/03/05 are bounded accepted; S16-04 outbound writer-target routing and listener binding remain prohibited/partial and are transferred to `docs/phase2/OPERATOR_BACKLOG.md`. This is not 5/5 or operational acceptance. |
 | S17 | Document intake and workbench | CLOSED_BOUNDED_SPRINT (5/6; S17-06 remains PARTIAL) | Start from the approved upload/manual-entry-only scope in `docs/sdlc/next-sprint-preparation.md`; no Drive integration. First task S17-01 establishes the untrusted-file boundary using bounded parsing and explicit Windows containment limits. |
-| S18 | Reliability and security | QUEUED | Reliability and security. |
+| S18 | Reliability and security | IN_PROGRESS | S18-01 queue policy is implemented as an isolated in-process reference model; named functional verification remains NOT_RUN. No durable, cross-process, 1C, or runtime acceptance is claimed. |
 | S19 | Release candidate and acceptance | GIT_ACTIVITY_NOT_CLOSED | Release candidate and acceptance. |
 
 ## Sprint FIN - Phase 2 finisher backlog (sprint beea27520b33)
@@ -303,7 +303,7 @@ Goal: Reliability and security.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| S18-01 | queue and parking | queue and parking; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S13-S16 |  |
+| S18-01 | queue and parking | Fixed per-base pending bound 20; reject overflow; verification reads precede eligible mutations; POSSIBLY_EXECUTING holds base mutations while reads continue; PROVEN_FINISHED narrows the hold to that target; terminal APPLIED/FAILED_APPLY resolution is required to unpark; shutdown closes admission and drains eligible work. | IN_PROGRESS | Isolated in-memory reference implementation in `src/business_ai_gateway/phase2/base_queue.py`; named functional verification NOT_RUN; not durable, cross-process, wired to 1C, or runtime-qualified. | Codex | S13-S16 |  |
 | S18-02 | chaos | chaos; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S13-S16 |  |
 | S18-03 | alerting | alerting; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S13-S16 |  |
 | S18-04 | SLOs | SLOs; detailed criteria are in the sprint plan/test-design record. | NOT_STARTED | Queued; no task-ID commits | Codex | S13-S16 |  |
