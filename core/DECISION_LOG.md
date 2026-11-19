@@ -2881,3 +2881,7 @@ Added `docs/phase2/S18_SLO_AND_FAILURE_TABLE.md` with measurement definitions, a
 ## 2026-11-19 — S18-05 security-review gate sequencing
 
 S18-05 is in progress, but its security review is deferred until S18-06 completes so the security-reviewer receives the complete final S18 diff once, as required by the sprint review cadence. The bounded review scope is S18-01 through S18-06 against TM1-TM20 in `docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md`. No findings or approval are recorded yet.
+
+## 2026-11-19 — S18-06 rights-matrix comparison boundary
+
+Added a pure rights-matrix comparator and a one-shot read-only `RightsMatrixReaderPort` contract. Only complete snapshots for the exact approved source/base scope can produce differences; unavailable, incomplete, access-denied, malformed, mismatched, or failed reads return `NOT_COMPARABLE` without inferring removals. The repository has no qualified current 1C rights reader or periodic scheduler, so neither is claimed or fabricated here; caller-provided authentication, completeness/provenance, and orchestration remain explicit follow-up work. This is implementation progress only: named tests, independent review, current-source evidence, and sprint approval remain NOT_RUN.
