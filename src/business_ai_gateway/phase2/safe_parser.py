@@ -37,8 +37,8 @@ Known limits (documented, not hidden):
   followed or fetched.
 * The central-directory entry count is compared with ``max_members`` from the
   raw end-of-central-directory record before any per-entry object is built;
-  ZIP64 archives (count field 0xFFFF) fall back to ``zipfile`` and keep the
-  residual cost of building their entry list.
+  ZIP64 representations whose count or directory bounds cannot be proven from
+  the classic EOCD are rejected before ``zipfile`` builds per-entry objects.
 * ``run_isolated`` is a crash / timeout boundary, NOT a sandbox: the child
   runs with the caller's privileges (only the environment is scrubbed).
 """
@@ -379,23 +379,25 @@ def _check_entry_count(data: bytes, limits: ParseLimits) -> None:
 
     CPython's ZipFile walks the central-directory byte size, not the entry count
     copied from EOCD. Check both the claimed count and the actual fixed-size
-    directory records first. A ZIP64 locator or a total-count / directory-size
-    sentinel remains an explicit fallback to zipfile, as documented above.
+    directory records first. Reject ZIP64 markers before ``ZipFile`` because
+    this bounded parser does not implement ZIP64 central-directory scanning.
     """
     pos = data.rfind(b"PK\x05\x06", max(0, len(data) - 22 - 65_535))
     if pos < 0 or pos + 22 > len(data):
         return  # let zipfile classify it
     if pos >= 20 and data[pos - 20 : pos - 16] == b"PK\x06\x07":
-        return  # zipfile's ZIP64 locator can override every ordinary EOCD field.
+        raise _Deny(UNSUPPORTED_FORMAT)
+    disk_entries = int.from_bytes(data[pos + 8 : pos + 10], "little")
     total = int.from_bytes(data[pos + 10 : pos + 12], "little")
-    if total == 0xFFFF:  # ZIP64 count marker; retain the documented stdlib fallback.
-        return
+    if disk_entries == 0xFFFF or total == 0xFFFF:
+        raise _Deny(UNSUPPORTED_FORMAT)
     if total > limits.max_members:
         raise _Deny(TOO_MANY_MEMBERS)
 
     directory_size = int.from_bytes(data[pos + 12 : pos + 16], "little")
-    if directory_size == 0xFFFFFFFF:
-        return  # ZIP64 size marker; retain the documented stdlib fallback.
+    directory_offset = int.from_bytes(data[pos + 16 : pos + 20], "little")
+    if directory_size == 0xFFFFFFFF or directory_offset == 0xFFFFFFFF:
+        raise _Deny(UNSUPPORTED_FORMAT)
     directory_start = pos - directory_size
     if directory_start < 0:
         raise _Deny(NOT_A_ZIP)
