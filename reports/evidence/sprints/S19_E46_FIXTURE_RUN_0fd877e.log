@@ -1,0 +1,180 @@
+PASS  01_valid_all_not_passed.json [accept] Real manifest copy: all gates NOT_PASSED
+      -> gate manifest ok: 10 gates, 10 nodes
+PASS  02_valid_full_closure.json [accept] Every node DONE, every gate PASSED with real evidence, drive off, approved G4 waiver
+      -> gate manifest ok: 10 gates, 10 nodes
+PASS  03a_g8_passed_s14_not_done.json [reject] G8 PASSED while S14 not DONE
+      -> G8: closed while predecessor S14 is not
+PASS  03b_g8_passed_s18_not_done.json [reject] G8 PASSED while S18 not DONE (isolated)
+      -> G8: closed while predecessor S18 is not
+PASS  04a_g8_passed_ct14_not_done.json [reject] G8 PASSED with CT14 IN_PROGRESS
+      -> G8: closed while predecessor CT14 is not
+PASS  04b_g8_passed_ct14_node_missing.json [reject] G8 PASSED with CT14 node absent
+      -> G8: closed while predecessor CT14 is not
+PASS  05_drive_on_g7_passed_g4_not_passed.json [reject] drive on, G7 PASSED, G4 NOT_PASSED (G7 PRODUCTION_GO rule also fires, so 2 lines)
+      -> G7: closed while drive intake is enabled and G4 is not PASSED
+PASS  06a_drive_missing.json [reject] drive_intake_enabled absent
+      -> drive_intake_enabled must be an explicit true or false
+PASS  06b_drive_string.json [reject] drive_intake_enabled is a string
+      -> drive_intake_enabled must be an explicit true or false
+PASS  06c_drive_null.json [reject] drive_intake_enabled is null
+      -> drive_intake_enabled must be an explicit true or false
+PASS  06d_drive_number.json [reject] drive_intake_enabled is 0
+      -> drive_intake_enabled must be an explicit true or false
+PASS  07a_g4_na_waiver_boolean.json [reject] waiver = true
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PASS  07b_g4_na_bad_approver.json [reject] approved_by not GPT-PM/operator
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PASS  07c_g4_na_no_evidence.json [reject] waiver without evidence
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PASS  07d_g4_na_waiver_null.json [reject] waiver null
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PASS  07e_g4_na_while_drive_enabled.json [reject] valid waiver but drive on
+      -> G4 is NOT_APPLICABLE while drive intake is enabled
+PASS  07f_g4_na_waiver_evidence_stale.json [reject] waiver evidence digest wrong
+      -> G4 waiver evidence: stale evidence (sha256 differs): evidence/waiver_operator.txt
+PASS  07g_g4_na_waiver_evidence_no_sha.json [reject] waiver evidence lacks sha256
+      -> G4 waiver evidence: evidence must be {path, sha256}
+PASS  08a_stale_gate_evidence.json [reject] gate evidence sha mismatch
+      -> G0 evidence: stale evidence (sha256 differs): evidence/ok.txt
+PASS  08b_stale_node_evidence.json [reject] node evidence sha mismatch
+      -> CT14 evidence: stale evidence (sha256 differs): evidence/ok.txt
+PASS  08c_uppercase_digest.json [reject] uppercase hex digest != recomputed lowercase digest (strict compare)
+      -> G0 evidence: stale evidence (sha256 differs): evidence/ok.txt
+PASS  09a_missing_gate_evidence_file.json [reject] gate evidence file absent
+      -> G0 evidence: evidence file missing: evidence/does_not_exist.txt
+PASS  09b_missing_node_evidence_file.json [reject] node evidence file absent
+      -> CT14 evidence: evidence file missing: evidence/does_not_exist.txt
+PASS  09c_passed_gate_null_evidence.json [reject] PASSED gate with evidence null
+      -> G0 evidence: evidence must be {path, sha256}
+PASS  09d_done_node_null_evidence.json [reject] DONE node with evidence null
+      -> CT14 evidence: evidence must be {path, sha256}
+PASS  10a_unknown_gate_status.json [reject] unknown gate_status
+      -> G0: unknown gate_status MAYBE
+PASS  10b_unknown_engineering_status.json [reject] unknown engineering_status
+      -> G0: unknown engineering_status HALF
+PASS  10c_unknown_production_authorization.json [reject] unknown production_authorization 
+      -> G0: unknown production_authorization BOGUS
+PASS  10d_unknown_external_evidence_status.json [reject] unknown external_evidence_status
+      -> G0: unknown external_evidence_status MAYBE
+PASS  10e_unknown_node_state.json [reject] unknown node state
+      -> S11: unknown node state HALF
+PASS  11_gate_implies.json [reject] gate with non-empty implies
+      -> G1: a gate must not imply another gate
+PASS  12a_node_cycle.json [reject] S11 <-> S12 cycle
+      -> cycle: G5 -> S16 -> S12 -> S11 -> S12
+PASS  12b_gate_cycle.json [reject] G0 <-> G1 cycle
+      -> cycle: G0 -> G1 -> G0
+PASS  12c_self_cycle.json [reject] self predecessor (also differs from canonical graph)
+      -> cycle: G5 -> S16 -> S12 -> S11 -> S11
+PASS  12d_cycle_via_conditional.json [reject] cycle that exists only via conditional_predecessors (G7 -> G8 -> G7)
+      -> cycle: G6-pre -> G8 -> G7 -> G6 -> G6-pre
+PASS  13a_unknown_gate_predecessor.json [reject] gate unknown predecessor (also differs from canonical graph)
+      -> G1: unknown predecessor GX
+PASS  13b_unknown_node_predecessor.json [reject] node unknown predecessor (also differs from canonical graph)
+      -> S12: unknown predecessor NOPE
+PASS  13c_unknown_conditional_predecessor.json [reject] unknown conditional predecessor (also differs from canonical graph)
+      -> G7: unknown predecessor GZ
+PASS  14_passed_with_external_open.json [reject] PASSED gate with external OPEN
+      -> G0: PASSED while external evidence is OPEN
+PASS  15a_passed_engineering_not_complete.json [reject] PASSED with engineering IN_PROGRESS
+      -> G0: PASSED requires engineering_status COMPLETE
+PASS  15b_canary_signed_all_predecessors_open.json [reject] G6 canary signed in the real all-NOT_PASSED manifest
+      -> G6: PRODUCTION_CANARY_SIGNED while predecessor G3 is not closed
+PASS  15c_passed_before_predecessor.json [reject] G1 PASSED while G0 NOT_PASSED
+      -> G1: closed while predecessor G0 is not
+PASS  15d_g4_passed_drive_off.json [reject] G4 PASSED with drive disabled
+      -> G4 cannot be PASSED while drive intake is disabled
+PASS  15e_id_both_gate_and_node.json [reject] id used as gate and node
+      -> S11: defined as both gate and node
+PASS  15f_node_done_before_predecessor.json [reject] S12 DONE while S11 not DONE
+      -> S12: closed while predecessor S11 is not
+PASS  16a_production_go_all_predecessors_open.json [reject] G7 PRODUCTION_GO while G7 NOT_PASSED and nothing closed (former probe P1)
+      -> G7: PRODUCTION_GO while predecessor G0 is not closed
+PASS  16b_canary_signed_predecessors_closed.json [accept] G6 canary signed, all G6 predecessors closed, G6 itself NOT_PASSED
+      -> gate manifest ok: 10 gates, 10 nodes
+PASS  16c_canary_signed_one_predecessor_open.json [reject] G6 canary signed while G5 open (only violation)
+      -> G6: PRODUCTION_CANARY_SIGNED while predecessor G5 is not closed
+PASS  16d_production_go_drive_on_g4_not_closed.json [reject] G7 PRODUCTION_GO, drive on, G4 NOT_PASSED, G7 itself NOT_PASSED
+      -> G7: PRODUCTION_GO while drive intake is enabled and G4 is not PASSED
+PASS  16e_production_go_drive_on_g4_passed.json [accept] G7 PRODUCTION_GO, drive on, G4 PASSED, all predecessors closed
+      -> gate manifest ok: 10 gates, 10 nodes
+PASS  16f_production_go_drive_off_waiver.json [accept] G7 PRODUCTION_GO, drive off, approved G4 waiver, all predecessors closed
+      -> gate manifest ok: 10 gates, 10 nodes
+PASS  16g_production_go_one_predecessor_open.json [reject] G7 PRODUCTION_GO while G6 open (only violation)
+      -> G7: PRODUCTION_GO while predecessor G6 is not closed
+PASS  16h_production_go_drive_off_g4_no_waiver.json [reject] G7 PRODUCTION_GO, drive off, G4 NOT_PASSED with no waiver, predecessors closed (former probe P8)
+      -> G7: PRODUCTION_GO without a valid G4 waiver
+PASS  17a_canary_signed_on_wrong_gate.json [reject] canary authorization on G5
+      -> G5: PRODUCTION_CANARY_SIGNED is valid only on G6
+PASS  17b_production_go_on_g6.json [reject] PRODUCTION_GO on G6
+      -> G6: PRODUCTION_GO is valid only on G7
+PASS  17c_canary_signed_on_g7.json [reject] canary authorization on G7
+      -> G7: PRODUCTION_CANARY_SIGNED is valid only on G6
+PASS  17d_production_go_on_g0.json [reject] PRODUCTION_GO on G0
+      -> G0: PRODUCTION_GO is valid only on G7
+PASS  18a_duplicate_gate_id.json [reject] duplicate gate id G1 (former probe P3)
+      -> G1: duplicate id
+PASS  18b_duplicate_node_id.json [reject] duplicate node id S11
+      -> S11: duplicate id
+PASS  19a_evidence_path_traversal.json [reject] evidence path escapes --root via .. (former probe P6)
+      -> G0 evidence: evidence path escapes the root: ../outside.txt
+PASS  19b_evidence_path_absolute.json [reject] absolute evidence path outside root
+      -> G0 evidence: evidence path escapes the root: /outside/abs.txt
+PASS  19c_node_evidence_traversal_nested.json [reject] node evidence path with nested .. segments
+      -> S11 evidence: evidence path escapes the root: evidence/../../outside.txt
+PASS  19d_inroot_dotdot_allowed.json [accept] path with .. that stays inside root is accepted
+      -> gate manifest ok: 10 gates, 10 nodes
+PASS  20a_mandatory_gate_missing_g7.json [reject] mandatory gate G7 removed
+      -> mandatory gate missing: G7
+PASS  20b_mandatory_node_missing_s19.json [reject] mandatory node S19 removed
+      -> mandatory node missing: S19
+PASS  20c_mandatory_gate_missing_g4.json [reject] mandatory gate G4 removed (G7 conditional edge now dangling too)
+      -> mandatory gate missing: G4
+PASS  21_g8_predecessor_s18_removed.json [reject] S18 dropped from G8 predecessors while G8 PASSED and S18 open (graph-only violation)
+      -> G8: predecessors differ from the canonical graph
+PASS  22a_g7_conditional_g4_removed.json [reject] G4 removed from G7 conditional predecessors
+      -> G7: conditional predecessors differ from the canonical graph
+PASS  22b_g7_passed_g4_edge_removed_g4_open.json [reject] G7 PASSED with drive on and G4 open, hidden by deleting the conditional edge (graph-only per-line match; other G7 line may follow)
+      -> G7: conditional predecessors differ from the canonical graph
+PASS  23a_unexpected_node.json [reject] extra node S20
+      -> unexpected node not in the canonical graph: S20
+PASS  23b_unexpected_gate.json [reject] extra gate G9
+      -> unexpected gate not in the canonical graph: G9
+PASS  24a_schema_3.json [reject] schema 3
+      -> unsupported manifest schema 3; this validator enforces schema 2
+PASS  24b_schema_missing.json [reject] schema absent
+      -> unsupported manifest schema undefined; this validator enforces schema 2
+PASS  25g_waiver_operator_signed_valid.json [accept] operator-signed waiver verifies against the registered test key
+      -> gate manifest ok: 10 gates, 10 nodes
+PASS  27a_forged_text_record_no_signature.json [reject] text with APPROVE/OPERATOR_APPROVED and an approval_ref but no signature
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PASS  27b_unregistered_signer_id.json [reject] signer_id not in the signers file
+      -> G4 waiver: signer mallory is not a registered operator signer
+PASS  27c_signature_over_other_baseline.json [reject] valid signature over a different baseline
+      -> G4 waiver: signature does not verify against the registered operator key
+PASS  27d_signature_over_other_evidence_hash.json [reject] valid signature over a different evidence hash (evidence changed after signing)
+      -> G4 waiver: signature does not verify against the registered operator key
+PASS  27e_tampered_signature.json [reject] one signature byte flipped
+      -> G4 waiver: signature does not verify against the registered operator key
+PASS  27f_approved_by_gptpm.json [reject] GPT-PM approver is no longer accepted even with a valid signature
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PASS  27g_empty_signers_file.json [reject] otherwise correct signed record, signers file empty (fail closed)
+      -> G4 waiver: signer op-test is not a registered operator signer
+PASS  27h_missing_signer_id.json [reject] signer_id absent
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PASS  27i_registered_id_signed_by_other_key.json [reject] registered signer_id but signed with a different private key
+      -> G4 waiver: signature does not verify against the registered operator key
+PASS  27j_signer_role_not_operator.json [reject] signer is registered with a non-operator role
+      -> G4 waiver: signer op-test is not a registered operator signer
+PASS  27k_garbage_signature.json [reject] signature is not valid base64/Ed25519
+      -> G4 waiver: signature does not verify against the registered operator key
+PASS  27l_empty_signature.json [reject] empty signature string
+      -> G4 waiver: signature does not verify against the registered operator key
+PASS  27m_signature_removed_ref_kept.json [reject] legacy approval_ref present, signature removed
+      -> G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence
+PROBE P4_drive_on_g4_not_passed_with_waiver.json [probe] drive on, G4 NOT_PASSED carrying a waiver (inert)
+      -> PROBE exit=0 gate manifest ok: 10 gates, 10 nodes
+PROBE P7_g8_passed_s11_not_done.json [probe] G8 PASSED with S11 (transitive, not a direct predecessor of G8) not DONE
+      -> PROBE exit=1 S12: closed while predecessor S11 is not
+
+Suite: PASS (87/87 asserted fixtures passed, 2 probes)

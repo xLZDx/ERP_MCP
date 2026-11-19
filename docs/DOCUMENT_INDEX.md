@@ -215,3 +215,5 @@ an existing frozen requirement is scope-preserving.
 - [Change record 305 — add safe DPAPI signer-key provisioning primitive](phase2/CHANGE_RECORD_305.md) — mocked provisioning acceptance passed; real Ivan-host provisioning, identity/scope registration and signer qualification remain open.
 - [Change record 306 — repair and qualify candidate S13 admission SQL](phase2/CHANGE_RECORD_306.md) — migration 027 parses in a disposable cluster and three mapped SQL scenarios pass; full S13 qualification and effective installed grants remain open.
 - [Change record 307 — normalize private-writer ACLs across the candidate schema](phase2/CHANGE_RECORD_307.md) — current-hash source reviews found no actionable ACL finding; seeded-role qualification and effective installed grants remain open.
+
+Current S19 residual register is supporting evidence only: [`phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md`](phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md). The canary recipe is documented separately and is not executable or production authorization.
