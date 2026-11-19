@@ -2956,4 +2956,8 @@ All six S18 harness tasks reached `done` with named test/document evidence and a
 ## 2026-11-19 — S18-02 empty and pending recovery inventory
 
 On HEAD `4f24075188fb363fdbad57abeefc67efde7106f5`, the designated `functional-test-reviewer` ran only `python -m pytest tests/phase2/test_s18_startup_recovery_e2e.py -q --confcutdir=tests/phase2`; result `2 passed, 23 warnings in 73.28s`, exit 0, with unchanged HEAD. It covers a new startup with an empty inventory and a startup after one supported `ACCEPTED_NOT_INVOKED` synthetic call. The latter retains the assigned process identity, has no `com_entry_authorized_at`, appears in `pending_calls`, advances the service epoch, and returns no readiness reference. This remains a disposable PostgreSQL state-transition test, not an OS process restart, COM/1C invocation, production readiness, or forced termination proof. Warnings are pytest-asyncio deprecations under Python 3.14.
+
+## 2026-11-19 — S19-03 structural invariant-matrix checker
+
+Decision: add a read-only checker for the S11 `I1`–`I15` mapping table. It requires each invariant exactly once, a nonempty scenario list and enforcement-boundary assertion, all active scenario IDs `E1`–`E47` except reserved `E8` (including the separate gate/CT14 mapping for `E46` and `E47`), and rejects unknown or duplicate mappings. Its output is explicitly structural only: runtime boundary results remain `NOT_RUN`, gate status is unchanged, and production authorization is `NONE`. It does not infer passing evidence from prose or edit the canonical gate manifest.
 </pre></main></body></html>
