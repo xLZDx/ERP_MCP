@@ -1,0 +1,6 @@
+S19 sprint-end named Python tests
+HEAD: e464d135e89eda9ca975231b4f51b43d8d019ab8
+Command: .venv\Scripts\python.exe -m pytest -q tests/phase2/test_s19_exact_head_manifest.py tests/phase2/test_s19_invariant_matrix.py
+Role: functional-test-reviewer
+Result: . [100%]; 45 passed in 1436.42s (0:23:56); exit 0
+Scope: the two named S19 files only. This is synthetic checker/manifest contract evidence. Exact-head I1-I15 runtime-boundary evidence remains NOT_RUN.

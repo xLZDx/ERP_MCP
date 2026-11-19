@@ -1,0 +1,13 @@
+Task: S19-03
+Test role: functional-test-reviewer
+Command: .venv\Scripts\python.exe -m pytest -q tests/phase2/test_s19_invariant_matrix.py
+Working-tree base HEAD before and after run: 37d094571181912bf5983170ac2e130db2a2dfd6
+Exit code: 0
+Scope: named invariant-matrix contract file only; synthetic Git fixtures.
+Pytest output:
+.                                     [100%]
+36 passed in 1422.09s (0:23:42)
+
+The run was performed before commit ff3779f9. No files were edited during the run. The committed
+checker and named test contain the tested bytes. This result does not provide exact-head I1-I15
+runtime-boundary evidence, required-lane execution coverage, G8 evidence, or production authority.
