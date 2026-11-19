@@ -43,3 +43,12 @@ Command 2: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_obs
 ......                                                                   [100%]
 6 passed, 27 deselected in 1.06s
 Exit code: 0
+----- Verification at committed HEAD 5eb9b7a94ced6f8c95067e3563e301abd42da72d -----
+Command 1: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit -q
+.                                                                        [100%]
+1 passed in 1.14s
+Exit code: 0
+Command 2: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_observability.py tests/test_server_audit.py -q -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime"
+......                                                                   [100%]
+6 passed, 27 deselected in 1.56s
+Exit code: 0
