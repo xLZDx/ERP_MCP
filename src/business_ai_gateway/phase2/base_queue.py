@@ -120,7 +120,7 @@ class BaseWorkQueue:
     def mark_unknown(self, target_id: str, ownership: CallOwnership) -> None:
         """Record an unresolved outcome; only proven completion narrows parking."""
         if (not is_identity_text(target_id) or type(ownership) is not CallOwnership
-                or ownership is CallOwnership.NONE):
+                or ownership is not CallOwnership.POSSIBLY_EXECUTING):
             raise BaseQueueRefused(BaseQueueRefused.INVALID_WORK)
         with self._lock:
             if not any(work.target_id == target_id for work in self._in_flight.values()):

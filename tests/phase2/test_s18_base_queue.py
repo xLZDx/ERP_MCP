@@ -51,6 +51,29 @@ def test_mark_unknown_requires_matching_in_flight_target():
     assert queue.in_flight_count == 1
 
 
+def test_mark_unknown_cannot_claim_finished_and_release_base_mutation_hold():
+    queue = BaseWorkQueue("base-a")
+    active = queue.enqueue(uuid4(), "target-a", QueueWorkKind.MUTATION)
+    other_target = queue.enqueue(uuid4(), "target-b", QueueWorkKind.MUTATION)
+    assert queue.next_ready() == active
+    queue.mark_unknown("target-a", CallOwnership.POSSIBLY_EXECUTING)
+
+    with pytest.raises(BaseQueueRefused) as refusal:
+        queue.mark_unknown("target-a", CallOwnership.PROVEN_FINISHED)
+
+    assert str(refusal.value) == BaseQueueRefused.INVALID_WORK
+    assert queue.unresolved_targets() == (("target-a", CallOwnership.POSSIBLY_EXECUTING),)
+    assert queue.next_ready() is None
+    assert queue.in_flight_count == 1
+    assert queue.queued_count == 1
+
+    queue.complete(active.work_id)
+    assert queue.next_ready() is None
+    queue.prove_finished("target-a")
+
+    assert queue.next_ready() == other_target
+
+
 def test_capacity_refuses_twenty_first_item_without_evicting_pending_work():
     queue = BaseWorkQueue("base-a")
     admitted = [queue.enqueue(uuid4(), f"target-{index}", QueueWorkKind.MUTATION)
