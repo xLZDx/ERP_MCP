@@ -25,6 +25,14 @@
       "status": "RECORDED_UNVERIFIED"
     },
     {
+      "category": "check_result",
+      "item": "S19-03 invariant matrix scope-fix test output",
+      "path": "reports/evidence/sprints/S19_MATRIX_FIX_TEST_ff3779f9.txt",
+      "reason": null,
+      "sha256": "4850a37b8681282e1104dfd7e9668cb9eb6f442240389b7b0bec48aad589dff0",
+      "status": "RECORDED_UNVERIFIED"
+    },
+    {
       "category": "configuration",
       "item": "Formal gate manifest",
       "path": "governance/GATE_MANIFEST.json",
@@ -45,7 +53,7 @@
       "item": "S19 residual risk register",
       "path": "docs/phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md",
       "reason": null,
-      "sha256": "4e58d4b3ea485967bd7958dc8bc78fe29dac78f4d20e188831db035cca3d39b4",
+      "sha256": "dc1fc88c6c03464fc66679704aa9f56834a15913a3f1b9e961d9b86caafe9a1e",
       "status": "RECORDED_UNVERIFIED"
     },
     {
@@ -77,7 +85,7 @@
       "item": "Invariant matrix checker",
       "path": "scripts/check_s19_invariant_matrix.py",
       "reason": null,
-      "sha256": "4108dca7e27e6dd4326256461d3b14a9cc0c8e7efc7eed09db04f2270e4fbef0",
+      "sha256": "173528891668f1bea9de8c760f613787832f2ee4bb61349a088a96fe37099dfb",
       "status": "RECORDED_UNVERIFIED"
     },
     {
@@ -85,7 +93,7 @@
       "item": "Invariant matrix checker tests",
       "path": "tests/phase2/test_s19_invariant_matrix.py",
       "reason": null,
-      "sha256": "5eb8a415b11288f5c55e1f43afc2771f6197b195d8243a6b2e59da0749a92af8",
+      "sha256": "b243dcf95e04c161c4d3dd26d15b6765ce8492dc145fad4d6fbbf124f1d94fa6",
       "status": "RECORDED_UNVERIFIED"
     }
   ],
@@ -96,6 +104,6 @@
   ],
   "manifest_kind": "EXACT_HEAD_EVIDENCE_INDEX",
   "schema_version": 1,
-  "source_head": "be938cd008b155fc72f032a0a371e1f83157fa81",
+  "source_head": "be2cbb32c52e08acd8ea8f2a10fd6a08884fd1e2",
   "sprint_id": "S19"
 }

@@ -1,15 +1,15 @@
 # S19 residual-risk register — 2026-11-19
 
-Status: **working snapshot, not final acceptance evidence**. This register reflects the plan,
-formal gate manifest, task ledger, committed S19 candidate `e464d135e89eda9ca975231b4f51b43d8d019ab8`
+Status: **working snapshot, not final acceptance evidence**. The history below preserves an earlier
+snapshot; the current index refresh is recorded at the end of this register. This register reflects
+the plan, formal gate manifest, task ledger, committed S19 candidate `e464d135e89eda9ca975231b4f51b43d8d019ab8`
 and named sprint-end runs (2026-11-19). At that exact HEAD the two named Python files reported
 `45 passed in 1436.42s (0:23:56)` and the E46 fixture runner reported 87/87 asserted fixtures
 passed with two separate probes. The refreshed exact-head index was committed as `5f50fbe8`; it
 records committed inputs from source HEAD `be938cd008b155fc72f032a0a371e1f83157fa81`, including
 those run records and the explicit `NOT_RUN` runtime-boundary set. The fix-only code review is
 accepted; exact-head GPT-PM approval remains pending. No exact-head S19 I1-I15 runtime-boundary
-results have been adjudicated. Reconcile the refreshed index and reviews before deciding whether
-bounded S19 closure is justified; G8/C1 are not passed by these synthetic runs.
+results have been adjudicated. G8/C1 are not passed by these synthetic runs.
 
 The final S19 code review raised a MAJOR scope-clarity finding: per-invariant PASS claims could be
 read as execution coverage for all scenarios and lanes. The checker change makes the scope
@@ -22,6 +22,16 @@ working tree based on unchanged HEAD `37d094571181912bf5983170ac2e130db2a2dfd6`;
 commit `ff3779f9c9dddad883c7e247dec76a8636f094ac` with zero findings. This is a pre-commit
 named-file result, not exact-head I1-I15 lane evidence. The finding does not change the formal
 G8 state or the exact-head runtime `NOT_RUN` status. GPT-PM approval remains pending.
+
+## Current index refresh
+
+The working exact-head index was regenerated from committed source HEAD
+`be2cbb32c52e08acd8ea8f2a10fd6a08884fd1e2` after adding the S19-03 scope-fix test output. It binds
+that output at `reports/evidence/sprints/S19_MATRIX_FIX_TEST_ff3779f9.txt` (SHA-256
+`4850a37b8681282e1104dfd7e9668cb9eb6f442240389b7b0bec48aad589dff0`). The index still records
+I1-I15 runtime-boundary results as `NOT_RUN`, assessment `INDEX_ONLY_UNVERIFIED`, and authorization
+`NONE`. Artifact hashes are recorded claims awaiting review; they do not adjudicate evidence
+contents. Exact-head GPT-PM review is pending, and no G8/C1, release, or production status changes.
 
 `NOT_RUN` means the required evidence has not been observed. It is not a pass or a claim that the
 system failed. Synthetic checker/fixture tests do not constitute real 1C boundary evidence. A
