@@ -2873,3 +2873,7 @@ The current writer implementation has a drainable shutdown and a durable startup
 ## 2026-11-19 — S18-03 isolated supervision policy
 
 The existing `AlertEngine.deliver_events` already accepts a tenant-bound `AlertSinkPort` and returns an explicit failure outcome when a configured sink fails; its only repository implementation is test-only, so real human delivery remains NOT_RUN. Added an isolated test-lane supervisor policy over an injected runner: one stable component ID, bounded restarts, sanitized lifecycle evidence, and no shell command, PID/output/exception text, OS service manager, kill API, or production wiring. The task remains IN_PROGRESS until designated tests exercise its behavior and an approved test-lane adapter provides restart evidence.
+
+## 2026-11-19 — S18-04 SLO and failure-table baseline
+
+Added `docs/phase2/S18_SLO_AND_FAILURE_TABLE.md` with measurement definitions, a run-record template, and fail-safe outcomes for S18-01 through S18-03. CT15's 20-item queue bound, 120/300-second initial call deadlines, five attempts over 15 minutes, 60-second alert target, and one-business-day triage target are labelled approved initial targets, not measured SLOs. Every unmeasured value remains `NOT_RUN`; no load, production, or live 1C measurement was performed. Linked the evidence format from the S18 preparation table and added it to the local report-document catalog for generated navigation.

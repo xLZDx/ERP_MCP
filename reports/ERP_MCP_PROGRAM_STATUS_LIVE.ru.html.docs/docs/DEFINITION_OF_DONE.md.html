@@ -1,0 +1,287 @@
+<!doctype html>
+<!-- harness-report document v1 -->
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:1rem/1.55 system-ui;margin:2rem auto;padding:0 1rem;max-width:76rem}pre{overflow:auto}table{display:block;overflow:auto;border-collapse:collapse}td,th{border:1px solid;padding:.35rem}img{max-width:100%}</style><title>DEFINITION_OF_DONE</title></head><body><nav aria-label="Документация проекта"><section class="panel" id="project-documents" aria-labelledby="project-documents-title"><h2 id="project-documents-title">Документация проекта</h2><p><a href="../../ERP_MCP_PROGRAM_STATUS_LIVE.ru.html">Программный отчёт</a></p><div><strong>Мастер-план</strong><ul><li><a href="../PROJECT_PLAN.md.html">PROJECT_PLAN.md</a> · <a href="../../../PROJECT_PLAN.md">исходник</a></li><li><a href="MASTER_PLAN.md.html">MASTER_PLAN.md</a> · <a href="../../../docs/MASTER_PLAN.md">исходник</a></li></ul></div><div><strong>Технический дизайн (TDD)</strong><ul><li><a href="TDD.md.html">TDD.md</a> · <a href="../../../docs/TDD.md">исходник</a></li><li><a href="phase2/TDD_PHASE2_RU.md.html">TDD_PHASE2_RU.md</a> · <a href="../../../docs/phase2/TDD_PHASE2_RU.md">исходник</a></li></ul></div><div><strong>Архитектура</strong><ul><li><a href="ARCHITECTURE.md.html">ARCHITECTURE.md</a> · <a href="../../../docs/ARCHITECTURE.md">исходник</a></li></ul></div><div><strong>Журнал решений</strong><ul><li><a href="../core/DECISION_LOG.md.html">DECISION_LOG.md</a> · <a href="../../../core/DECISION_LOG.md">исходник</a></li></ul></div><div><strong>Ретроспективы</strong><ul><li>RETROSPECTIVE.md — источник отсутствует</li></ul></div><div><strong>Сопроводительные документы</strong><ul><li><a href="../README.md.html">README.md</a> · <a href="../../../README.md">исходник</a></li><li><a href="../core/LESSONS_LOG.md.html">LESSONS_LOG.md</a> · <a href="../../../core/LESSONS_LOG.md">исходник</a></li><li><a href="DEFINITION_OF_DONE.md.html">DEFINITION_OF_DONE.md</a> · <a href="../../../docs/DEFINITION_OF_DONE.md">исходник</a></li><li><a href="TEST_STRATEGY.md.html">TEST_STRATEGY.md</a> · <a href="../../../docs/TEST_STRATEGY.md">исходник</a></li><li><a href="sdlc/next-sprint-preparation.md.html">next-sprint-preparation.md</a> · <a href="../../../docs/sdlc/next-sprint-preparation.md">исходник</a></li><li><a href="phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md.html">PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md</a> · <a href="../../../docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md">исходник</a></li><li><a href="phase2/S18_SLO_AND_FAILURE_TABLE.md.html">S18_SLO_AND_FAILURE_TABLE.md</a> · <a href="../../../docs/phase2/S18_SLO_AND_FAILURE_TABLE.md">исходник</a></li></ul></div></section></nav><main><p><a href="../../../docs/DEFINITION_OF_DONE.md">Открыть исходник</a></p><pre># ERP_MCP Definition of Done — 1C Production MVP
+
+**Version:** 1.1
+**Date:** 2026-10-06
+**Scope:** active operator freeze; no new product scope until current committed scope closes
+
+A production MVP is Done only when **all mandatory gates** pass for the exact release/environment.
+
+## D0 — Documentation and traceability
+
+- normative package is current;
+- requirements/ADRs/DoD match implementation;
+- PR/release identifies exact commit;
+- known deviations/deferred work are listed;
+- vendor provenance/license manifest is current;
+- `SCOPE_FREEZE_BASELINE_2026-10-06.md` matches implementation/roadmap and every active task traces to an existing frozen requirement/gate.
+
+## D1 — Build and dependency integrity
+
+- clean reproducible build;
+- Ruff/lint green;
+- compile/type checks green;
+- unit/contract tests green;
+- dependency vulnerability audit green or explicitly accepted under governance;
+- license policy tests green;
+- container/image provenance recorded.
+
+## D2 — Authentication
+
+Evidence:
+- missing token denied;
+- invalid signature denied;
+- expired token denied;
+- wrong issuer denied;
+- wrong audience denied;
+- missing required scope denied;
+- valid principal/client/groups resolved correctly.
+
+## D3 — Authorization and isolation
+
+- user sees only granted sources/companies;
+- group grants work;
+- expired/revoked grants deny immediately without restart;
+- one principal cannot enumerate inaccessible source IDs;
+- runtime DB role cannot create/change grants or source endpoints;
+- source/company policy deny overrides allow.
+
+## D4 — Secrets
+
+- no production secrets in Git/history/artifacts/logs;
+- production env-secret mode rejected;
+- secret provider access is least privilege;
+- rotation procedure tested;
+- model-visible responses contain no credentials.
+
+## D5 — Read-only guarantee
+
+Mandatory:
+- production MCP tool inventory contains no 1C mutation tools;
+- internal adapter contract contains no mutation operation;
+- modern OData data-plane exposes only approved reads;
+- fallback/COM/native-query adapter has explicit read-only allowlist;
+- tests prove POST/PUT/PATCH/DELETE or equivalent mutation path is unavailable;
+- arbitrary code execution is not exposed;
+- test-only Ferma/1C seeder and historical R/W helpers are absent/unreachable from production MCP routes.
+
+## D6 — SSRF/transport safety
+
+- caller cannot specify arbitrary host/URL;
+- redirects cannot escape registered endpoint policy;
+- HTTPS/private transport policy enforced;
+- DNS/host protections verified;
+- request/response byte and timeout limits verified.
+
+## D7 — Compatibility routing
+
+For each pilot source:
+- capability handshake recorded;
+- configuration-sensitive register operations have source-specific positive evidence (live metadata,
+  safe probe or validated semantic profile); unsupported operations fail with
+  `CAPABILITY_UNSUPPORTED` and persist negative evidence;
+- metadata fingerprint recorded;
+- adapter profile selected deterministically;
+- unsupported capabilities fail explicitly;
+- schema/capability drift is detectable;
+- adapter version/SHA is attributable.
+
+## D8 — Data-plane correctness
+
+For approved operations:
+- metadata search/describe;
+- bounded query;
+- entity-by-key;
+- count;
+- register query;
+- paging/truncation;
+- cancellation/timeout;
+- retry behavior
+
+all pass contract tests and real-source smoke tests where applicable.
+
+## D9 — Accounting correctness
+
+Accounting correctness uses both frozen L2 tracks:
+
+**L2-B real reference**
+- private real-reference 1C clone fingerprinted;
+- known-good/known-error regression cases exercised;
+- native 1C report/UI evidence captured;
+- source-specific profile/mapping tied to exact metadata fingerprint.
+
+**L2-A Ferma controlled synthetic**
+- deterministic scenario/oracle provenance captured;
+- test-only seeder creates normal 1C business documents in a marked disposable base;
+- native 1C result and ERP_MCP result captured independently;
+- oracle independence mechanically preserved.
+
+At least 10 representative native-report reconciliation cases are mandatory per production semantic
+profile, and the broader frozen DAD scenario families must reach their declared acceptance level.
+
+No unresolved material accounting discrepancy may be waived into PASS.
+
+## D10 — Multi-company operation
+
+- at least three heterogeneous test sources with distinct ACLs;
+- add source without code deploy;
+- revoke source/grant without restart;
+- source failure does not globally fail healthy sources;
+- bounded cross-company operation/fan-out behavior verified;
+- target 30–150 company operational workflow documented.
+
+## D11 — Audit and provenance
+
+For success, deny and failure paths:
+- audit event exists;
+- principal/client/tool/source/company recorded;
+- query/result fingerprints/provenance recorded as designed;
+- no secret/raw sensitive payload leakage;
+- runtime cannot update/delete existing audit rows.
+
+## D12 — Observability
+
+- structured logs;
+- request correlation;
+- latency/error/rate metrics;
+- adapter/source health;
+- rate-limit/deny metrics;
+- alert thresholds/runbook links;
+- no credentials or raw business payloads in standard telemetry.
+
+## D13 — Performance and resource limits
+
+Before GO:
+- representative load test completed;
+- p50/p95/p99 recorded;
+- concurrency and per-source limits validated;
+- no unbounded memory/result growth;
+- large register/query behavior is capped;
+- Redis/Postgres pool behavior under load verified.
+
+Targets are approved from measured results, not guessed.
+
+## D14 — Resilience
+
+- Postgres unavailable -&gt; readiness fails safely;
+- Redis unavailable -&gt; defined fail-closed/fail-safe behavior validated;
+- one 1C source unavailable -&gt; source-scoped failure;
+- retry/circuit breaker behavior tested;
+- process restart does not lose authoritative registry/access state.
+
+## D15 — Backup, restore and rollback
+
+- PostgreSQL backup/PITR policy configured;
+- restore test performed;
+- deployment rollback documented/tested;
+- migration rollback/restore path documented;
+- source/secret rollback procedures documented;
+- no destructive recovery step executed without explicit approval.
+
+## D16 — Production deployment
+
+- production config passes fail-closed validation;
+- non-root container;
+- TLS/ingress/private connectivity configured;
+- DB roles split;
+- secret provider configured;
+- health/readiness integrated;
+- deployment manifest/version pinned.
+
+## D17 — Operations and support
+
+- owner/on-call responsibility defined;
+- source onboarding/offboarding runbook;
+- secret rotation runbook;
+- incident response;
+- adapter/source diagnostic procedure;
+- capability refresh/schema drift procedure;
+- audit investigation procedure.
+
+## D18 — Pilot closure
+
+- controlled pilot users/sources completed;
+- no write side effects;
+- accounting reconciliation remained valid;
+- audit reviewed;
+- high/blocker risks closed or explicitly accepted;
+- exact production release SHA approved.
+
+## D19 — Isolated private disposable-writer qualification (non-production)
+
+This gate applies only to `S13-PRIVATE-WRITER-1` under ADR-0009 and does not alter D5 or the
+production GO criteria. It passes only when:
+
+- the private service is absent from public/model-facing MCP registration and the production
+  process/package inventory, and rejects production, real-company, immutable-reference and unknown
+  base identities;
+- the selected loopback/Tailscale ingress authenticates the caller and enforces an explicit
+  least-privilege ACL; positive and negative disposable-lane cases prove an authorized caller is
+  accepted and an unauthenticated or unauthorized caller is refused before admission/COM;
+- PostgreSQL admission has effective least-privilege grants, tenant/company enforcement, global
+  call-ID idempotency, stale lifecycle/serving-epoch rejection, exact evidence recovery and complete
+  barrier behavior proven on a disposable schema;
+- physical COM create-draft/read-back/post/unpost behavior is qualified separately on a marked
+  disposable clone under `CT14Писатель`; SQL tests do not substitute for COM evidence;
+- crash, lost response, stale epoch, duplicate call, uncertain outcome and quiescence cases are
+  executed by the designated functional/E2E roles; unresolved calls preserve holds and never retry;
+- exact-head database, security and reliability reviews close all valid BLOCKER/MAJOR findings;
+- no secret, private business row, or immutable-reference data enters repository evidence.
+
+Until D19 passes, private writer admission remains disabled and lifecycle remains `NOT_READY`.
+Passing D19 authorizes only disposable test-lane use; it is not a production write approval.
+
+## Cross-cutting scope-freeze closure
+
+Before the operator considers lifting/rebaselining the freeze:
+
+- all current committed requirements in `SCOPE_FREEZE_BASELINE_2026-10-06.md` have explicit
+  implementation/evidence status;
+- DAD R0–R7 read-only scope is implemented to its declared acceptance level;
+- real-reference and Ferma controlled-synthetic assurance paths are complete for frozen scenario
+  families;
+- External Evidence dependencies return explicit evidence states rather than guessed PASS;
+- no locally actionable blocker/high risk is hidden as “future”;
+- deferred write/legacy/production ERP-Ferma lanes have not been silently promoted;
+- the explicit ADR-0009 test-only writer rebaseline is not treated as production write scope;
+- Command Center and normative docs match exact release evidence.
+
+SC08 rebaseline 2026-10-07: no production DoD gate change; SC08 adds one read-only candidate tool
+whose evidence is synthetic L1 only and never native reconciliation. See the explicit operator
+rebaseline in `SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1 and the
+[SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
+
+ADR-0009 rebaseline 2026-10-22 adds D19 for isolated disposable-writer qualification only; D0–D18
+and the production terminal condition remain unchanged.
+
+## Final terminal condition
+
+**PRODUCTION GO** only when D0–D18 mandatory gates are green for the target environment.
+
+Allowed intermediate labels:
+- `DEV READY`
+- `INTEGRATION READY`
+- `PILOT READY`
+- `PRODUCTION GO`
+
+Do not call a release “production-ready” if it has not reached at least `PILOT READY` with all
+pre-pilot mandatory gates satisfied.
+
+## Admin Control Center extension gate
+
+Admin Control Center may be enabled for an environment only when:
+- ADR-0007 and migrations 008-011 match the deployed exact head;
+- admin audience/scope is distinct from MCP onec:read;
+- OIDC Authorization Code + PKCE login and session/CSRF tests pass;
+- a first PLATFORM_ADMIN subject/group is bootstrapped through controlled operator tooling;
+- business_ai_control_api privilege verification passes and business_ai_app remains unable to administer policy;
+- source egress host/CIDR policy is explicitly configured before mutations are enabled;
+- admin audit/idempotency and exact-ID revoke tests pass;
+- business capability enforcement is enabled only after assignments exist for intended users;
+- company-aware reads are enabled only for entity sets with VALIDATED metadata-bound scope mappings;
+- full baseline tests, Ruff, compileall, Bandit and dependency audit are green;
+- real IdP login, target 1C safe-probe and pilot operator smoke evidence are captured for the deployment environment.
+
+Passing repository tests alone is DEV/INTEGRATION evidence, not production activation approval.
+</pre></main></body></html>
