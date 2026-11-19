@@ -2857,3 +2857,7 @@ GPT-PM round 2 approved bounded S17 closure at exact HEAD `6b12a4603e0e2958a64e4
 ## 2026-11-19 — Refresh program report after S17 closeout
 
 After local closeout commit `5908e97e98e8e290b2ececdaf48c85de31409ca1`, regenerate the standard Russian live report and its browsable Markdown copies. The report must show S17 `CLOSED_BOUNDED_SPRINT`, five bounded accepted tasks, S17-06 `PARTIAL`, and S18 as the next sprint; the recent Git journal must be populated. This report-only snapshot does not change source acceptance and must not promote deferred H3 or runtime obligations.
+
+## 2026-11-19 — Merge S17 bounded closure
+
+PR #69 merged to `main` at merge commit `8f45bede0081280b800c749f86d3b76eede1ff20`. The reviewed branch head was exactly `8db542d846cd6b10097c6cdba6c325fc83aef650`; GPT-PM APPROVE was recorded against that head under request `2ff60a7c-82d5-4a5a-8e34-29d25b178aec`, and the final scoped review CLI receipt also approved the same head. S17 closes as bounded acceptance: S17-01/02/03/04/05 accepted; S17-06 remains PARTIAL, with H3 N=30 and trusted receipt verification deferred to S19/final acceptance. No production, live 1C, qualified runtime PostgreSQL, or host-wide isolation acceptance is implied. S18 is next in order.
