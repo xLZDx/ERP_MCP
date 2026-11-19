@@ -84,6 +84,14 @@ Recommended fields:
 Unique:
 - `(source_id, external_ref)`.
 
+The Admin control-plane schema also stores two nullable, one-way bindings for the S17 workbench:
+`bag.sources.tenant_id` maps a registered source to its durable change-ledger tenant, and
+`bag.companies.ledger_company_id` maps the exact Admin company UUID to the ledger's separate company
+key. They are not inferred from source IDs, company UUIDs, tokens, or request payloads. Legacy rows
+remain unbound. A global `PLATFORM_ADMIN` with recent step-up assigns each binding through the
+audited, expected-version API; database triggers refuse reassignment. A reader must still apply the
+current exact-company allow/deny policy before disclosing any ledger result.
+
 The gateway returns business data only within authorized source/company scope.
 
 ## 5. Access model

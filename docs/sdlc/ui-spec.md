@@ -90,3 +90,58 @@ Use semantic headings, definition lists for scope facts, a pre or equivalent tex
 3. Confirm selected 15-minute session and 5-minute nonce lifetimes against the core expiry contract during architecture review.
 4. Confirm whether confirmation is exact kind plus amount/currency for every POST and threshold-exceeding non-POST operation; the UI must not infer an amount for non-monetary kinds.
 5. The approver application's final private origin and TLS/cookie deployment values remain unconfigured because deployment is out of scope.
+
+---
+
+# S17 Intake Preview UI Specification
+
+Sprint: S17 — Document intake and workbench  
+Scope: authenticated XLSX/CSV/PDF/image/manual preview in the existing Admin Control Center. This screen is an unpersisted review preview only; it does not create a change proposal, approve/apply a proposal, or call 1C. Drive and arbitrary URL intake remain out of scope.
+
+## Journey
+
+1. An administrator opens “Intake preview” inside the existing Admin Control Center and selects a registered source and company scope.
+2. The page accepts an XLSX, CSV, PDF, or image for preview, or bounded manually entered key/value fields. The browser sends file bytes only; the uploaded filename is never sent or used as a path.
+3. The server validates the OIDC admin session, source role scope, company existence/enabled state, and a current effective allow grant for the exact actor/company. Explicit deny, disabled source/company, missing grant, unavailable group claims, or failed access lookup refuses the request. Access is checked before parsing and again before returning values.
+4. A supported file returns source-hash-bound values and one-based coordinates. PDF/image/other formats return manual-review-only without OCR. Every value stays `REVIEW_REQUIRED` and materiality is `UNCLASSIFIED`; no alias mapping is asserted unless configured server-side.
+5. The user may resubmit after correcting the file or scope. A retry is a new preview request; no server-side preview record or business proposal is retained.
+
+## Screen and API contracts
+
+| Component | Content and contract | Events / behavior |
+|---|---|---|
+| Scope selector | Exact registered `source_id` and company ID. | Values are caller selections but must resolve server-side; arbitrary hosts, URLs, paths and entity-set names are not accepted. Authorization is evaluated for every request. |
+| File preview form | Formats XLSX, CSV, PDF, image; fixed maximum request bytes; no filename field. | POST raw bytes to `/admin/v1/intake/preview` with source, company and fixed format parameters. Authenticate and authorize before reading/parsing. No content is written to disk. |
+| Manual preview form | Bounded ordered key/value fields; blank values create no candidate. | POST JSON to `/admin/v1/intake/manual-preview`; authenticate and authorize before validating fields. Stable digest and one-based provenance are returned; values are not persisted. |
+| Review card | State/code, source SHA-256, format, value, provenance, review-required flag and unclassified materiality. | Return `proposal_allowed=false` and `apply_allowed=false`. Explicit JSON fields are disclosed only to the authenticated, currently authorized same-scope browser response. Default object representations remain redacted. |
+| Result and error panel | Fixed success/refusal copy and a safe retry action. | Responses use `Cache-Control: no-store`; errors never echo file values, filenames, paths, exception messages or credentials. Recheck company grant after parsing and refuse disclosure if it changed. |
+
+## States and copy
+
+| State | User sees | Available action / transition |
+|---|---|---|
+| Empty | “Choose a source and company, then select a file or enter fields.” | Submit either bounded preview form. |
+| Loading | “Preparing a review-only preview…” | Wait for server response; repeated submit starts a separate preview. |
+| Review required | Values, source hash, source coordinates, `Review required`, `Materiality not classified`, and “No proposal was created.” | Inspect or correct source data and resubmit. No approve, apply, post, or write action exists. |
+| Manual review only | Fixed format/status explanation; no extracted values for unsupported formats. | Enter fields manually or choose a supported format. |
+| Refused / too large | Fixed error code and safe next action. | Change scope/input and resubmit; no partial result is shown. |
+| Permission denied | “You cannot preview data for this company.” | Select an authorized company; do not reveal whether another scope exists. |
+| Session expired | “Your session expired. Sign in again.” | Reauthenticate and submit a new preview. |
+| Service unavailable | “Preview is unavailable. No data was saved.” | Retry after service recovery. |
+
+## Identity, privacy, and accessibility
+
+- Reuse the existing Admin Control Center OIDC session, CSRF protection, rate limit, response headers and fixed error boundary. The platform role is necessary but does not replace the exact company-level business allow grant; explicit deny wins.
+- Source, company and format are validated server-side. Access is checked before parser input is read and again after parsing to prevent disclosure after a concurrent grant revocation.
+- The service accepts bytes, never a path or filename. It does not fetch network content, OCR files, persist previews, expose original bytes, or reach a 1C operation.
+- Render all returned values as escaped text in table cells; use semantic headings, labels, native file input and buttons, and an `aria-live` result region. Keyboard-only operation, visible focus, contrast, 44px touch targets and responsive reflow are required.
+- Values are intentionally visible only in the authorized preview response; logs, error text, telemetry and default representations must not contain values, file content, filename or entity suggestions.
+
+## Acceptance mapping
+
+| Acceptance | UI evidence required | State |
+|---|---|---|
+| S17-05 authenticated preview | OIDC/session/CSRF, source role and current company grant are checked before parse and before disclosure; exact provenance and bounded review-only values are displayed. | Design specified; implementation and named E2E remain open. |
+| S17-05 manual entry | Bounded fields, deterministic ordered digest, one-based provenance, blank fields omitted, all values review-required. | Design specified; implementation and named E2E remain open. |
+| S17 no-write boundary | No proposal/apply action or 1C call is reachable from this preview screen. | Required; proposal workflow is a separate later story and must not be implied by this screen. |
+| Accessibility | Labels, keyboard behavior, visible focus, status text, safe value rendering, responsive reflow and touch targets. | Specified; UI review and E2E evidence remain open. |

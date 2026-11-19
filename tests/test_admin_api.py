@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from urllib.parse import urlencode
+from uuid import UUID
 
 import pytest
 from starlette.requests import Request
@@ -62,6 +65,81 @@ async def test_role_resolution_accepts_subject_and_group_bindings():
         AdminRoleBinding("SOURCE_ADMIN", "source-a"),
         AdminRoleBinding("AUDITOR", "source-b"),
     )
+
+
+@pytest.mark.asyncio
+async def test_intake_preview_rechecks_live_source_role_after_parse():
+    """A stale request-start binding cannot survive revocation during parsing."""
+    from business_ai_gateway.admin_api import AdminAPI
+
+    class RevokingPool:
+        def __init__(self):
+            self.calls = []
+
+        async def fetchrow(self, sql, *args):
+            self.calls.append((sql, args))
+            return {
+                "active": True,
+                "has_admin_role": len(self.calls) == 1,
+                "has_allow": True,
+                "has_deny": False,
+            }
+
+    class DB:
+        def __init__(self):
+            self.pool = RevokingPool()
+
+        def require_pool(self):
+            return self.pool
+
+    company_id = UUID("8de7f202-ae8d-49d4-8655-3de42662c026")
+    ctx = AdminContext(
+        token=SimpleNamespace(subject="subject-1", client_id="client-1"),
+        groups=frozenset(),
+        # This request-start snapshot remains stale after the fake pool revokes the role.
+        bindings=(AdminRoleBinding("SOURCE_ADMIN", "source-a"),),
+    )
+    db = DB()
+    api = object.__new__(AdminAPI)
+    api.authenticate = AsyncMock(return_value=ctx)
+    api.repository = SimpleNamespace(db=db)
+
+    payload = b"invoice_number,amount\nINV-REVOKED-1,12.50\n"
+    sent = False
+
+    async def receive():
+        nonlocal sent
+        if sent:
+            return {"type": "http.disconnect"}
+        sent = True
+        return {"type": "http.request", "body": payload, "more_body": False}
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/admin/v1/intake/preview",
+            "query_string": urlencode({
+                "source_id": "source-a", "company_id": str(company_id), "format": "csv",
+            }).encode(),
+            "headers": [(b"content-type", b"application/octet-stream")],
+        },
+        receive,
+    )
+
+    response = await api.intake_preview(request)
+
+    assert response.status_code == 403
+    assert json.loads(response.body) == {"error": "INTAKE_SCOPE_DENIED"}
+    assert b"INV-REVOKED-1" not in response.body
+    assert len(db.pool.calls) == 2  # pre-parse authorization and post-parse recheck
+    for sql, args in db.pool.calls:
+        assert "FROM bag.platform_role_bindings b" in sql
+        assert "FROM bag.access_grants a" in sql
+        assert args[0] == company_id
+        assert args[1] == "source-a"
+        assert args[2] == "subject-1"
+        assert args[4] == ["PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"]
 
 
 @pytest.mark.asyncio

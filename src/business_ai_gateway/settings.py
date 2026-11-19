@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://business_ai:business_ai@localhost:5432/business_ai"
     admin_database_url: str | None = None
     migration_database_url: str | None = None
+    change_ledger_database_url: SecretStr | None = Field(default=None, repr=False, max_length=2048)
     redis_url: str = "redis://localhost:6379/0"
 
     odata_sidecar_url: str | None = None
@@ -193,6 +194,14 @@ class Settings(BaseSettings):
                 "BAG_CAPABILITY_OBSERVER_URL and BAG_CAPABILITY_OBSERVER_TOKEN "
                 "must be configured together"
             )
+        if self.change_ledger_database_url:
+            ledger_url = self.change_ledger_database_url.get_secret_value()
+            parsed_ledger_url = urlparse(ledger_url)
+            if (parsed_ledger_url.scheme not in {"postgresql", "postgres"}
+                    or not parsed_ledger_url.netloc
+                    or parsed_ledger_url.username is None
+                    or parsed_ledger_url.password is None):
+                raise ValueError("BAG_CHANGE_LEDGER_DATABASE_URL must be a credentialed PostgreSQL URL")
         if self.machine_reconciled_source_items:
             if self.environment != "test":
                 raise ValueError("MACHINE_RECONCILED_SOURCES_REQUIRE_TEST_ENVIRONMENT")

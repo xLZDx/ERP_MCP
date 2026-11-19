@@ -750,6 +750,169 @@ class AdminMutationService:
             mutation=mutation,
         )
 
+    async def bind_source_tenant(
+        self,
+        *,
+        actor: AdminActor,
+        source_id: str,
+        tenant_id: str,
+        expected_version: int,
+        reason: str,
+        request_id: uuid.UUID,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        if (not isinstance(source_id, str) or not source_id or source_id != source_id.strip()
+                or len(source_id) > 255):
+            raise AdminValidationError("source_id is invalid")
+        if (not isinstance(tenant_id, str) or not tenant_id or tenant_id != tenant_id.strip()
+                or len(tenant_id) > 255 or any(ord(char) < 32 or ord(char) == 127 for char in tenant_id)):
+            raise AdminValidationError("tenant_id is invalid")
+        if type(expected_version) is not int or expected_version < 1:
+            raise AdminValidationError("expected_version is invalid")
+
+        request = {
+            "source_id": source_id,
+            "tenant_id": tenant_id,
+            "expected_version": expected_version,
+        }
+
+        async def mutation(conn):
+            before = await conn.fetchrow(
+                "SELECT tenant_id, row_version FROM bag.sources WHERE source_id=$1 FOR UPDATE",
+                source_id,
+            )
+            if before is None:
+                raise AdminNotFound("source not found")
+            if before["row_version"] != expected_version:
+                raise AdminConflict("source version changed")
+            if before["tenant_id"] is not None:
+                if before["tenant_id"] != tenant_id:
+                    raise AdminConflict("source tenant binding is immutable")
+                return {
+                    "id": source_id,
+                    "source_id": source_id,
+                    "tenant_id": tenant_id,
+                    "row_version": expected_version,
+                    "before_fingerprint": _fingerprint(dict(before)),
+                }
+            row = await conn.fetchrow(
+                """
+                UPDATE bag.sources
+                SET tenant_id=$3, row_version=row_version+1, updated_at=now()
+                WHERE source_id=$1 AND row_version=$2 AND tenant_id IS NULL
+                RETURNING source_id, tenant_id, row_version, updated_at
+                """,
+                source_id,
+                expected_version,
+                tenant_id,
+            )
+            if row is None:
+                raise AdminConflict("source tenant binding changed")
+            return {
+                "id": row["source_id"],
+                "source_id": row["source_id"],
+                "tenant_id": row["tenant_id"],
+                "row_version": row["row_version"],
+                "updated_at": str(row["updated_at"]),
+                "before_fingerprint": _fingerprint(dict(before)),
+            }
+
+        return await self._execute(
+            actor=actor,
+            command="source.tenant_bind",
+            target_type="source_tenant_binding",
+            target_id=source_id,
+            source_id=source_id,
+            company_id=None,
+            reason=reason,
+            request_id=request_id,
+            idempotency_key=idempotency_key,
+            request=request,
+            mutation=mutation,
+        )
+
+    async def bind_company_ledger_identity(
+        self,
+        *,
+        actor: AdminActor,
+        company_id: uuid.UUID,
+        ledger_company_id: str,
+        expected_version: int,
+        reason: str,
+        request_id: uuid.UUID,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        if not isinstance(company_id, uuid.UUID):
+            raise AdminValidationError("company_id is invalid")
+        if (not isinstance(ledger_company_id, str) or not ledger_company_id
+                or ledger_company_id != ledger_company_id.strip()
+                or len(ledger_company_id) > 255
+                or any(ord(char) < 32 or ord(char) == 127 for char in ledger_company_id)):
+            raise AdminValidationError("ledger_company_id is invalid")
+        if type(expected_version) is not int or expected_version < 1:
+            raise AdminValidationError("expected_version is invalid")
+
+        request = {
+            "company_id": str(company_id),
+            "ledger_company_id": ledger_company_id,
+            "expected_version": expected_version,
+        }
+
+        async def mutation(conn):
+            before = await conn.fetchrow(
+                """SELECT source_id, ledger_company_id, row_version
+                   FROM bag.companies WHERE company_id=$1 FOR UPDATE""",
+                company_id,
+            )
+            if before is None:
+                raise AdminNotFound("company not found")
+            if before["row_version"] != expected_version:
+                raise AdminConflict("company version changed")
+            if before["ledger_company_id"] is not None:
+                if before["ledger_company_id"] != ledger_company_id:
+                    raise AdminConflict("ledger company binding is immutable")
+                return {
+                    "id": str(company_id),
+                    "company_id": str(company_id),
+                    "ledger_company_id": ledger_company_id,
+                    "row_version": expected_version,
+                    "before_fingerprint": _fingerprint(dict(before)),
+                }
+            row = await conn.fetchrow(
+                """UPDATE bag.companies
+                   SET ledger_company_id=$3, row_version=row_version+1, updated_at=now()
+                   WHERE company_id=$1 AND row_version=$2 AND ledger_company_id IS NULL
+                   RETURNING company_id, source_id, ledger_company_id, row_version, updated_at""",
+                company_id,
+                expected_version,
+                ledger_company_id,
+            )
+            if row is None:
+                raise AdminConflict("ledger company binding changed")
+            return {
+                "id": str(row["company_id"]),
+                "company_id": str(row["company_id"]),
+                "source_id": row["source_id"],
+                "ledger_company_id": row["ledger_company_id"],
+                "row_version": row["row_version"],
+                "updated_at": str(row["updated_at"]),
+                "before_fingerprint": _fingerprint(dict(before)),
+            }
+
+        return await self._execute(
+            actor=actor,
+            command="company.ledger_identity_bind",
+            target_type="company_ledger_binding",
+            target_id=str(company_id),
+            source_id=None,
+            company_id=company_id,
+            reason=reason,
+            request_id=request_id,
+            idempotency_key=idempotency_key,
+            request=request,
+            mutation=mutation,
+        )
+
     async def create_source(
         self,
         *,

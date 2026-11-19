@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -37,6 +38,26 @@ from .models import source_from_record
 from .principal import claim_groups
 from .rate_limit import RateLimitExceeded
 from .settings import Settings
+from .phase2.change_ledger._common import LedgerError, Scope
+from .phase2.intake_extraction import (
+    ExtractionResult,
+    UploadFormat,
+    extract_manual_fields,
+    extract_upload,
+)
+from .phase2.safe_parser import ParseLimits
+
+_INTAKE_LIMITS = ParseLimits(
+    max_input_bytes=2_000_000,
+    max_members=100,
+    max_member_uncompressed=8_000_000,
+    max_total_uncompressed=16_000_000,
+    max_rows=20_000,
+    max_cells=5_000,
+    max_total_text_chars=250_000,
+    deadline_seconds=3.0,
+)
+_INTAKE_MAX_BODY_BYTES = 2_000_000
 
 ADMIN_ROLES = frozenset(
     {"PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "PROFILE_ADMIN", "AUDITOR"}
@@ -107,6 +128,58 @@ async def _json_body(request: Request) -> dict[str, Any]:
     ):
         raise AdminValidationError("invalid expected version")
     return body
+
+
+async def _bounded_body(request: Request, limit: int) -> bytes:
+    """Read one bounded request body; callers authenticate and authorize first."""
+    declared = request.headers.get("content-length")
+    if declared is not None:
+        try:
+            if int(declared) < 0 or int(declared) > limit:
+                raise AdminValidationError("request body exceeds configured limit")
+        except ValueError as exc:
+            raise AdminValidationError("invalid content length") from exc
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(chunk) > limit - len(body):
+            raise AdminValidationError("request body exceeds configured limit")
+        body.extend(chunk)
+    return bytes(body)
+
+
+def _intake_result(result: ExtractionResult) -> dict[str, Any]:
+    """Serialize only the explicit review fields; dataclass reprs remain redacted."""
+    return {
+        "state": result.state.value,
+        "code": result.code,
+        "source_sha256": result.source_sha256,
+        "source_format": result.source_format.value,
+        # The preview routes do not currently receive a persistent,
+        # company-scoped entity directory. Never imply that raw labels matched.
+        "entity_directory": {
+            "state": "NOT_CONFIGURED",
+            "code": "ENTITY_DIRECTORY_NOT_CONFIGURED",
+        },
+        "fields": [
+            {
+                "value": value.text,
+                "state": value.state.value,
+                "materiality": "UNCLASSIFIED",
+                "review_required": True,
+                "provenance": {
+                    "source_sha256": value.provenance.source_sha256,
+                    "source_format": value.provenance.source_format.value,
+                    "sheet_name": value.provenance.sheet_name,
+                    "row_number": value.provenance.row_number,
+                    "column_number": value.provenance.column_number,
+                    "field_key": value.provenance.field_key,
+                },
+            }
+            for value in result.values
+        ],
+        "proposal_allowed": False,
+        "apply_allowed": False,
+    }
 
 
 def _boolean(body, key, default):
@@ -252,6 +325,66 @@ class AdminRepository:
             source_id,
         )
         return _json_record(row) if row is not None else None
+
+    async def tenant_for_source(self, ctx: AdminContext, source_id: str) -> str | None:
+        """Return only the explicitly registered tenant for an authorized source."""
+        if not ctx.can_admin_source(source_id):
+            return None
+        row = await self.db.require_pool().fetchrow(
+            "SELECT tenant_id FROM bag.sources WHERE source_id=$1 AND enabled=true",
+            source_id,
+        )
+        return row["tenant_id"] if row is not None else None
+
+    async def ledger_scope_for_company(
+        self, ctx: AdminContext, company_id: UUID
+    ) -> tuple[str, str] | None:
+        """Resolve ledger keys only after current source-role and exact-company checks."""
+        if not isinstance(ctx.token.subject, str) or not ctx.token.subject:
+            return None
+        row = await self.db.require_pool().fetchrow(
+            """SELECT s.source_id, s.tenant_id, c.ledger_company_id,
+                      EXISTS (
+                        SELECT 1 FROM bag.access_grants a
+                        WHERE a.effect='allow' AND a.revoked_at IS NULL
+                          AND (a.expires_at IS NULL OR a.expires_at>now())
+                          AND (a.source_id=s.source_id OR a.all_sources)
+                          AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                          AND ((a.principal_kind='subject' AND a.principal_id=$2)
+                            OR (a.principal_kind='group' AND a.principal_id=ANY($3::text[])))
+                      ) AS has_allow,
+                      EXISTS (
+                        SELECT 1 FROM bag.access_grants a
+                        WHERE a.effect='deny' AND a.revoked_at IS NULL
+                          AND (a.expires_at IS NULL OR a.expires_at>now())
+                          AND (a.source_id=s.source_id OR a.all_sources)
+                          AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                          AND ((a.principal_kind='subject' AND a.principal_id=$2)
+                            OR (a.principal_kind='group' AND a.principal_id=ANY($3::text[])))
+                      ) AS has_deny
+               FROM bag.sources AS s
+               JOIN bag.companies AS c ON c.source_id=s.source_id
+               WHERE c.company_id=$1
+                 AND s.enabled=true AND c.enabled=true""",
+            company_id,
+            ctx.token.subject,
+            sorted(ctx.groups),
+        )
+        if row is not None:
+            # Do not trust the role-binding snapshot attached during authentication: a
+            # binding can be revoked while a ledger read is in flight. This method is
+            # called both before and after each read, so re-resolve it from the registry.
+            bindings = await self.resolve_bindings(ctx.token.subject, ctx.groups)
+            allowed_roles = {"PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"}
+            matching = [binding for binding in bindings if binding.role_name in allowed_roles]
+            global_admin = any(binding.source_id is None for binding in matching)
+            source_admin = any(binding.source_id == row["source_id"] for binding in matching)
+            if not matching or not (global_admin or source_admin):
+                return None
+        if (row is None or not row["has_allow"] or row["has_deny"]
+                or row["tenant_id"] is None or row["ledger_company_id"] is None):
+            return None
+        return row["tenant_id"], row["ledger_company_id"]
 
     async def source_model(self, ctx: AdminContext, source_id: str):
         if not ctx.can_admin_source(source_id):
@@ -968,6 +1101,120 @@ class AdminAPI:
             return ctx
         return JSONResponse({"items": await self.repository.list_companies(ctx)})
 
+    async def _intake_scope_allowed(self, ctx: AdminContext, source_id: str, company_id: UUID) -> bool:
+        """Require source-scoped admin authority and the actor's current business allow grant."""
+        if (not source_id or len(source_id) > 128
+                or any(not (char.isascii() and (char.isalnum() or char in "._-")) for char in source_id)):
+            return False
+        subject = ctx.token.subject
+        if not isinstance(subject, str) or not subject:
+            return False
+        row = await self.repository.db.require_pool().fetchrow(
+            """
+            SELECT c.enabled AND s.enabled AS active,
+                   EXISTS (
+                     SELECT 1 FROM bag.platform_role_bindings b
+                     WHERE b.revoked_at IS NULL
+                       AND (b.expires_at IS NULL OR b.expires_at>now())
+                       AND (b.source_id IS NULL OR b.source_id=s.source_id)
+                       AND b.role_name=ANY($5::text[])
+                       AND ((b.principal_kind='subject' AND b.principal_id=$3)
+                         OR (b.principal_kind='group' AND b.principal_id=ANY($4::text[])))
+                   ) AS has_admin_role,
+                   EXISTS (
+                     SELECT 1 FROM bag.access_grants a
+                     WHERE a.effect='allow' AND a.revoked_at IS NULL
+                       AND (a.expires_at IS NULL OR a.expires_at>now())
+                       AND (a.source_id=s.source_id OR a.all_sources)
+                       AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                       AND ((a.principal_kind='subject' AND a.principal_id=$3)
+                         OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                   ) AS has_allow,
+                   EXISTS (
+                     SELECT 1 FROM bag.access_grants a
+                     WHERE a.effect='deny' AND a.revoked_at IS NULL
+                       AND (a.expires_at IS NULL OR a.expires_at>now())
+                       AND (a.source_id=s.source_id OR a.all_sources)
+                       AND (a.company_id IS NULL OR a.company_id=c.company_id)
+                       AND ((a.principal_kind='subject' AND a.principal_id=$3)
+                         OR (a.principal_kind='group' AND a.principal_id=ANY($4::text[])))
+                   ) AS has_deny
+            FROM bag.companies c JOIN bag.sources s ON s.source_id=c.source_id
+            WHERE c.company_id=$1 AND c.source_id=$2
+            """,
+            company_id, source_id, subject, sorted(ctx.groups),
+            ["PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "AUDITOR"],
+        )
+        return bool(
+            row and row["active"] and row["has_admin_role"]
+            and row["has_allow"] and not row["has_deny"]
+        )
+
+    async def intake_preview(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        source_id = request.query_params.get("source_id", "")
+        raw_company_id = request.query_params.get("company_id", "")
+        try:
+            company_id = UUID(raw_company_id)
+            source_format = UploadFormat(request.query_params.get("format", ""))
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+        if source_format not in {UploadFormat.XLSX, UploadFormat.CSV, UploadFormat.PDF, UploadFormat.IMAGE}:
+            return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+        try:
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+            if content_type not in {"", "application/octet-stream"}:
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=415)
+            body = await _bounded_body(request, _INTAKE_MAX_BODY_BYTES)
+            if not body:
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            result = await asyncio.to_thread(extract_upload, body, source_format, limits=_INTAKE_LIMITS)
+            # Do not disclose parsed values if access was revoked while parsing.
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            return JSONResponse(_intake_result(result))
+        except Exception as exc:  # noqa: BLE001 - no parser or database detail crosses the boundary
+            return self._mutation_error(exc)
+
+    async def intake_manual_preview(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        source_id = request.query_params.get("source_id", "")
+        try:
+            company_id = UUID(request.query_params.get("company_id", ""))
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+        try:
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            body = await _bounded_body(request, 256_000)
+            try:
+                payload = json.loads(body)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            if not isinstance(payload, dict) or set(payload) != {"fields"} or not isinstance(payload["fields"], list):
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            fields = payload["fields"]
+            if len(fields) > 500 or any(
+                not isinstance(item, dict) or set(item) != {"key", "value"}
+                or not isinstance(item["key"], str) or not isinstance(item["value"], str)
+                for item in fields
+            ):
+                return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+            result = await asyncio.to_thread(
+                extract_manual_fields, tuple((item["key"], item["value"]) for item in fields)
+            )
+            if not await self._intake_scope_allowed(ctx, source_id, company_id):
+                return JSONResponse({"error": "INTAKE_SCOPE_DENIED"}, status_code=403)
+            return JSONResponse(_intake_result(result))
+        except Exception as exc:  # noqa: BLE001 - no submitted values in logs or boundary errors
+            return self._mutation_error(exc)
+
     async def capabilities(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
@@ -1128,6 +1375,90 @@ class AdminAPI:
             return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
         return JSONResponse(item)
 
+    async def company_changes(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        reader = self.runtime.change_ledger_reader
+        if reader is None:
+            return JSONResponse({"error": "LEDGER_NOT_CONFIGURED"}, status_code=503)
+        try:
+            company_id = UUID(request.path_params["company_id"])
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+        try:
+            limit_text = request.query_params.get("limit", "50")
+            offset_text = request.query_params.get("offset", "0")
+            if (not re.fullmatch(r"[0-9]{1,3}", limit_text)
+                    or not re.fullmatch(r"[0-9]{1,5}", offset_text)):
+                raise ValueError
+            limit = int(limit_text)
+            offset = int(offset_text)
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "INVALID_PAGINATION"}, status_code=400)
+        if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+            return JSONResponse({"error": "INVALID_PAGINATION"}, status_code=400)
+        try:
+            scope = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope is None:
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+
+        try:
+            items = await reader.list_inflight(Scope(*scope), limit=limit, offset=offset)
+        except Exception:  # noqa: BLE001 - the ledger failure details are not a public API
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        try:
+            scope_after = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope_after != scope:
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+        return JSONResponse({"items": items})
+
+    async def company_change_status(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        reader = self.runtime.change_ledger_reader
+        if reader is None:
+            return JSONResponse({"error": "LEDGER_NOT_CONFIGURED"}, status_code=503)
+        try:
+            company_id = UUID(request.path_params["company_id"])
+            change_id = UUID(request.path_params["change_id"])
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+        try:
+            scope = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope is None:
+            return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+
+        try:
+            status = await reader.operator_status(Scope(*scope), change_id)
+        except LedgerError as exc:
+            if exc.code == "CHANGE_NOT_FOUND":
+                return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        except Exception:  # noqa: BLE001 - the ledger failure details are not a public API
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        if type(status) is not dict:
+            return JSONResponse({"error": "LEDGER_READ_UNAVAILABLE"}, status_code=503)
+        try:
+            scope_after = await self.repository.ledger_scope_for_company(ctx, company_id)
+        except Exception:  # noqa: BLE001 - fail closed without exposing database errors
+            return JSONResponse({"error": "LEDGER_SCOPE_UNAVAILABLE"}, status_code=503)
+        if scope_after != scope:
+            return JSONResponse({"error": "CHANGE_NOT_FOUND"}, status_code=404)
+        visible_fields = {
+            "change_id", "kind", "lifecycle", "authorization", "execution", "verification",
+            "call_ownership", "reservation", "dispatch", "claim_generation", "expires_at",
+            "created_at", "updated_at",
+        }
+        return JSONResponse({key: status[key] for key in visible_fields if key in status})
+
     async def source_update(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
@@ -1171,6 +1502,64 @@ class AdminAPI:
                 tags=[str(item) for item in body.get("tags", [])],
                 enabled=_boolean(body, "enabled", True),
                 preflight=preflight,
+                reason=str(body.get("reason", "")),
+                request_id=_request_id(request),
+                idempotency_key=request.headers.get("idempotency-key", ""),
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            return self._mutation_error(exc)
+
+    async def source_tenant_bind(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if self.mutations is None:
+            return self._disabled()
+        # Tenant assignment changes the boundary used for cross-service ledger reads.
+        # Only an unscoped platform administrator with recent step-up may set it.
+        if ctx.source_scope("PLATFORM_ADMIN") is not None:
+            return self._denied()
+        guard = self._step_up_guard(ctx)
+        if guard is not None:
+            return guard
+        try:
+            source_id = request.path_params["source_id"]
+            body = await _json_body(request)
+            result = await self.mutations.bind_source_tenant(
+                actor=self._actor(ctx),
+                source_id=source_id,
+                tenant_id=body.get("tenant_id"),
+                expected_version=body.get("expected_version"),
+                reason=str(body.get("reason", "")),
+                request_id=_request_id(request),
+                idempotency_key=request.headers.get("idempotency-key", ""),
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            return self._mutation_error(exc)
+
+    async def company_ledger_binding(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if self.mutations is None:
+            return self._disabled()
+        # The cross-service company key is a global scope boundary and is bound
+        # only by an unscoped platform administrator after recent step-up.
+        if ctx.source_scope("PLATFORM_ADMIN") is not None:
+            return self._denied()
+        guard = self._step_up_guard(ctx)
+        if guard is not None:
+            return guard
+        try:
+            company_id = UUID(request.path_params["company_id"])
+            body = await _json_body(request)
+            result = await self.mutations.bind_company_ledger_identity(
+                actor=self._actor(ctx),
+                company_id=company_id,
+                ledger_company_id=body.get("ledger_company_id"),
+                expected_version=body.get("expected_version"),
                 reason=str(body.get("reason", "")),
                 request_id=_request_id(request),
                 idempotency_key=request.headers.get("idempotency-key", ""),
@@ -1737,8 +2126,14 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ("/admin/v1/overview", ["GET"], api.overview_view),
         ("/admin/v1/sources", ["GET"], api.sources),
         ("/admin/v1/sources/{source_id}", ["GET"], api.source_detail_view),
+        ("/admin/v1/sources/{source_id}/tenant-binding", ["PUT"], api.source_tenant_bind),
+        ("/admin/v1/companies/{company_id}/ledger-binding", ["PUT"], api.company_ledger_binding),
         ("/admin/v1/companies", ["GET"], api.companies),
+        ("/admin/v1/intake/preview", ["POST"], api.intake_preview),
+        ("/admin/v1/intake/manual-preview", ["POST"], api.intake_manual_preview),
         ("/admin/v1/companies/{company_id}", ["GET"], api.company_detail_view),
+        ("/admin/v1/companies/{company_id}/changes", ["GET"], api.company_changes),
+        ("/admin/v1/companies/{company_id}/changes/{change_id}", ["GET"], api.company_change_status),
         ("/admin/v1/capabilities", ["GET"], api.capabilities),
         ("/admin/v1/grants", ["GET"], api.grants),
         (

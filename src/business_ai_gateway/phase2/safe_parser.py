@@ -37,8 +37,8 @@ Known limits (documented, not hidden):
   followed or fetched.
 * The central-directory entry count is compared with ``max_members`` from the
   raw end-of-central-directory record before any per-entry object is built;
-  ZIP64 archives (count field 0xFFFF) fall back to ``zipfile`` and keep the
-  residual cost of building their entry list.
+  ZIP64 representations whose count or directory bounds cannot be proven from
+  the classic EOCD are rejected before ``zipfile`` builds per-entry objects.
 * ``run_isolated`` is a crash / timeout boundary, NOT a sandbox: the child
   runs with the caller's privileges (only the environment is scrubbed).
 """
@@ -133,6 +133,7 @@ NOT_A_ZIP = "NOT_A_ZIP"
 ENCRYPTED_MEMBER = "ENCRYPTED_MEMBER"
 MACRO_PRESENT = "MACRO_PRESENT"
 EXTERNAL_LINK = "EXTERNAL_LINK"
+HIDDEN_CONTENT = "HIDDEN_CONTENT"
 XML_DTD_OR_ENTITY = "XML_DTD_OR_ENTITY"
 ZIP_BOMB_RATIO = "ZIP_BOMB_RATIO"
 TOO_MANY_MEMBERS = "TOO_MANY_MEMBERS"
@@ -159,7 +160,8 @@ TIMEOUT = "TIMEOUT"
 CHILD_ABORTED = "CHILD_ABORTED"
 
 _KNOWN_CODES = frozenset({
-    "OK", NOT_A_ZIP, ENCRYPTED_MEMBER, MACRO_PRESENT, EXTERNAL_LINK, XML_DTD_OR_ENTITY,
+    "OK", NOT_A_ZIP, ENCRYPTED_MEMBER, MACRO_PRESENT, EXTERNAL_LINK, HIDDEN_CONTENT,
+    XML_DTD_OR_ENTITY,
     ZIP_BOMB_RATIO, TOO_MANY_MEMBERS, MEMBER_TOO_LARGE, PATH_TRAVERSAL_MEMBER,
     MALFORMED_XML, UNSUPPORTED_FORMAT, INVALID_INPUT, PARSE_FAILED, CSV_NOT_UTF8,
     CSV_NUL_BYTE, CSV_MALFORMED, BOUND_INPUT_BYTES, BOUND_ROWS, BOUND_CELLS,
@@ -373,13 +375,55 @@ def _check_name(name: str, seen: set[str]) -> None:
 
 
 def _check_entry_count(data: bytes, limits: ParseLimits) -> None:
-    """Compare the EOCD entry count with max_members before zipfile builds entries."""
+    """Bound central-directory entries before zipfile materializes ZipInfo objects.
+
+    CPython's ZipFile walks the central-directory byte size, not the entry count
+    copied from EOCD. Check both the claimed count and the actual fixed-size
+    directory records first. Reject ZIP64 markers before ``ZipFile`` because
+    this bounded parser does not implement ZIP64 central-directory scanning.
+    """
     pos = data.rfind(b"PK\x05\x06", max(0, len(data) - 22 - 65_535))
-    if pos < 0 or pos + 12 > len(data):
+    if pos < 0 or pos + 22 > len(data):
         return  # let zipfile classify it
+    if pos >= 20 and data[pos - 20 : pos - 16] == b"PK\x06\x07":
+        raise _Deny(UNSUPPORTED_FORMAT)
+    disk_entries = int.from_bytes(data[pos + 8 : pos + 10], "little")
     total = int.from_bytes(data[pos + 10 : pos + 12], "little")
-    if total != 0xFFFF and total > limits.max_members:  # 0xFFFF = ZIP64 marker
+    if disk_entries == 0xFFFF or total == 0xFFFF:
+        raise _Deny(UNSUPPORTED_FORMAT)
+    if total > limits.max_members:
         raise _Deny(TOO_MANY_MEMBERS)
+
+    directory_size = int.from_bytes(data[pos + 12 : pos + 16], "little")
+    directory_offset = int.from_bytes(data[pos + 16 : pos + 20], "little")
+    if directory_size == 0xFFFFFFFF or directory_offset == 0xFFFFFFFF:
+        raise _Deny(UNSUPPORTED_FORMAT)
+    directory_start = pos - directory_size
+    if directory_start < 0:
+        raise _Deny(NOT_A_ZIP)
+
+    # ZipFile._RealGetContents iterates until `directory_size` bytes have been
+    # consumed; it does not use EOCD's entry count as its allocation bound.
+    # Count each record in-place without creating a list or per-entry objects.
+    cursor = directory_start
+    directory_end = pos
+    observed = 0
+    while cursor < directory_end:
+        if cursor + 46 > directory_end or data[cursor : cursor + 4] != b"PK\x01\x02":
+            raise _Deny(NOT_A_ZIP)
+        name_size = int.from_bytes(data[cursor + 28 : cursor + 30], "little")
+        extra_size = int.from_bytes(data[cursor + 30 : cursor + 32], "little")
+        comment_size = int.from_bytes(data[cursor + 32 : cursor + 34], "little")
+        next_cursor = cursor + 46 + name_size + extra_size + comment_size
+        if next_cursor > directory_end:
+            raise _Deny(NOT_A_ZIP)
+        observed += 1
+        if observed > limits.max_members:
+            raise _Deny(TOO_MANY_MEMBERS)
+        cursor = next_cursor
+
+    if observed != total:
+        raise _Deny(NOT_A_ZIP)
 
 
 def _check_directory(zf: zipfile.ZipFile, data_len: int, limits: ParseLimits) -> list[zipfile.ZipInfo]:
@@ -593,6 +637,43 @@ def _sheet_rows(
     return tuple(rows)
 
 
+def _is_hidden(value: str | None) -> bool:
+    """Validate OOXML visibility booleans; malformed values fail closed."""
+    if value is None or value in ("0", "false", "False"):
+        return False
+    if value in ("1", "true", "True"):
+        return True
+    raise _Deny(MALFORMED_XML)
+
+
+def _reject_hidden_content(sheet: _Node, root: _Node) -> None:
+    """Refuse hidden workbook dimensions rather than presenting an incomplete review."""
+    state = sheet.attrs.get("state", "visible")
+    if state not in ("visible", "hidden", "veryHidden"):
+        raise _Deny(MALFORMED_XML)
+    if state != "visible":
+        raise _Deny(HIDDEN_CONTENT)
+
+    if root.tag != "worksheet" or root.ns != _MAIN_NS:
+        raise _Deny(UNSUPPORTED_FORMAT)
+    data = root.child("sheetData")
+    if data is not None:
+        if data.ns != _MAIN_NS:
+            raise _Deny(UNSUPPORTED_FORMAT)
+        for row in data.children:
+            if row.tag == "row" and row.ns == _MAIN_NS and _is_hidden(row.attrs.get("hidden")):
+                raise _Deny(HIDDEN_CONTENT)
+
+    columns = root.child("cols")
+    if columns is not None:
+        if columns.ns != _MAIN_NS:
+            raise _Deny(UNSUPPORTED_FORMAT)
+        for column in columns.children:
+            if (column.tag == "col" and column.ns == _MAIN_NS
+                    and _is_hidden(column.attrs.get("hidden"))):
+                raise _Deny(HIDDEN_CONTENT)
+
+
 def _parse_workbook(data: bytes, limits: ParseLimits, clock: Callable[[], float]) -> ParseResult:
     counters = _Counters()
     try:
@@ -674,6 +755,8 @@ def _workbook_sheets(
         used_parts: set[str] = set()
         for sheet in entries:
             budget.check()
+            if sheet.tag != "sheet" or sheet.ns != _MAIN_NS:
+                raise _Deny(UNSUPPORTED_FORMAT)
             rid = sheet.attrs.get("id", "")
             if rid not in rels or not rels[rid][0].endswith("/worksheet"):
                 raise _Deny(MALFORMED_XML)
@@ -684,6 +767,7 @@ def _workbook_sheets(
                 raise _Deny(MALFORMED_XML)
             used_parts.add(part)
             tree = _parse_xml(cache[part], limits, budget)
+            _reject_hidden_content(sheet, tree)
             rows = _sheet_rows(tree, sst, limits, budget, counters)
             out.append(SheetValues(sheet.attrs.get("name", ""), rows))
         return tuple(out)
