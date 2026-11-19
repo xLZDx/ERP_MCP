@@ -2833,3 +2833,7 @@ The S17-05 test plan permits an explicit GET-only “Retry read” after a chang
 ## 2026-11-19 — S17-01 ZIP64 regression authorization handoff
 
 GPT-PM round 1 requires a ZIP64 over-limit directory regression and exact-head review before bounded S17 closure. The source correction rejects ZIP64 locator/count/size/offset sentinel forms before `ZipFile`; source review found no confirmed issue. The root conversation received standalone operator `ГО`, but two delegated attempts by the assigned functional-test-reviewer were refused by PreToolUse with `Свежий отдельный GO/ГО: нет отдельного GO/ГО за последние 6ч`. The test file was unchanged and the named test was not run; the ledger records `NOT_RUN`. Do not bypass or simulate approval. The supported parent-to-child authorization relay owner is unassigned; unblock by supplying that relay, then have the assigned reviewer add and run only the named regression and obtain GPT-PM review for the resulting exact HEAD.
+
+## 2026-11-19 — Reconcile S17 bounded task dispositions
+
+Applied GPT-PM round-1 task dispositions to the program plan and live report: S17-02, S17-03, and S17-05 are accepted within their bounded scope; S17-01 remains open after REVISE, S17-04 remains conditional on the shared ZIP64 regression, and S17-06 remains PARTIAL. The source/test files for S17-02/03/05 are unchanged in local commit 566a31b. This does not close S17 or authorize push: commit 566a31b is newer than the GPT-PM-reviewed HEAD, and final closure still requires the missing S17-01 regression and a new exact-head review.
