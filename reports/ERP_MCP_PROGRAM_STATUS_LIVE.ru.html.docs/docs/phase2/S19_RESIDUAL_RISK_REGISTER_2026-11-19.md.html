@@ -25,15 +25,23 @@ commit `ff3779f9c9dddad883c7e247dec76a8636f094ac` with zero findings. This is a 
 named-file result, not exact-head I1-I15 lane evidence. The finding does not change the formal
 G8 state or the exact-head runtime `NOT_RUN` status. GPT-PM approval remains pending.
 
-## Current index refresh
+## Index snapshots
 
-The working exact-head index was regenerated from committed source HEAD
+The previous working exact-head index was regenerated from committed source HEAD
 `be2cbb32c52e08acd8ea8f2a10fd6a08884fd1e2` after adding the S19-03 scope-fix test output. It binds
 that output at `reports/evidence/sprints/S19_MATRIX_FIX_TEST_ff3779f9.txt` (SHA-256
 `4850a37b8681282e1104dfd7e9668cb9eb6f442240389b7b0bec48aad589dff0`). The index still records
 I1-I15 runtime-boundary results as `NOT_RUN`, assessment `INDEX_ONLY_UNVERIFIED`, and authorization
 `NONE`. Artifact hashes are recorded claims awaiting review; they do not adjudicate evidence
-contents. Exact-head GPT-PM review is pending, and no G8/C1, release, or production status changes.
+contents.
+
+An interim index was generated from committed source HEAD
+`1a607529d4f5f25409d2cfa001324a0c7eded415`; it binds the register snapshot from that commit and the
+scope-fix output. Its file SHA-256 was
+`5d63d8e2a5229fba544b78d7479df35584650d4dd0bbf07441ca355a17b87380`. This register revision is
+newer than that selected snapshot, so the index must be rebuilt after this revision is committed.
+The indexed runtime status remains `NOT_RUN`, assessment `INDEX_ONLY_UNVERIFIED`, and authorization
+`NONE`. Exact-head GPT-PM review is pending; no G8/C1, release, or production status changes.
 
 `NOT_RUN` means the required evidence has not been observed. It is not a pass or a claim that the
 system failed. Synthetic checker/fixture tests do not constitute real 1C boundary evidence. A

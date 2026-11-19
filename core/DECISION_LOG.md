@@ -3006,3 +3006,7 @@ The final code review found that one digest-bound PASS claim per invariant does 
 
 Updated the S19 residual register and plan to distinguish its historical snapshot from the current working evidence-index refresh. The index source HEAD is `be2cbb32c52e08acd8ea8f2a10fd6a08884fd1e2`; the newly indexed S19-03 scope-fix output is digest-bound, while exact-head I1-I15 runtime evidence remains `NOT_RUN`, assessment remains `INDEX_ONLY_UNVERIFIED`, and authorization remains `NONE`. This documentation change does not promote G8, C1, release readiness, or production authorization. Exact-head GPT-PM review remains pending.
 
+### 2026-11-19 — S19-01 refreshed index
+
+Regenerated `reports/evidence/sprints/S19_EXACT_HEAD_MANIFEST.json` from committed source HEAD `1a607529d4f5f25409d2cfa001324a0c7eded415` after the S19-03 scope-fix result and residual-register snapshot were committed. The index binds the 36-case output and document snapshot by Git-committed bytes; runtime-boundary outcomes remain `NOT_RUN`, assessment is `INDEX_ONLY_UNVERIFIED`, and authorization is `NONE`. The manifest SHA-256 is `5d63d8e2a5229fba544b78d7479df35584650d4dd0bbf0741ca355a17b87380`. This is an evidence index, not evidence adjudication, a formal gate result, or production permission; exact-head GPT-PM review remains pending.
+
