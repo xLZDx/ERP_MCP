@@ -3014,3 +3014,7 @@ Regenerated `reports/evidence/sprints/S19_EXACT_HEAD_MANIFEST.json` from committ
 ### 2026-11-19 — S19-01 final index refresh
 
 Regenerated `reports/evidence/sprints/S19_EXACT_HEAD_MANIFEST.json` from committed source HEAD `ab1774dfd72624781a7d00e67366a0dc295b12c5`, which contains the current S19 residual-register snapshot and the committed matrix scope-fix output. Manifest SHA-256: `779c0b54893d13dfd9f9cad345164dcddf8c7269ea0f9f71e9ae13755e9c45e2`. The index leaves exact-head I1-I15 runtime evidence `NOT_RUN`, assessment `INDEX_ONLY_UNVERIFIED`, and authorization `NONE`. It does not adjudicate hashes, promote G8/C1, establish release readiness, or authorize production. Exact-head GPT-PM review remains pending.
+
+### 2026-11-19 — S19 project-status reconciliation
+
+Ran `python .harness-tools/ledger.py reconcile-project` after updating the S19-01 index and S19-04 residual-register records. The ledger reconciled project statuses from `PROJECT_PLAN.md`, source documents and 119 branch refs across 23 sprints/111 tasks; native verify/review evidence was unchanged. S19-04 is now `IN_REVIEW`; S19-03 remains `PARTIAL`; exact-head GPT-PM review remains pending. This entry records status reconciliation only and promotes no gate.
