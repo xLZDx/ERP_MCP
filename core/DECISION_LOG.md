@@ -2961,6 +2961,17 @@ Decision: add a read-only checker for the S11 `I1`–`I15` mapping table. It req
 
 Acceptance amendment: structural coverage alone does not satisfy S19-03. The checker now also requires a strict JSON boundary-results input selected against a full S19 HEAD. Every I1–I15 must have a `PASS` result whose `tested_head` and `evidence_commit` are real ancestors of the selected HEAD, whose result file is a tracked regular Git blob with the declared digest, and whose JSON fields bind the same invariant, mapped scenario, assertion ID, result, and tested HEAD. The evidence record also binds a regular test-source blob and digest at `tested_head`, and the assertion ID must occur in that test source. Without all 15 PASS claims, the checker returns `INCOMPLETE`/nonzero; hashes and PASS labels remain unadjudicated claims, not runtime or gate authorization.
 
+## 2026-11-19 — S19-04 residual-risk snapshot
+
+Refreshed `docs/phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md` at candidate HEAD `e4cab871a709a345804beafbfaee7ff062a4c06b`. The dated register records the exact S19-01 manifest test, S19-02 E46 fixture run and six S19-03 checker cases; it marks the full S19-03 matrix file as not cleanly rerun after the fixture correction, final specialist/GPT-PM reviews as pending, and all exact-head I1-I15 runtime results as `NOT_RUN`. It preserves S17 H3 `PARTIAL`, S18 unmeasured SLOs and runtime limits, formal gate states and unassigned lane owners. This working snapshot does not change gate states or authorize production; refresh after final sprint verification and review.
+
+## 2026-11-19 — S19-05 production canary preparation
+
+Added `docs/phase2/S19_PRODUCTION_CANARY_RECIPE.md` as a preparation-only G6 recipe. The target, company, operation, finite limit, window, rollback owner and operator signature remain unset; current G3/G5/G6-pre/G8/G6 states do not satisfy its entry conditions. The recipe requires an exact registered target, independent read-back/reconciliation, stop-on-uncertainty and separately approved rollback. It executes no canary, grants no production permission and does not pass G7 or `PRODUCTION_GO`.
+
+## 2026-11-19 — S19-02 E46 fixture-runner evidence
+
+The assigned `e2e-runner` executed only `node tests/gate_manifest/run_fixtures.mjs` at unchanged HEAD `0fd877eda305644d23b224f23ae0af77f8c08f9b`; exit 0, `Suite: PASS (87/87 asserted fixtures passed, 2 probes)`. Full output is retained in `reports/evidence/sprints/S19_E46_FIXTURE_RUN_0fd877e.log`. The two probes are report-only and are not counted as asserted fixtures. This proves the static schema-2 gate-validator fixture contract at that head only; it does not pass G8, adjudicate all 46 scenarios, qualify CT14, or authorize production.
 
 ## 2026-11-19 — S19-01 exact-head evidence index
 
@@ -2968,20 +2979,18 @@ Prepared `reports/evidence/sprints/S19_EXACT_HEAD_MANIFEST.json` against source 
 
 The repeat-work check found related historical commits, but they did not produce this artifact: `cfa839dc` added the builder/schema only and contains no S19 manifest output; `e4894685` records S18-06 evidence; `aaabfde7` and `c6266fc5` record S16 acceptance; `1092bc1d` and `159f0372` record S10 evidence. This S19-01 commit adds the first generated S19 exact-head index and its named builder acceptance tests.
 
-
 ## 2026-11-19 — S19-02 exact-head E46 fixture run
 
 The assigned `e2e-runner` executed `node tests/gate_manifest/run_fixtures.mjs` at unchanged HEAD `ab39f35dce19c5e851d98c7616ccf6e8f001e3f2`; exit 0, `Suite: PASS (87/87 asserted fixtures passed, 2 probes)`. Full output is retained in `reports/evidence/sprints/S19_E46_FIXTURE_RUN_ab39f35.log` (SHA-256 `03c801178b5edea4c385f595d8603c2bb486090f9eeb6cfa50ff0bca657c0b5`). This is static schema-2 validator fixture coverage only. The two probes are separate from the asserted fixture count and do not pass G8, establish I1–I15 runtime evidence, qualify CT14 or authorize production.
 
-
 ## 2026-11-19 — S19-03 reject non-PASS evidence before row comparison
 
 Moved the explicit PASS-result check ahead of field comparison in `scripts/check_s19_invariant_matrix.py`. A malformed evidence JSON that declares `NOT_RUN` while the containing result row claims `PASS` now receives the specific fail-closed result error instead of an earlier generic mismatch. The S19 matrix test fixture maps canonical scenario/assertion columns and hashes the source from the tested Git blob, matching `core.autocrlf=true`; this is synthetic checker-contract coverage only. Exact S19 runtime claims remain `NOT_RUN` until committed boundary evidence exists.
-## 2026-11-19 — S19-04 residual-risk snapshot
 
-Refreshed `docs/phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md` at candidate HEAD `e4cab871a709a345804beafbfaee7ff062a4c06b`. The dated register records the exact S19-01 manifest test, S19-02 E46 fixture run and six S19-03 checker cases; it marks the full S19-03 matrix file as not cleanly rerun after the fixture correction, final specialist/GPT-PM reviews as pending, and all exact-head I1-I15 runtime results as `NOT_RUN`. It preserves S17 H3 `PARTIAL`, S18 unmeasured SLOs and runtime limits, formal gate states and unassigned lane owners. This working snapshot does not change gate states or authorize production; refresh after final sprint verification and review.
+## 2026-11-19 — Reconcile active S19 plan status from committed artifacts
 
+Updated the S19 roadmap from `NOT_STARTED` to `IN_PROGRESS` after inspecting the current branch and each task's committed artifacts. S19-01 and S19-02 have named exact-commit evidence, S19-03's six focused checker cases passed and its sprint-end named test files are running, S19-04 is a working residual snapshot, and S19-05 is a non-executable canary preparation. Ran `git fetch --all` and `.harness-tools/ledger.py reconcile-project`; the project reconciliation scanned 119 local/remote/archive refs across 23 sprints and 111 tasks without changing native verification/review evidence. This is a project-document status correction only: final review/approval remain pending, I1-I15 runtime results remain `NOT_RUN`, and G8/C1/production states are unchanged.
 
-## 2026-11-19 — S19-05 production canary preparation
+## 2026-11-19 — S19 sprint-end named verification
 
-Added `docs/phase2/S19_PRODUCTION_CANARY_RECIPE.md` as a preparation-only G6 recipe. The target, company, operation, finite limit, window, rollback owner and operator signature remain unset; current G3/G5/G6-pre/G8/G6 states do not satisfy its entry conditions. The recipe requires an exact registered target, independent read-back/reconciliation, stop-on-uncertainty and separately approved rollback. It executes no canary, grants no production permission and does not pass G7 or `PRODUCTION_GO`.
+At unchanged candidate HEAD `e464d135e89eda9ca975231b4f51b43d8d019ab8`, the assigned `functional-test-reviewer` ran only `.venv\Scripts\python.exe -m pytest -q tests/phase2/test_s19_exact_head_manifest.py tests/phase2/test_s19_invariant_matrix.py`: `45 passed in 1436.42s (0:23:56)`, exit 0. The assigned `e2e-runner` ran only `node tests/gate_manifest/run_fixtures.mjs`: `Suite: PASS (87/87 asserted fixtures passed, 2 probes)`, exit 0. Outputs are retained in `reports/evidence/sprints/S19_PYTHON_SPRINT_TESTS_e464d135.txt` (SHA-256 `0d0b6fbdb956a77fa2f687df1d581b57fe70525defefabae19ca6cb86a7dfb9c`) and `reports/evidence/sprints/S19_E46_FIXTURE_RUN_e464d135.log` (SHA-256 `03c801178b5edea4cb385f595d8603c2bb486090f9eeb6cfa50ff0bca657c0b5`). This is synthetic checker/manifest and static gate-fixture coverage, not exact-head I1-I15 runtime evidence, G8/C1 acceptance or production authority. S19-03 remains `PARTIAL`; final reviewer and GPT-PM review are pending.
