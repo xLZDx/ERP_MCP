@@ -120,17 +120,27 @@ class TestLaneSupervisor:
                 # Validate time before starting so a broken evidence clock cannot leave an
                 # unobserved child running after startup.
                 try:
-                    started_at = self._timestamp()
+                    pre_start_at = self._timestamp()
                 except SupervisorFailure as exc:
                     raise SupervisorFailure(exc.code, tuple(evidence)) from None
                 try:
                     handle = await self._runner.start(self._component_id, generation)
                 except Exception:  # noqa: BLE001 - no restart when start outcome is uncertain
-                    record_at(generation, LifecycleEvent.START_FAILED, started_at)
+                    record_at(generation, LifecycleEvent.START_FAILED, pre_start_at)
                     raise SupervisorFailure("COMPONENT_START_FAILED", tuple(evidence)) from None
                 if not callable(getattr(handle, "wait", None)):
-                    record_at(generation, LifecycleEvent.START_FAILED, started_at)
+                    record_at(generation, LifecycleEvent.START_FAILED, pre_start_at)
                     raise SupervisorFailure("COMPONENT_HANDLE_INVALID", tuple(evidence))
+                try:
+                    started_at = self._timestamp()
+                except SupervisorFailure as exc:
+                    # A child may now be running. Never retry or return while its exit is
+                    # unobserved just because the evidence clock failed after start.
+                    try:
+                        await handle.wait()
+                    except Exception:  # noqa: BLE001 - child may still be alive
+                        raise SupervisorFailure("COMPONENT_EXIT_UNOBSERVED", tuple(evidence)) from None
+                    raise SupervisorFailure(exc.code, tuple(evidence)) from None
                 record_at(generation, LifecycleEvent.STARTED, started_at)
                 try:
                     exit_code = await handle.wait()

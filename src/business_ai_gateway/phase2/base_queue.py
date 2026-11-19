@@ -39,6 +39,7 @@ class BaseQueueRefused(RuntimeError):
     TARGET_WORK_ACTIVE = "TARGET_WORK_ACTIVE"
     WORK_NOT_IN_FLIGHT = "WORK_NOT_IN_FLIGHT"
     TARGET_NOT_UNRESOLVED = "TARGET_NOT_UNRESOLVED"
+    TARGET_WORK_NOT_IN_FLIGHT = "TARGET_WORK_NOT_IN_FLIGHT"
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +123,8 @@ class BaseWorkQueue:
                 or ownership is CallOwnership.NONE):
             raise BaseQueueRefused(BaseQueueRefused.INVALID_WORK)
         with self._lock:
+            if not any(work.target_id == target_id for work in self._in_flight.values()):
+                raise BaseQueueRefused(BaseQueueRefused.TARGET_WORK_NOT_IN_FLIGHT)
             self._ownership[target_id] = ownership
 
     def prove_finished(self, target_id: str) -> None:
