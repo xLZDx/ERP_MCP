@@ -55,6 +55,15 @@ class Runner:
         return self.handle
 
 
+class UncertainStartRunner:
+    def __init__(self) -> None:
+        self.starts: list[tuple[str, int]] = []
+
+    async def start(self, component_id: str, generation: int) -> Handle:
+        self.starts.append((component_id, generation))
+        raise RuntimeError("private runner error with process details")
+
+
 @pytest.mark.asyncio
 async def test_started_timestamp_is_captured_after_delayed_successful_start():
     clock = Clock()
@@ -103,4 +112,22 @@ async def test_post_start_clock_and_exit_observation_failure_is_sanitized_withou
     assert failure.value.evidence == ()
     assert "private process handle detail" not in str(failure.value)
     assert handle.wait_calls == 1
+    assert runner.starts == [("component-a", 0)]
+
+
+@pytest.mark.asyncio
+async def test_uncertain_start_failure_is_sanitized_recorded_and_never_retried():
+    clock = Clock()
+    runner = UncertainStartRunner()
+    supervisor = Supervisor("component-a", runner, max_restarts=3, clock=clock)
+
+    with pytest.raises(SupervisorFailure) as failure:
+        await supervisor.run()
+
+    assert failure.value.code == "COMPONENT_START_UNCERTAIN"
+    assert [(item.event, item.component_id, item.generation) for item in failure.value.evidence] == [
+        (LifecycleEvent.START_UNCERTAIN, "component-a", 0),
+    ]
+    assert failure.value.evidence[0].at == START
+    assert "private runner error" not in str(failure.value)
     assert runner.starts == [("component-a", 0)]

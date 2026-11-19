@@ -38,7 +38,7 @@ class LifecycleEvent(StrEnum):
     EXITED = "EXITED"
     RESTART_SCHEDULED = "RESTART_SCHEDULED"
     RESTART_LIMIT_REACHED = "RESTART_LIMIT_REACHED"
-    START_FAILED = "START_FAILED"
+    START_UNCERTAIN = "START_UNCERTAIN"
     WAIT_FAILED = "WAIT_FAILED"
 
 
@@ -126,11 +126,11 @@ class TestLaneSupervisor:
                 try:
                     handle = await self._runner.start(self._component_id, generation)
                 except Exception:  # noqa: BLE001 - no restart when start outcome is uncertain
-                    record_at(generation, LifecycleEvent.START_FAILED, pre_start_at)
-                    raise SupervisorFailure("COMPONENT_START_FAILED", tuple(evidence)) from None
+                    record(generation, LifecycleEvent.START_UNCERTAIN)
+                    raise SupervisorFailure("COMPONENT_START_UNCERTAIN", tuple(evidence)) from None
                 if not callable(getattr(handle, "wait", None)):
-                    record_at(generation, LifecycleEvent.START_FAILED, pre_start_at)
-                    raise SupervisorFailure("COMPONENT_HANDLE_INVALID", tuple(evidence))
+                    record(generation, LifecycleEvent.START_UNCERTAIN)
+                    raise SupervisorFailure("COMPONENT_START_UNCERTAIN", tuple(evidence))
                 try:
                     started_at = self._timestamp()
                 except SupervisorFailure as exc:
