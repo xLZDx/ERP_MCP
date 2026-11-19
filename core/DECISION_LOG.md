@@ -16,6 +16,19 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 - Refusal: RSV `reveal`, `execute_query` and generic business query stay disabled (documented
   privacy/company-scope/upstream-bound constraints are not remediated).
 
+## 2026-11-19 — S19 exact-head evidence index boundary
+
+- Decision: S19's reusable artifact index accepts only an explicit full Git commit SHA and
+  records repository files from that commit by SHA-256. Missing checks are represented as
+  `NOT_RUN`; captured files are `RECORDED_UNVERIFIED` because hashing does not inspect the
+  meaning or outcome of their contents.
+- Decision: the index is not `governance/GATE_MANIFEST.json`, contains no gate result, and carries
+  no production authorization. It cannot establish G8 PASS, C1 engineering completion, release
+  readiness or production permission. Formal closure remains with the separate gate validator
+  and its reviewed inputs.
+- Implementation: `scripts/assemble_s19_exact_head_manifest.py` and
+  `governance/schemas/S19_EXACT_HEAD_MANIFEST.schema.json`; this records the S19-01 contract only.
+
 ## 2026-10-06 - Disposable local E2E environment (branch e2e/local-environment)
 
 - Decision: gateway, Fake1C and the test IdP run as host processes (uvicorn from the worktree

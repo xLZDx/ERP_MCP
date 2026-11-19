@@ -1,5 +1,10 @@
 # Lessons log
 
+- 2026-11-19 SHORTCOMING S19 evidence indexing: a file digest proves byte identity at a named Git
+  commit, not that a test passed or a gate is satisfied. Layer: evidence model. Rule: retain
+  `RECORDED_UNVERIFIED`/`NOT_RUN` labels and keep gate closure and production authorization in the
+  separate canonical validator; never derive them from an artifact index.
+
 - 2026-10-21 FAILURE scope-safe search: a broad search across historical docs/reports emitted a matching decision-log excerpt containing customer data. Root cause: output scope was not limited to test identifiers before searching. The project-data boundary did not prevent the output. Next time, query only named test-result files and restrict output to test IDs or sanitized structural fields; do not search historical business evidence for unrelated task terms. No customer values were added to repository changes.
 
 - 2026-10-21 G3 operator disposition: an unsigned waiver statement must be stored as a separate note and must never enter gate closure, predecessor satisfaction, or production authorization logic. Preserve the actual gate status and require the independent evidence for any later PASS; do not reuse G4's cryptographic waiver path for accountant attestation.

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://erp-mcp.invalid/schemas/S19_EXACT_HEAD_MANIFEST.schema.json",
+  "title": "S19 Exact-Head Evidence Index",
+  "description": "Non-authorizing index of artifacts bound to immutable Git content. It is not a gate result or production permission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_kind", "sprint_id", "source_head", "artifacts", "assessment", "authorization", "limitations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "manifest_kind": {"const": "EXACT_HEAD_EVIDENCE_INDEX"},
+    "sprint_id": {"type": "string", "pattern": "^S1[1-9]$"},
+    "source_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "allOf": [
+        {"contains": {"properties": {"category": {"const": "source"}}, "required": ["category"]}},
+        {"contains": {"properties": {"category": {"const": "configuration"}}, "required": ["category"]}},
+        {"contains": {"properties": {"category": {"const": "schema"}}, "required": ["category"]}},
+        {"contains": {"properties": {"category": {"const": "recipe"}}, "required": ["category"]}},
+        {"contains": {"properties": {"category": {"const": "check_result"}}, "required": ["category"]}}
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item", "category", "status", "path", "sha256", "reason"],
+        "properties": {
+          "item": {"type": "string", "pattern": "\\S", "maxLength": 120},
+          "category": {"enum": ["source", "configuration", "schema", "recipe", "check_result"]},
+          "status": {"enum": ["RECORDED_UNVERIFIED", "NOT_RUN"]},
+          "path": {"type": ["string", "null"], "pattern": "^(?!/)(?!\\.{1,2}$)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*\\\\).+$"},
+          "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "reason": {"type": ["string", "null"]}
+        },
+        "allOf": [
+          {"if": {"properties": {"status": {"const": "RECORDED_UNVERIFIED"}}, "required": ["status"]}, "then": {"properties": {"path": {"type": "string"}, "sha256": {"type": "string"}, "reason": {"type": "null"}}}},
+          {"if": {"properties": {"status": {"const": "NOT_RUN"}}, "required": ["status"]}, "then": {"properties": {"path": {"type": "null"}, "sha256": {"type": "null"}, "reason": {"type": "string", "pattern": "\\S"}}}}
+        ]
+      }
+    },
+    "assessment": {"const": "INDEX_ONLY_UNVERIFIED"},
+    "authorization": {"const": "NONE"},
+    "limitations": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "\\S"}}
+  }
+}
