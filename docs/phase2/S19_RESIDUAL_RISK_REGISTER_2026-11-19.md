@@ -4,10 +4,10 @@ Status: **working snapshot, not final acceptance evidence**. This register refle
 formal gate manifest, task ledger, committed S19 candidate `e464d135e89eda9ca975231b4f51b43d8d019ab8`
 and named sprint-end runs (2026-11-19). At that exact HEAD the two named Python files reported
 `45 passed in 1436.42s (0:23:56)` and the E46 fixture runner reported 87/87 asserted fixtures
-passed with two separate probes. The refreshed exact-head index records committed inputs from
-source HEAD `be938cd008b155fc72f032a0a371e1f83157fa81`, including those run records and the explicit
-`NOT_RUN` runtime-boundary set; the index itself will be committed in the S19-01 follow-up. Final
-specialist review and GPT-PM approval remain pending. No exact-head S19 I1-I15 runtime-boundary
+passed with two separate probes. The refreshed exact-head index was committed as `5f50fbe8`; it
+records committed inputs from source HEAD `be938cd008b155fc72f032a0a371e1f83157fa81`, including
+those run records and the explicit `NOT_RUN` runtime-boundary set. Final specialist review and
+GPT-PM approval remain pending. No exact-head S19 I1-I15 runtime-boundary
 results have been adjudicated. Reconcile the refreshed index and reviews before deciding whether
 bounded S19 closure is justified; G8/C1 are not passed by these synthetic runs.
 
