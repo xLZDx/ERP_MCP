@@ -1028,3 +1028,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-19 SUCCESS: The S19 exact-head index reads artifact bytes from the selected Git commit, marks absent or uncommitted evidence `NOT_RUN`, and carries no gate or production authority. Rule: index only committed bytes and bind the index's stated source HEAD; never substitute a current worktree file or a documented test summary for a raw result.
 - 2026-11-19 SHORTCOMING: Earlier exact-head evidence commits covered other sprints or only added the S19 builder, not a generated S19 index. Rule: when a repeat-work guard fires, compare the actual resulting artifacts and sprint scope before deciding whether the current output is duplicate.
+
+- 2026-11-19 SUCCESS: The exact-head E46 runner result remains bounded to 87 asserted static fixtures; report-only probes are not counted as acceptance cases. Rule: preserve probe results separately and state precisely what the fixture suite does not qualify.

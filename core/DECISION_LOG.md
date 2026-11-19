@@ -2967,3 +2967,8 @@ Acceptance amendment: structural coverage alone does not satisfy S19-03. The che
 Prepared `reports/evidence/sprints/S19_EXACT_HEAD_MANIFEST.json` against source HEAD `0fd877eda305644d23b224f23ae0af77f8c08f9b`. The index hashes the committed S19 builder, formal gate manifest and schema from Git objects; the canary recipe and E46 output are explicitly `NOT_RUN` in this index because they are not in that committed tree, and exact-head I1–I15 runtime evidence remains `NOT_RUN`. The artifact is `INDEX_ONLY_UNVERIFIED` with authorization `NONE`; no formal gate or production status changes.
 
 The repeat-work check found related historical commits, but they did not produce this artifact: `cfa839dc` added the builder/schema only and contains no S19 manifest output; `e4894685` records S18-06 evidence; `aaabfde7` and `c6266fc5` record S16 acceptance; `1092bc1d` and `159f0372` record S10 evidence. This S19-01 commit adds the first generated S19 exact-head index and its named builder acceptance tests.
+
+
+## 2026-11-19 — S19-02 exact-head E46 fixture run
+
+The assigned `e2e-runner` executed `node tests/gate_manifest/run_fixtures.mjs` at unchanged HEAD `ab39f35dce19c5e851d98c7616ccf6e8f001e3f2`; exit 0, `Suite: PASS (87/87 asserted fixtures passed, 2 probes)`. Full output is retained in `reports/evidence/sprints/S19_E46_FIXTURE_RUN_ab39f35.log` (SHA-256 `03c801178b5edea4c385f595d8603c2bb486090f9eeb6cfa50ff0bca657c0b5`). This is static schema-2 validator fixture coverage only. The two probes are separate from the asserted fixture count and do not pass G8, establish I1–I15 runtime evidence, qualify CT14 or authorize production.
