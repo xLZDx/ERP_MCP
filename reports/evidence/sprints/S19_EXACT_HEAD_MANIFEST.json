@@ -53,7 +53,7 @@
       "item": "S19 residual risk register",
       "path": "docs/phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md",
       "reason": null,
-      "sha256": "dc1fc88c6c03464fc66679704aa9f56834a15913a3f1b9e961d9b86caafe9a1e",
+      "sha256": "ec6633ea46024e475a0ff6995c98a9499412fa256a91602e726c0294d6bd973c",
       "status": "RECORDED_UNVERIFIED"
     },
     {
@@ -104,6 +104,6 @@
   ],
   "manifest_kind": "EXACT_HEAD_EVIDENCE_INDEX",
   "schema_version": 1,
-  "source_head": "be2cbb32c52e08acd8ea8f2a10fd6a08884fd1e2",
+  "source_head": "ab1774dfd72624781a7d00e67366a0dc295b12c5",
   "sprint_id": "S19"
 }
