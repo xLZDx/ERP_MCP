@@ -5,6 +5,7 @@ import hashlib
 import json
 import time
 import uuid
+from collections.abc import Mapping
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Any
@@ -35,14 +36,28 @@ def current_request_correlation_id() -> uuid.UUID | None:
 
 
 class AuditCorrelationMiddleware:
-    """Give every inbound MCP message one isolated audit correlation ID."""
+    """Correlate inbound MCP messages and measure bounded tool-call duration."""
+
+    def __init__(self, metrics: Any | None = None):
+        self.metrics = metrics
 
     async def __call__(self, ctx, call_next):
         token, _ = begin_request_correlation_id()
+        method = getattr(ctx, "method", None)
+        params = getattr(ctx, "params", None)
+        tool = params.get("name") if isinstance(params, Mapping) else None
+        measures_tool_call = method == "tools/call"
+        started = time.perf_counter()
         try:
             return await call_next(ctx)
         finally:
-            end_request_correlation_id(token)
+            try:
+                if measures_tool_call and self.metrics is not None:
+                    self.metrics.record_operation_duration(
+                        tool, time.perf_counter() - started
+                    )
+            finally:
+                end_request_correlation_id(token)
 
 
 def query_fingerprint(query: dict[str, Any] | None) -> str | None:
