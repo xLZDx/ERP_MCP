@@ -30,10 +30,13 @@ RESULT_EVIDENCE_FIELDS = {
     "tested_head", "test_source_path", "test_source_sha256",
 }
 LIMITATION = (
-    "PASS labels and SHA-256 bindings are recorded claims until reviewers adjudicate them; "
-    "they do not establish real 1C observations, G8 passage, C1 engineering completion, "
-    "release readiness, or production authorization. For NOT_RUN and BLOCKED rows, "
-    "tested_head identifies the candidate revision under consideration, not a test that ran."
+    "This result checks only recorded, digest-bound PASS claims for invariants I1-I15 and "
+    "structural mapping of the 46 active scenarios. It does not adjudicate execution coverage "
+    "for every scenario or required lane; scenario/lane coverage is NOT_ADJUDICATED and this "
+    "output is not G8 evidence. PASS labels remain claims until reviewers adjudicate them; "
+    "they do not establish real 1C observations, C1 engineering completion, release readiness, "
+    "or production authorization. For NOT_RUN and BLOCKED rows, tested_head identifies the "
+    "candidate revision under consideration, not a test that ran."
 )
 
 
@@ -378,7 +381,8 @@ def main() -> int:
     complete = matrix["structural_status"] == "COMPLETE" and not results["missing_pass_invariants"] and not all_findings
     output = {
         "schema_version": 1,
-        "assessment": "EXACT_HEAD_EVIDENCE_CLAIMS_UNADJUDICATED",
+        "assessment": "I1_I15_MATRIX_CLAIM_CHECK_UNADJUDICATED",
+        "claim_scope": "I1-I15 only",
         "selected_head": selected_head,
         "matrix_document": document_relative or None,
         "matrix_sha256": hashlib.sha256(matrix_bytes).hexdigest() if matrix_bytes else None,
@@ -389,8 +393,10 @@ def main() -> int:
         "result_rows": results["result_rows"],
         "claimed_pass_invariants": results["claimed_pass_invariants"],
         "missing_pass_invariants": results["missing_pass_invariants"],
-        "completeness_status": "RECORDED_PASS_CLAIMS_COMPLETE_UNADJUDICATED" if complete else "INCOMPLETE",
-        "runtime_boundary_results": "RECORDED_UNADJUDICATED" if results["claimed_pass_invariants"] else "NOT_RUN",
+        "completeness_status": "I1_I15_PASS_CLAIMS_COMPLETE_UNADJUDICATED" if complete else "INCOMPLETE",
+        "runtime_boundary_results": "I1_I15_PASS_CLAIMS_RECORDED_UNADJUDICATED" if results["claimed_pass_invariants"] else "NOT_RUN",
+        "scenario_lane_coverage": "NOT_ADJUDICATED",
+        "g8_evidence": False,
         "gate_status": "UNCHANGED",
         "production_authorization": "NONE",
         "limitations": [LIMITATION],

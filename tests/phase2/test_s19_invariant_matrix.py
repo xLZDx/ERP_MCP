@@ -262,11 +262,17 @@ def test_cli_accepts_fifteen_exact_head_pass_claims_as_unadjudicated_only(tmp_pa
     output = _output(result)
 
     assert result.returncode == 0, result.stderr
+    assert output["assessment"] == "I1_I15_MATRIX_CLAIM_CHECK_UNADJUDICATED"
+    assert output["claim_scope"] == "I1-I15 only"
     assert output["structural_status"] == "COMPLETE"
-    assert output["completeness_status"] == "RECORDED_PASS_CLAIMS_COMPLETE_UNADJUDICATED"
+    assert output["completeness_status"] == "I1_I15_PASS_CLAIMS_COMPLETE_UNADJUDICATED"
     assert output["claimed_pass_invariants"] == [f"I{i}" for i in range(1, 16)]
     assert output["missing_pass_invariants"] == []
-    assert output["runtime_boundary_results"] == "RECORDED_UNADJUDICATED"
+    assert output["runtime_boundary_results"] == "I1_I15_PASS_CLAIMS_RECORDED_UNADJUDICATED"
+    assert output["active_scenarios_expected"] == 46
+    assert output["active_scenarios_mapped"] == 46
+    assert output["scenario_lane_coverage"] == "NOT_ADJUDICATED"
+    assert output["g8_evidence"] is False
     assert output["gate_status"] == "UNCHANGED"
     assert output["production_authorization"] == "NONE"
     assert "do not establish real 1C observations" in output["limitations"][0]
