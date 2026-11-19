@@ -158,8 +158,9 @@ class TestLaneSupervisor:
                     self._runner.start(self._component_id, generation))
                 if not start_ok:
                     record(generation, LifecycleEvent.START_UNCERTAIN)
-                    if start_cancelled:
-                        raise SupervisorCancelled(tuple(evidence))
+                    # Even when the caller cancelled, no handle exists to observe a
+                    # possible child. Surface uncertainty as a failure with evidence,
+                    # never as cancellation that a caller could mistake for safe exit.
                     raise SupervisorFailure("COMPONENT_START_UNCERTAIN", tuple(evidence)) from None
                 handle = started_handle
                 if not callable(getattr(handle, "wait", None)):
