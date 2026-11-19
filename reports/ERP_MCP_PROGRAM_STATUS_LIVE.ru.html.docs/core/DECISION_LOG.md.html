@@ -2871,4 +2871,8 @@ Started S18-01 on `codex/s18-reliability-security-20261119` from the published S
 ## 2026-11-19 — S18-02 crash/restart evidence boundary
 
 The current writer implementation has a drainable shutdown and a durable startup inventory read through `PostgresAdmissionStore.startup_recovery_state`. Existing `tests/phase2/test_s12_crash_windows.py` covers only the offline transition reducer and states that it does not prove database durability, restore, checkpoint service, or real COM-writer survival. S18-02 remains IN_PROGRESS until the designated functional/E2E roles exercise the approved crash windows after sprint code assembly. No forced 1C session termination was introduced; CT14 has not qualified that action for the exact target channel/base, so that branch remains NOT_RUN.
+
+## 2026-11-19 — S18-03 isolated supervision policy
+
+The existing `AlertEngine.deliver_events` already accepts a tenant-bound `AlertSinkPort` and returns an explicit failure outcome when a configured sink fails; its only repository implementation is test-only, so real human delivery remains NOT_RUN. Added an isolated test-lane supervisor policy over an injected runner: one stable component ID, bounded restarts, sanitized lifecycle evidence, and no shell command, PID/output/exception text, OS service manager, kill API, or production wiring. The task remains IN_PROGRESS until designated tests exercise its behavior and an approved test-lane adapter provides restart evidence.
 </pre></main></body></html>
