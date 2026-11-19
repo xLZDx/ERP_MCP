@@ -1,8 +1,6 @@
-# Next-sprint preparation — S17–S19
+# Sprint handoff — S17–S19
 
-**Purpose:** preserve the S17–S19 scope and handoff evidence. S17 and S18 are closed in bounded
-engineering scope; S19 is next. This planning artifact does not pass a formal gate or claim
-runtime evidence.
+**Purpose:** preserve the approved S17–S19 scope and closeout evidence. S17, S18 and S19 are closed in bounded engineering scope, with their documented partial and runtime residuals carried forward. This planning artifact does not pass a formal gate or claim runtime evidence.
 
 ## Scope decision
 
@@ -15,19 +13,16 @@ Therefore no new scope approval or intermediate GPT-PM gate is needed to prepare
 inside those existing boundaries. The original finisher brief's S16-only scope bounded that
 sprint; it does not cancel the later stages authorized by the current direction.
 
-S17 and S18 have now closed as bounded engineering sprints. S17-06 H3 remains `PARTIAL`; its
-measurement and trusted receipt verification are still final-acceptance residuals. S19 is the next
-sprint, beginning with S19-01 exact-head manifest work. This does not advance the formal manifest
-or imply G8/C1 acceptance.
+S17, S18 and S19 have closed as bounded engineering sprints. S17-06 H3 and S19-03 remain `PARTIAL`; their runtime, measurement and trusted receipt obligations remain final-acceptance residuals. S19 received GPT-PM `APPROVE` for exact HEAD `1e359e3bc6e6d86f712123b1b83590e86da72ecb` (request `678c6012-e086-4bd9-9f26-36b48c1a634c`) and PR #71 merged at `74527f821548297b66b6407437b06e7f896d6aeb`. This does not advance the formal manifest or imply G8/C1 acceptance. The approved roadmap currently ends at S19; the next sprint must be derived from the existing master plan and backlog before tasks are added to the ledger.
 
 ## Evidence snapshot and limits
 
 | Item | State | Evidence | Remaining acceptance / dependency | Owner and next action |
 |---|---|---|---|---|
 | S12/S13/S15 formal acceptance | Not accepted by this artifact; reconcile from current gate evidence | `docs/phase2/S16_SPRINT_PLAN_2026-10-28.md` §§2–4 says upstream formal acceptance is absent/unknown; `CHANGE_RECORD_403.md` says SQL/source work is implemented but database/runtime evidence is `NOT_RUN` | Use current exact-head test and review evidence against `governance/GATE_MANIFEST.json`; do not infer acceptance from source | Codex: reconcile evidence at current sprint close |
-| S16 code slice | Bounded sprint acceptance is recorded in `PROJECT_PLAN.md`; production/runtime evidence remains separate | `docs/phase2/CHANGE_RECORD_404.md`, `405.md`, and `406.md`; `src/erp_mcp_s16/` contains the isolated core, approval page, five tools, and inert ingress | No listener, production binding, or real 1C activity is evidenced; formal gates remain governed by the manifest | S19: reconcile exact-head evidence without promoting formal gates from source records alone |
-| Manifest sprint states | Stale relative to implementation records; not acceptance | `governance/GATE_MANIFEST.json` still labels S12 `IN_PROGRESS` and S13–S19 `NOT_STARTED` with null evidence; CR403–406 record later implementation work but explicitly do not claim acceptance | Keep formal manifest status unchanged until evidence is reconciled and any authorized manifest update is supported | Codex: reconcile after current required evidence; never promote from code records alone |
-| S17–S19 implementation landscape | **S17 and S18 are closed bounded; S19 remains next and unstarted** | S17: five bounded stories accepted; S17-06 H3 remains `PARTIAL`. S18: six bounded stories accepted and PR #70 merged after exact-head GPT-PM approval. Reusable S17 components include the parser, scoped resolver and in-memory workbench; S18 components include the scheduler/queue, alert delivery seam and rights-drift comparator. S19: `scripts/validate_gate_manifest.mjs` validates schema-2 structure, evidence digests, predecessor DAG and waivers. | S18 evidence is synthetic-only; live 1C rights, OS process restart/COM, real human alert receipt, production readiness and measured SLOs remain unproven. S19 must bind exact-head evidence and preserve all `NOT_RUN`/`PARTIAL` residuals. | Start S19-01; reuse the validator, do not treat existing source as S19 acceptance |
+| S16 code slice | Bounded sprint acceptance is recorded in `PROJECT_PLAN.md`; production/runtime evidence remains separate | `docs/phase2/CHANGE_RECORD_404.md`, `405.md`, and `406.md`; `src/erp_mcp_s16/` contains the isolated core, approval page, five tools, and inert ingress | No listener, production binding, or real 1C activity is evidenced; formal gates remain governed by the manifest | S19-04 carries this boundary forward without promoting formal gates from source records alone |
+| Manifest sprint states | Stale relative to implementation records; not acceptance | `governance/GATE_MANIFEST.json` still labels S12 `IN_PROGRESS` and S13–S19 `NOT_STARTED` with null evidence; CR403–406 record later implementation work but explicitly do not claim acceptance | Keep formal manifest status unchanged until evidence is reconciled and any authorized manifest update is supported | Codex: preserve formal-gate `NOT_RUN`/`NOT_PASSED` boundaries; never promote from code records alone |
+| S17–S19 implementation landscape | **S17, S18 and S19 are CLOSED_BOUNDED_SPRINT** | S17: five bounded tasks accepted; S17-06 H3 remains `PARTIAL`. S18: six bounded tasks accepted and PR #70 merged. S19: four of five tasks accepted in bounded scope; S19-03 remains `PARTIAL`; PR #71 merged after exact-head GPT-PM approval. | Runtime evidence, S17 H3, S19 I1-I15 lane evidence, G8 and production readiness remain unproven; exact S19 runtime results are `NOT_RUN`, scenario/lane coverage is `NOT_ADJUDICATED`, G8 is `NOT_PASSED`, and production authorization is `NONE`. | No next sprint is currently defined in the approved roadmap. Derive it from the existing master plan and backlog, then record an ordered plan before implementation. |
 
 `S16_SPRINT_PLAN` §5 explicitly excludes S17 from S16. That is a sprint boundary, not a
 cancellation of S17's separately listed, approved scope. GO-1 through GO-4 are taken from the
@@ -37,9 +32,9 @@ responses.
 
 | Sprint | Plain-language outcome | Planning state | Evidence / completed preparation | Remaining acceptance | Dependency or blocker | Recommended next action / owner |
 |---|---|---|---|---|---|---|
-| S17 | Uploaded-document intake and reviewed workbench | **CLOSED_BOUNDED_SPRINT (5/6 accepted; S17-06 PARTIAL)** | Exact-head GPT-PM approval and bounded closure are recorded in `PROJECT_PLAN.md`; S17-06 H3 remains a final-acceptance residual | No further S17 implementation is scheduled in this handoff; preserve the H3 denominator/receipt requirement in S19 residuals | Bounded-only; no real-accountant UAT is inferred | Carry S17-06 into S19-04; Codex |
-| S18 | Queue reliability, recovery, alerts, measured service objectives, security and rights drift | **CLOSED_BOUNDED_SPRINT (6/6 ACCEPTED_BOUNDED; PR #70 merged)** | GPT-PM round 2 approved exact HEAD `e4894685a2700978e2f09ecaceab15ab54b22dfb`; PR #70 merged as `ae219852fc5ccae783223e239fe6aa2d9b2fd78e`. Named synthetic tests and bounded evidence are itemized in `PROJECT_PLAN.md`. | All nine unmeasured SLO objectives remain `NOT_RUN`; no production readiness, live 1C rights, OS process restart/COM or real human alert receipt is established | The completed acceptance is synthetic-only and bounded | Preserve residuals in S19-04; do not reopen S18 for those out-of-scope runtime qualifications |
-| S19 | Release evidence, gate G8, engineering-complete C1 | **NEXT SPRINT; NOT_STARTED** | Existing S19 row and five canonical story IDs in the map/register; schema-2 validator already handles DAG/digests/waivers | Begin exact-head manifest (S19-01), then validator evidence, invariant matrix, residual-risk record and canary recipe; preserve all unavailable lane results as `NOT_RUN` | Depends on exact-head evidence from prior bounded sprints; S17-06 H3 remains `PARTIAL`; S18 synthetic limits remain explicit | Start S19-01; Codex; GPT-PM owns final exact-head approval |
+| S17 | Uploaded-document intake and reviewed workbench | **CLOSED_BOUNDED_SPRINT (5/6 accepted; S17-06 PARTIAL)** | Exact-head GPT-PM approval and bounded closure are recorded in `PROJECT_PLAN.md`; S17-06 H3 remains a final-acceptance residual | No further S17 implementation is scheduled in this handoff; preserve the H3 denominator/receipt requirement for final acceptance | Bounded-only; no real-accountant UAT is inferred | Carry S17-06 into final-acceptance residuals; Codex |
+| S18 | Queue reliability, recovery, alerts, measured service objectives, security and rights drift | **CLOSED_BOUNDED_SPRINT (6/6 ACCEPTED_BOUNDED; PR #70 merged)** | GPT-PM round 2 approved exact HEAD `e4894685a2700978e2f09ecaceab15ab54b22dfb`; PR #70 merged as `ae219852fc5ccae783223e239fe6aa2d9b2fd78e`. Named synthetic tests and bounded evidence are itemized in `PROJECT_PLAN.md`. | All nine unmeasured SLO objectives remain `NOT_RUN`; no production readiness, live 1C rights, OS process restart/COM or real human alert receipt is established | The completed acceptance is synthetic-only and bounded | S19-04 records these residuals; keep them separate from bounded acceptance |
+| S19 | Release evidence, gate G8, engineering-complete C1 | **CLOSED_BOUNDED_SPRINT (4/5 accepted; S19-03 PARTIAL)** | GPT-PM approved exact HEAD `1e359e3bc6e6d86f712123b1b83590e86da72ecb`; PR #71 merged as `74527f821548297b66b6407437b06e7f896d6aeb`. | Exact-head I1-I15 runtime results remain `NOT_RUN`; scenario/lane coverage is `NOT_ADJUDICATED`; G8 remains `NOT_PASSED`; production authorization remains `NONE`. | Not a runtime or production qualification; no S20 scope is in the current approved roadmap. | Derive the next sprint from the master plan and backlog before adding tasks to the ledger. |
 
 ## Prioritized stories
 
@@ -108,7 +103,7 @@ GPT-PM approved exact final HEAD `e4894685a2700978e2f09ecaceab15ab54b22dfb` and 
 `ae219852fc5ccae783223e239fe6aa2d9b2fd78e`. S18-04's contract check preserves all nine unmeasured
 objectives as `NOT_RUN`. This closeout does not establish production readiness, live 1C rights,
 OS-level process restart or COM behavior, actual human alert receipt, or measured SLOs. These are
-not silently converted to passes; S19-04 must carry them as residuals where applicable.
+not silently converted to passes; S19-04 carries them as residuals where applicable.
 
 ### Sprint S19 — release candidate, gate G8 and engineering-complete C1
 
