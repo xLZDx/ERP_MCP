@@ -49,3 +49,77 @@ def test_mark_unknown_requires_matching_in_flight_target():
     assert queue.next_ready() is None
     assert queue.queued_count == 1
     assert queue.in_flight_count == 1
+
+
+def test_capacity_refuses_twenty_first_item_without_evicting_pending_work():
+    queue = BaseWorkQueue("base-a")
+    admitted = [queue.enqueue(uuid4(), f"target-{index}", QueueWorkKind.MUTATION)
+                for index in range(20)]
+
+    with pytest.raises(BaseQueueRefused) as refusal:
+        queue.enqueue(uuid4(), "target-overflow", QueueWorkKind.MUTATION)
+
+    assert str(refusal.value) == BaseQueueRefused.QUEUE_FULL
+    assert queue.queued_count == 20
+    assert queue.in_flight_count == 0
+    for expected in admitted:
+        selected = queue.next_ready()
+        assert selected == expected
+        queue.complete(selected.work_id)
+    assert queue.is_drained
+
+
+def test_verification_read_is_scheduled_before_an_older_mutation():
+    queue = BaseWorkQueue("base-a")
+    mutation = queue.enqueue(uuid4(), "target-a", QueueWorkKind.MUTATION)
+    verification = queue.enqueue(uuid4(), "target-b", QueueWorkKind.VERIFY_READ)
+
+    assert queue.next_ready() == verification
+    queue.complete(verification.work_id)
+    assert queue.next_ready() == mutation
+
+
+def test_proven_finished_target_remains_parked_without_holding_other_work_or_base():
+    first_base = BaseWorkQueue("base-a")
+    second_base = BaseWorkQueue("base-b")
+    in_flight = first_base.enqueue(uuid4(), "target-a", QueueWorkKind.MUTATION)
+    assert first_base.next_ready() == in_flight
+    first_base.mark_unknown("target-a", CallOwnership.POSSIBLY_EXECUTING)
+    first_base.complete(in_flight.work_id)
+    first_base.prove_finished("target-a")
+
+    parked = first_base.enqueue(uuid4(), "target-a", QueueWorkKind.MUTATION)
+    other_target = first_base.enqueue(uuid4(), "target-b", QueueWorkKind.MUTATION)
+    other_base = second_base.enqueue(uuid4(), "target-a", QueueWorkKind.MUTATION)
+
+    assert first_base.next_ready() == other_target
+    assert first_base.next_ready() is None
+    assert first_base.queued_count == 1
+    assert second_base.next_ready() == other_base
+    assert parked.target_id == "target-a"
+
+
+def test_shutdown_closes_admission_and_drains_existing_active_and_pending_work():
+    queue = BaseWorkQueue("base-a")
+    active = queue.enqueue(uuid4(), "target-active", QueueWorkKind.MUTATION)
+    assert queue.next_ready() == active
+    verification = queue.enqueue(uuid4(), "target-read", QueueWorkKind.VERIFY_READ)
+    pending_mutation = queue.enqueue(uuid4(), "target-pending", QueueWorkKind.MUTATION)
+
+    queue.begin_shutdown()
+
+    assert queue.admission_closed
+    assert not queue.is_drained
+    with pytest.raises(BaseQueueRefused) as refusal:
+        queue.enqueue(uuid4(), "target-late", QueueWorkKind.VERIFY_READ)
+    assert str(refusal.value) == BaseQueueRefused.ADMISSION_CLOSED
+    assert queue.queued_count == 2
+    assert queue.in_flight_count == 1
+
+    assert queue.next_ready() == verification
+    queue.complete(verification.work_id)
+    assert queue.next_ready() == pending_mutation
+    queue.complete(pending_mutation.work_id)
+    assert not queue.is_drained
+    queue.complete(active.work_id)
+    assert queue.is_drained

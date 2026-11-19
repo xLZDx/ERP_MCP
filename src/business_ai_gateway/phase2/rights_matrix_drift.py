@@ -5,11 +5,12 @@ and provenance validation. This module performs no source reads or grant changes
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Protocol
+from typing import Callable, Iterator, Protocol
 
 from ._identity import clean_identity
 from .ops_types import is_aware_datetime, is_identity_text
@@ -18,7 +19,7 @@ __all__ = [
     "ApprovedRightsBaseline", "ObservedRightsSnapshot", "RightsAvailability",
     "RightsDifference", "RightsDifferenceKind", "RightsMatrixInputError",
     "RightsMatrixStatus", "RightsMatrixDriftResult", "RightsMatrixReaderPort", "RightGrant",
-    "compare_rights", "scan_rights_once",
+    "compare_rights", "iter_rights_periodically", "scan_rights_once",
 ]
 
 MAX_RIGHTS_ROWS = 10_000
@@ -27,6 +28,8 @@ MAX_REFERENCE_CHARS = 256
 MAX_PRINCIPAL_CHARS = 256
 MAX_OBJECT_CHARS = 256
 MAX_PRIVILEGE_CHARS = 64
+MIN_SCAN_INTERVAL_SECONDS = 0.1
+MAX_SCAN_INTERVAL_SECONDS = 86_400.0
 _PRIVILEGE = re.compile(r"[A-Z][A-Z0-9_]{0,63}\Z", re.ASCII)
 
 
@@ -41,6 +44,8 @@ class RightsMatrixInputError(ValueError):
     INVALID_AVAILABILITY = "INVALID_AVAILABILITY"
     ROW_LIMIT_EXCEEDED = "ROW_LIMIT_EXCEEDED"
     INVALID_SNAPSHOT = "INVALID_SNAPSHOT"
+    INVALID_SCAN_INTERVAL = "INVALID_SCAN_INTERVAL"
+    INVALID_PERIODIC_CONTROL = "INVALID_PERIODIC_CONTROL"
 
 
 class RightsAvailability(StrEnum):
@@ -274,3 +279,38 @@ def scan_rights_once(baseline: ApprovedRightsBaseline,
         return RightsMatrixDriftResult(
             RightsMatrixStatus.NOT_COMPARABLE, "SNAPSHOT_INVALID", (),
             trusted_baseline.approval_ref, None)
+
+
+def iter_rights_periodically(
+    baseline: ApprovedRightsBaseline,
+    reader: RightsMatrixReaderPort,
+    interval_seconds: int | float,
+    *,
+    should_stop: Callable[[], bool],
+    sleep: Callable[[float], object],
+) -> Iterator[RightsMatrixDriftResult]:
+    """Yield read-only comparisons sequentially until the caller requests a stop.
+
+    This is a caller-driven scheduling primitive, not a service/runtime integration.
+    Each iteration finishes ``scan_rights_once`` before sleeping, so reads never
+    overlap. The caller owns the source adapter, authentication, persistence and
+    reporting. Exceptions from the callbacks and generator cancellation propagate.
+    A stop request is observed between scans; it cannot interrupt a blocking reader.
+    """
+    if type(interval_seconds) not in (int, float):
+        raise RightsMatrixInputError(RightsMatrixInputError.INVALID_SCAN_INTERVAL)
+    try:
+        interval = float(interval_seconds)
+    except (OverflowError, ValueError):
+        raise RightsMatrixInputError(RightsMatrixInputError.INVALID_SCAN_INTERVAL) from None
+    if (not math.isfinite(interval)
+            or not MIN_SCAN_INTERVAL_SECONDS <= interval <= MAX_SCAN_INTERVAL_SECONDS):
+        raise RightsMatrixInputError(RightsMatrixInputError.INVALID_SCAN_INTERVAL)
+    if not callable(should_stop) or not callable(sleep):
+        raise RightsMatrixInputError(RightsMatrixInputError.INVALID_PERIODIC_CONTROL)
+
+    while not should_stop():
+        yield scan_rights_once(baseline, reader)
+        if should_stop():
+            return
+        sleep(interval)

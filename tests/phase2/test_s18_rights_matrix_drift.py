@@ -11,8 +11,10 @@ from business_ai_gateway.phase2.rights_matrix_drift import (
     RightGrant,
     RightsAvailability,
     RightsDifferenceKind,
+    RightsMatrixInputError,
     RightsMatrixStatus,
     compare_rights,
+    iter_rights_periodically,
     scan_rights_once,
 )
 
@@ -135,3 +137,170 @@ def test_reader_errors_are_sanitized_and_never_report_removals(reader, reason):
     assert result.approval_ref == "approval-17"
     assert result.snapshot_ref is None
     assert "private credential" not in repr(result)
+
+
+def test_periodic_scans_are_ordered_sequential_and_use_the_requested_interval():
+    order: list[str] = []
+    stop = {"requested": False}
+
+    class Reader:
+        active = False
+        calls = 0
+
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            assert not self.active
+            self.active = True
+            self.calls += 1
+            order.append(f"read:{self.calls}:{source_id}:{base_id}")
+            self.active = False
+            return snapshot((grant("alice", "catalog", "READ"),))
+
+    reader = Reader()
+
+    def sleep(seconds: float) -> None:
+        assert not reader.active
+        order.append(f"sleep:{seconds}")
+
+    scans = iter_rights_periodically(
+        baseline(()), reader, 30, should_stop=lambda: stop["requested"], sleep=sleep)
+
+    first = next(scans)
+    order.append("consume:1")
+    second = next(scans)
+    order.append("consume:2")
+    stop["requested"] = True
+    with pytest.raises(StopIteration):
+        next(scans)
+
+    assert first.status is RightsMatrixStatus.COMPARABLE
+    assert second.status is RightsMatrixStatus.COMPARABLE
+    assert reader.calls == 2
+    assert order == [
+        "read:1:source-a:base-a", "consume:1", "sleep:30.0",
+        "read:2:source-a:base-a", "consume:2",
+    ]
+
+
+def test_periodic_stop_before_first_scan_performs_no_read_or_sleep():
+    class Reader:
+        calls = 0
+
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            self.calls += 1
+            return snapshot(())
+
+    reader = Reader()
+    sleeps: list[float] = []
+    scans = iter_rights_periodically(
+        baseline(()), reader, 10, should_stop=lambda: True, sleep=sleeps.append)
+
+    with pytest.raises(StopIteration):
+        next(scans)
+
+    assert reader.calls == 0
+    assert sleeps == []
+
+
+def test_periodic_stop_after_scan_yields_result_then_stops_without_sleep():
+    state = {"stop": False}
+
+    class Reader:
+        calls = 0
+
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            self.calls += 1
+            state["stop"] = True
+            return snapshot(())
+
+    reader = Reader()
+    sleeps: list[float] = []
+    scans = iter_rights_periodically(
+        baseline(()), reader, 10, should_stop=lambda: state["stop"], sleep=sleeps.append)
+
+    result = next(scans)
+    assert result.status is RightsMatrixStatus.COMPARABLE
+    with pytest.raises(StopIteration):
+        next(scans)
+
+    assert reader.calls == 1
+    assert sleeps == []
+
+
+@pytest.mark.parametrize("interval", [
+    True, False, float("nan"), float("inf"), float("-inf"), 0.099, 86_400.001,
+])
+def test_periodic_interval_rejects_bool_nonfinite_and_out_of_range_values(interval):
+    scans = iter_rights_periodically(
+        baseline(()), object(), interval, should_stop=lambda: True, sleep=lambda _: None)
+
+    with pytest.raises(RightsMatrixInputError) as refusal:
+        next(scans)
+
+    assert str(refusal.value) == RightsMatrixInputError.INVALID_SCAN_INTERVAL
+
+
+@pytest.mark.parametrize("interval", [0.1, 86_400])
+def test_periodic_interval_accepts_both_inclusive_bounds(interval):
+    class Reader:
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            return snapshot(())
+
+    state = {"stop": False}
+    scans = iter_rights_periodically(
+        baseline(()), Reader(), interval,
+        should_stop=lambda: state["stop"], sleep=lambda _: state.__setitem__("stop", True))
+
+    assert next(scans).status is RightsMatrixStatus.COMPARABLE
+    with pytest.raises(StopIteration):
+        next(scans)
+
+
+def test_periodic_should_stop_and_sleep_callback_errors_propagate_unchanged():
+    reader_calls: list[str] = []
+
+    class Reader:
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            reader_calls.append("read")
+            return snapshot(())
+
+    stop_error = RuntimeError("stop callback detail")
+    stopped = iter_rights_periodically(
+        baseline(()), Reader(), 5,
+        should_stop=lambda: (_ for _ in ()).throw(stop_error), sleep=lambda _: None)
+    with pytest.raises(RuntimeError) as stop_failure:
+        next(stopped)
+    assert stop_failure.value is stop_error
+    assert reader_calls == []
+
+    sleep_error = RuntimeError("sleep callback detail")
+    state = {"stop": False}
+    scans = iter_rights_periodically(
+        baseline(()), Reader(), 5, should_stop=lambda: state["stop"],
+        sleep=lambda _: (_ for _ in ()).throw(sleep_error))
+    assert next(scans).status is RightsMatrixStatus.COMPARABLE
+    with pytest.raises(RuntimeError) as sleep_failure:
+        next(scans)
+    assert sleep_failure.value is sleep_error
+    assert reader_calls == ["read"]
+
+
+def test_closing_periodic_generator_after_yield_stops_without_another_scan_or_sleep():
+    class Reader:
+        calls = 0
+
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            self.calls += 1
+            return snapshot(())
+
+    reader = Reader()
+    sleeps: list[float] = []
+    scans = iter_rights_periodically(
+        baseline(()), reader, 5, should_stop=lambda: False, sleep=sleeps.append)
+
+    assert next(scans).status is RightsMatrixStatus.COMPARABLE
+    scans.close()
+
+    with pytest.raises(StopIteration):
+        next(scans)
+    assert reader.calls == 1
+    assert sleeps == []
