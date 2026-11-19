@@ -95,6 +95,19 @@ class GatedStartRunner:
         return self.handle
 
 
+class GatedFailingStartRunner:
+    def __init__(self) -> None:
+        self.start_entered = asyncio.Event()
+        self.release_start = asyncio.Event()
+        self.starts: list[tuple[str, int]] = []
+
+    async def start(self, component_id: str, generation: int) -> GatedHandle:
+        self.starts.append((component_id, generation))
+        self.start_entered.set()
+        await self.release_start.wait()
+        raise RuntimeError("private runner failure after side effect")
+
+
 @pytest.mark.asyncio
 async def test_started_timestamp_is_captured_after_delayed_successful_start():
     clock = Clock()
@@ -216,4 +229,30 @@ async def test_cancellation_during_start_observes_returned_handle_exit_before_ra
         LifecycleEvent.STARTED, LifecycleEvent.EXITED,
     ]
     assert cancelled.value.evidence[-1].exit_code == 0
+    assert runner.starts == [("component-a", 0)]
+
+
+@pytest.mark.asyncio
+async def test_cancelled_start_that_later_raises_is_reported_uncertain_not_cancelled():
+    clock = Clock()
+    runner = GatedFailingStartRunner()
+    supervisor = Supervisor("component-a", runner, max_restarts=3, clock=clock)
+    task = asyncio.create_task(supervisor.run())
+    await runner.start_entered.wait()
+
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    assert runner.starts == [("component-a", 0)]
+
+    runner.release_start.set()
+    with pytest.raises(SupervisorFailure) as failure:
+        await task
+
+    assert type(failure.value) is SupervisorFailure
+    assert not isinstance(failure.value, SupervisorCancelled)
+    assert failure.value.code == "COMPONENT_START_UNCERTAIN"
+    assert [item.event for item in failure.value.evidence] == [LifecycleEvent.START_UNCERTAIN]
+    assert failure.value.evidence[0].generation == 0
+    assert "private runner failure" not in str(failure.value)
     assert runner.starts == [("component-a", 0)]
