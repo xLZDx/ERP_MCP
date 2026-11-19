@@ -199,11 +199,11 @@ def _validate_result_artifact(root: Path, row: dict[str, Any], selected_head: st
         raise ValueError("evidence JSON fields do not match the strict PASS evidence schema")
     if type(evidence["schema_version"]) is not int or evidence["schema_version"] != 1:
         raise ValueError("unsupported PASS evidence schema_version")
+    if evidence["result"] != "PASS":
+        raise ValueError("evidence JSON must declare result=PASS")
     for field in ("invariant_id", "scenario_id", "assertion_id", "result", "tested_head"):
         if evidence[field] != row[field]:
             raise ValueError(f"evidence JSON {field} does not match its result row")
-    if evidence["result"] != "PASS":
-        raise ValueError("evidence JSON must declare result=PASS")
     test_source_path = _relative_path(evidence["test_source_path"])
     if not test_source_path.startswith("tests/"):
         raise ValueError("test_source_path must point inside tests/")

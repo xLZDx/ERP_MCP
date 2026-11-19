@@ -2972,3 +2972,8 @@ The repeat-work check found related historical commits, but they did not produce
 ## 2026-11-19 — S19-02 exact-head E46 fixture run
 
 The assigned `e2e-runner` executed `node tests/gate_manifest/run_fixtures.mjs` at unchanged HEAD `ab39f35dce19c5e851d98c7616ccf6e8f001e3f2`; exit 0, `Suite: PASS (87/87 asserted fixtures passed, 2 probes)`. Full output is retained in `reports/evidence/sprints/S19_E46_FIXTURE_RUN_ab39f35.log` (SHA-256 `03c801178b5edea4c385f595d8603c2bb486090f9eeb6cfa50ff0bca657c0b5`). This is static schema-2 validator fixture coverage only. The two probes are separate from the asserted fixture count and do not pass G8, establish I1–I15 runtime evidence, qualify CT14 or authorize production.
+
+
+## 2026-11-19 — S19-03 reject non-PASS evidence before row comparison
+
+Moved the explicit PASS-result check ahead of field comparison in `scripts/check_s19_invariant_matrix.py`. A malformed evidence JSON that declares `NOT_RUN` while the containing result row claims `PASS` now receives the specific fail-closed result error instead of an earlier generic mismatch. The S19 matrix test fixture maps canonical scenario/assertion columns and hashes the source from the tested Git blob, matching `core.autocrlf=true`; this is synthetic checker-contract coverage only. Exact S19 runtime claims remain `NOT_RUN` until committed boundary evidence exists.
