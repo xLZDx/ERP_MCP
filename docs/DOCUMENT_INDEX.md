@@ -119,6 +119,11 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 
 ## Existing normative/supporting documents
 
+Current S19 residual register and production-canary preparation are supporting evidence only:
+[`phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md`](phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md)
+and [`phase2/S19_PRODUCTION_CANARY_RECIPE.md`](phase2/S19_PRODUCTION_CANARY_RECIPE.md). The
+recipe is not executable and does not authorize production activity.
+
 - [S12/S13 disposable qualification prerequisites](phase2/S12_S13_DISPOSABLE_QUALIFICATION_PREREQUISITES_2026-10-23.md) — entry conditions, acceptance-mapped COM fixture/STA/result, PostgreSQL deadline/lock-error, registry/replay/global-ID/grant scenarios including `S13-TOKEN-RANK-01`, `S13-COUNTER-RANK-01`, `S13-BUDGET-RANK-01`, `S13-BEGIN-APPLY-IDENTITY-01`, `S13-BEGIN-APPLY-LOCK-CALL-ID-01`, `S13-PROPOSE-RANK-01`, `S13-CHECKPOINT-ORDER-01`, `S13-DISPATCH-REQUIREMENT-01`, `S13-PHYSICAL-AUTHORITY-DISPATCH-01`, `S13-RECOVERY-ROWS-01`, `S13-UNIQUE-ARBITRATION-01`, `S13-OBSERVE-REPLAY-01`, `S13-EVIDENCE-REPLAY-01`, `S13-VERIFY-EVIDENCE-ID-01`, `S13-VERIFY-PAYLOAD-ID-01`, `S13-INVOCATION-CONTEXT-BINDING-01`, `S13-RECEIPT-LOOKUP-KEY-SHAPE-01`, `S13-TRUSTED-VALIDATION-TIME-01`, `S13-FK-RESOURCE-OWNER-SCOPE-01`, `S13-LEGACY-MUTATOR-CUTOVER-ACL-01` and `WP5-JSON-DECODER-01`, exact evidence and test-owner contract for disposable qualification; does not approve a migration or enable admission.
 - [WP2 effective-grants recheck](phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md) — read-only disposable PostgreSQL role/grant evidence, including the current continuation's direct control-role retry; does not measure S13 grants because `change_ledger` is absent.
 - [WP2 effective-grants recheck — 2026-10-26](phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-26.md) — current read-only PostgreSQL catalog evidence; S13 grants remain `NOT_MEASURABLE` because the candidate schema and routines are absent.
@@ -215,5 +220,3 @@ an existing frozen requirement is scope-preserving.
 - [Change record 305 — add safe DPAPI signer-key provisioning primitive](phase2/CHANGE_RECORD_305.md) — mocked provisioning acceptance passed; real Ivan-host provisioning, identity/scope registration and signer qualification remain open.
 - [Change record 306 — repair and qualify candidate S13 admission SQL](phase2/CHANGE_RECORD_306.md) — migration 027 parses in a disposable cluster and three mapped SQL scenarios pass; full S13 qualification and effective installed grants remain open.
 - [Change record 307 — normalize private-writer ACLs across the candidate schema](phase2/CHANGE_RECORD_307.md) — current-hash source reviews found no actionable ACL finding; seeded-role qualification and effective installed grants remain open.
-
-Current S19 residual register is supporting evidence only: [`phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md`](phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md). The canary recipe is documented separately and is not executable or production authorization.

@@ -2980,3 +2980,8 @@ Moved the explicit PASS-result check ahead of field comparison in `scripts/check
 ## 2026-11-19 — S19-04 residual-risk snapshot
 
 Refreshed `docs/phase2/S19_RESIDUAL_RISK_REGISTER_2026-11-19.md` at candidate HEAD `e4cab871a709a345804beafbfaee7ff062a4c06b`. The dated register records the exact S19-01 manifest test, S19-02 E46 fixture run and six S19-03 checker cases; it marks the full S19-03 matrix file as not cleanly rerun after the fixture correction, final specialist/GPT-PM reviews as pending, and all exact-head I1-I15 runtime results as `NOT_RUN`. It preserves S17 H3 `PARTIAL`, S18 unmeasured SLOs and runtime limits, formal gate states and unassigned lane owners. This working snapshot does not change gate states or authorize production; refresh after final sprint verification and review.
+
+
+## 2026-11-19 — S19-05 production canary preparation
+
+Added `docs/phase2/S19_PRODUCTION_CANARY_RECIPE.md` as a preparation-only G6 recipe. The target, company, operation, finite limit, window, rollback owner and operator signature remain unset; current G3/G5/G6-pre/G8/G6 states do not satisfy its entry conditions. The recipe requires an exact registered target, independent read-back/reconciliation, stop-on-uncertainty and separately approved rollback. It executes no canary, grants no production permission and does not pass G7 or `PRODUCTION_GO`.

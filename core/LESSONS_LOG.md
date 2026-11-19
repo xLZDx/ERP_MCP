@@ -1034,3 +1034,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-19 SUCCESS: The S19 matrix checker now rejects non-PASS evidence before comparing it with a PASS result row, and synthetic fixtures use Git blob bytes rather than Windows-transformed worktree bytes. Rule: validate a claimed outcome before cross-field equality, and calculate exact-head digests from the same Git object the checker consumes.
 
 - 2026-11-19 SHORTCOMING: The initial S19 risk snapshot predated named test results. Rule: refresh dated residual records after each exact-head verification and keep final review/approval and runtime evidence separately pending.
+
+- 2026-11-19 SUCCESS: A canary recipe can be prepared without becoming an executable permission by leaving target/scope/limit/window/signature unset and stating the exact independent gates, stop conditions, read-back, and separate rollback authorization. Rule: preparation documents must not imply G6 ran or G7/`PRODUCTION_GO` passed.
