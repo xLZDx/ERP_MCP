@@ -26,7 +26,7 @@ operation is part of S18.
 | Alert receipt | CT15 initial target: human alert within 60 s | Time from alert condition/event creation to independent recipient acknowledgement; record delivery failure separately | `NOT_RUN` | No configured real recipient or human-receipt evidence is present |
 | Operator triage | CT15 initial target: one business day | Elapsed time from `TRIAGE_REQUIRED` alert to recorded human disposition | `NOT_RUN` | Requires an approved operational owner and a measured test-lane run |
 | Shutdown drain | CT15 requires queue drain; no numeric SLO approved | Time from admission close to drained state; report timeout, pending work, and active work separately | `NOT_RUN` | Exercise restart/shutdown cases in S18-02; never force-terminate an unqualified 1C session |
-| Restart recovery | S18-02 requires safe persisted recovery or a held state | Compare pre-crash persisted inventory with recovered state for each named crash window | `NOT_RUN` | Existing offline reducer tests are not database/process-restart evidence |
+| Restart recovery | S18-02 requires safe persisted recovery or a held state | Compare pre-crash persisted inventory with recovered state for each named crash window | `NOT_RUN` | One disposable-PostgreSQL empty-inventory startup case passed; pending-call and process-restart windows remain untested |
 
 ## Failure table
 
@@ -36,6 +36,7 @@ operation is part of S18.
 | Call ownership is `POSSIBLY_EXECUTING` | Hold all base mutations; permit verification reads; do not infer completion from a deadline or lease expiry | CT3/CT15 mapped crash/recovery scenario | `NOT_RUN` |
 | Call ownership becomes `PROVEN_FINISHED` but outcome remains unknown | Keep only that target parked until the coordinator supplies terminal `APPLIED` or `FAILED_APPLY` state | S18-01 named functional scenario | `NOT_RUN` |
 | Startup recovery inventory is absent, malformed, or incomplete | Keep dispatch closed or fail startup; do not report readiness | S18-02 durable restart scenario | `NOT_RUN` |
+| New startup sees an empty persisted recovery inventory | Persist the new service epoch and return its matching readiness reference; this does not establish process/COM readiness or exercise dispatch | `tests/phase2/test_s18_startup_recovery_e2e.py` on HEAD `f4d24d52`; `1 passed, 14 warnings in 55.57s` | `PASS` — bounded synthetic PostgreSQL state-transition only |
 | Alert sink is absent or fails | Keep event visible and undelivered; return explicit dependency/delivery failure; do not claim human receipt | Alert delivery scenario with an independent sink boundary | `NOT_RUN` |
 | Supervised component exits | Observe exit, restart only the same configured component within the fixed restart bound, and return sanitized lifecycle evidence | S18-03 test-lane supervisor scenario | `NOT_RUN` |
 | CT14 has not qualified forced termination for the exact channel/base | Leave forced termination disabled; retain `POSSIBLY_EXECUTING` hold and record that branch as `NOT_RUN` | CT14 capability record plus S18-02 lane evidence | `NOT_RUN` |
