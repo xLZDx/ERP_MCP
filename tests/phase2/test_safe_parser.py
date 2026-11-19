@@ -114,6 +114,34 @@ def patch_directory(data: bytes, name: str, offset: int, fmt: str, value: int) -
     return bytes(out)
 
 
+def _add_zip64_eocd(data: bytes) -> bytes:
+    """Add a valid ZIP64 EOCD/locator while preserving ordinary classic EOCD fields."""
+    eocd_pos = data.rfind(b"PK\x05\x06")
+    assert eocd_pos >= 0
+    entries_on_disk, entries_total, directory_size, directory_offset = struct.unpack_from(
+        "<HHII", data, eocd_pos + 8
+    )
+    comment_size = struct.unpack_from("<H", data, eocd_pos + 20)[0]
+    assert eocd_pos + 22 + comment_size == len(data)
+
+    zip64_eocd = struct.pack(
+        "<4sQHHIIQQQQ",
+        b"PK\x06\x06",
+        44,
+        45,
+        45,
+        0,
+        0,
+        entries_on_disk,
+        entries_total,
+        directory_size,
+        directory_offset,
+    )
+    locator = struct.pack("<4sIQI", b"PK\x06\x07", 0, eocd_pos, 1)
+    classic_eocd = data[eocd_pos :]
+    return data[:eocd_pos] + zip64_eocd + locator + classic_eocd
+
+
 NORMAL_ROWS = (
     '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>1.10</v></c></row>'
     f'<row r="2"><c r="A2"><f>{FORMULA}</f><v>42</v></c><c r="B2"><f>{FORMULA}</f></c></row>'
@@ -781,6 +809,125 @@ def test_run_isolated_windows_job_object_cap_is_applied_or_fails_closed():
     }
 
 
+def _windows_job_limit_probe(connection, memory_bytes):
+    """Inspect the real Job Object cap from a disposable spawned process."""
+    import ctypes
+    from ctypes import wintypes
+
+    try:
+        try:
+            kernel32, job = sp._set_windows_process_memory_limit(memory_bytes)
+        except Exception:
+            connection.send(("BOUND_MEMORY",))
+            return
+
+        class BasicLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_longlong),
+                ("PerJobUserTimeLimit", ctypes.c_longlong),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class IoCounters(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_ulonglong) for name in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount",
+            )]
+
+        class ExtendedLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", BasicLimitInformation),
+                ("IoInfo", IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        try:
+            kernel32.QueryInformationJobObject.argtypes = (
+                wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD,
+                ctypes.POINTER(wintypes.DWORD),
+            )
+            kernel32.QueryInformationJobObject.restype = wintypes.BOOL
+            information = ExtendedLimitInformation()
+            returned = wintypes.DWORD()
+            if not kernel32.QueryInformationJobObject(
+                job, 9, ctypes.byref(information), ctypes.sizeof(information),
+                ctypes.byref(returned),
+            ):
+                connection.send(("VERIFY_FAILED",))
+            else:
+                connection.send((
+                    "CONFIGURED",
+                    int(information.BasicLimitInformation.LimitFlags),
+                    int(information.ProcessMemoryLimit),
+                ))
+        finally:
+            kernel32.CloseHandle(job)
+    except Exception:
+        connection.send(("VERIFY_FAILED",))
+    finally:
+        connection.close()
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="Windows Job Object memory enforcement requires a Windows runner",
+)
+def test_windows_job_object_reports_configured_per_process_memory_cap():
+    memory_bytes = 512 << 20
+    context = multiprocessing.get_context("spawn")
+    receiving, sending = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_windows_job_limit_probe,
+        args=(sending, memory_bytes),
+        daemon=True,
+    )
+    started = False
+    try:
+        process.start()
+        started = True
+        sending.close()
+        assert receiving.poll(20.0), "Job Object probe did not return within 20 seconds"
+        result = receiving.recv()
+        process.join(5.0)
+        assert not process.is_alive(), "Job Object probe did not exit"
+        assert process.exitcode == 0
+        if result == ("BOUND_MEMORY",):
+            parser_result = run_isolated(
+                normal_book(), timeout_s=120.0, memory_bytes=memory_bytes,
+            )
+            assert (parser_result.status, parser_result.code) == (
+                Status.BOUND_EXCEEDED, sp.BOUND_MEMORY,
+            )
+            print(
+                "WINDOWS_JOB_CAP_BRANCH=BOUND_MEMORY "
+                f"status={parser_result.status.value} code={parser_result.code}"
+            )
+            return
+        assert result[0] == "CONFIGURED"
+        assert result[1] == 0x00000100  # JOB_OBJECT_LIMIT_PROCESS_MEMORY
+        assert result[2] == memory_bytes
+        print(
+            "WINDOWS_JOB_CAP_BRANCH=CONFIGURED "
+            f"limit_flags={result[1]} process_memory_limit={result[2]}"
+        )
+    finally:
+        receiving.close()
+        sending.close()
+        if started and process.is_alive():
+            process.terminate()
+        if started:
+            process.join(5.0)
+
+
 def test_windows_job_object_setup_failure_fails_closed_before_parse(monkeypatch):
     class CapturingConnection:
         payload = b""
@@ -954,6 +1101,60 @@ def test_tc080_entry_count_is_checked_before_zipfile_builds_entries(monkeypatch)
 
     monkeypatch.setattr(sp.zipfile, "ZipFile", must_not_build)
     assert_denied(parse_workbook(data, limits=ParseLimits(max_members=5)), sp.TOO_MANY_MEMBERS)
+
+
+def test_tc080_underreported_ordinary_zip_count_is_checked_before_zipfile(monkeypatch):
+    data = make_xlsx([("S", NORMAL_ROWS)], extra={f"xl/extra{i}.xml": b"<a/>" for i in range(10)})
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        assert len(zf.infolist()) > 5
+
+    eocd_pos = data.rfind(b"PK\x05\x06")
+    assert eocd_pos >= 0
+    underreported = bytearray(data)
+    struct.pack_into("<HH", underreported, eocd_pos + 8, 5, 5)
+
+    def must_not_materialize(*_args, **_kwargs):
+        raise AssertionError("underreported directory reached ZipFile before count rejection")
+
+    monkeypatch.setattr(sp.zipfile, "ZipFile", must_not_materialize)
+    assert_denied(parse_workbook(bytes(underreported), limits=ParseLimits(max_members=5)), sp.TOO_MANY_MEMBERS)
+
+
+@pytest.mark.parametrize(
+    "marker",
+    ["zip64_locator", "disk_entry_count", "total_entry_count", "directory_size", "directory_offset"],
+)
+def test_tc080_zip64_markers_are_rejected_before_zipfile_materializes_entries(marker, monkeypatch):
+    extra = {f"xl/extra{i}.xml": b"<a/>" for i in range(10)}
+    data = make_xlsx([("S", NORMAL_ROWS)], extra=extra)
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        actual_count = len(zf.infolist())
+    assert actual_count > 5
+
+    if marker == "zip64_locator":
+        data = _add_zip64_eocd(data)
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            assert len(zf.infolist()) > 5
+    else:
+        field_offset, field_format, sentinel = {
+            "disk_entry_count": (8, "<H", 0xFFFF),
+            "total_entry_count": (10, "<H", 0xFFFF),
+            "directory_size": (12, "<I", 0xFFFFFFFF),
+            "directory_offset": (16, "<I", 0xFFFFFFFF),
+        }[marker]
+        eocd_pos = data.rfind(b"PK\x05\x06")
+        assert eocd_pos >= 0
+        malformed = bytearray(data)
+        if marker in ("directory_size", "directory_offset"):
+            struct.pack_into("<HH", malformed, eocd_pos + 8, 5, 5)
+        struct.pack_into(field_format, malformed, eocd_pos + field_offset, sentinel)
+        data = bytes(malformed)
+
+    def must_not_materialize(*_args, **_kwargs):
+        raise AssertionError("ZIP64 marker reached ZipFile before preflight rejection")
+
+    monkeypatch.setattr(sp.zipfile, "ZipFile", must_not_materialize)
+    assert_denied(parse_workbook(data, limits=ParseLimits(max_members=5)), sp.UNSUPPORTED_FORMAT)
 
 
 def _env_child(conn, _data, _limits, _memory):
