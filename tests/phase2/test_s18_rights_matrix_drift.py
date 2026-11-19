@@ -316,6 +316,52 @@ def test_periodic_rejects_async_sleep_result_and_closes_coroutine():
     scans.close()
 
 
+@pytest.mark.parametrize("failure_location", ("before_scan", "after_scan"))
+@pytest.mark.parametrize("result_kind", ("awaitable", "non_bool"))
+def test_periodic_rejects_invalid_stop_result_at_each_check(failure_location, result_kind):
+    class Reader:
+        calls = 0
+
+        def read_current(self, source_id: str, base_id: str) -> ObservedRightsSnapshot:
+            self.calls += 1
+            return snapshot(())
+
+    reader = Reader()
+    stop_calls = 0
+    created = []
+
+    def should_stop():
+        nonlocal stop_calls
+        stop_calls += 1
+        if failure_location == "after_scan" and stop_calls == 1:
+            return False
+        if result_kind == "non_bool":
+            return 1  # Truthy but invalid: stop controls require an exact bool.
+        coroutine = asyncio.sleep(0)
+        created.append(coroutine)
+        return coroutine
+
+    scans = iter_rights_periodically(
+        baseline(()), reader, 5, should_stop=should_stop, sleep=lambda _: None)
+
+    if failure_location == "after_scan":
+        assert next(scans).status is RightsMatrixStatus.COMPARABLE
+        assert reader.calls == 1
+
+    with pytest.raises(RightsMatrixInputError) as refusal:
+        next(scans)
+
+    assert str(refusal.value) == RightsMatrixInputError.INVALID_PERIODIC_CONTROL
+    assert stop_calls == (1 if failure_location == "before_scan" else 2)
+    assert reader.calls == (0 if failure_location == "before_scan" else 1)
+    if result_kind == "awaitable":
+        assert len(created) == 1
+        assert inspect.getcoroutinestate(created[0]) == inspect.CORO_CLOSED
+    else:
+        assert created == []
+    scans.close()
+
+
 def test_closing_periodic_generator_after_yield_stops_without_another_scan_or_sleep():
     class Reader:
         calls = 0

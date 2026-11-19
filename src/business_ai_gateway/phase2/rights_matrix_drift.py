@@ -282,6 +282,17 @@ def scan_rights_once(baseline: ApprovedRightsBaseline,
             trusted_baseline.approval_ref, None)
 
 
+def _read_periodic_stop_flag(should_stop: Callable[[], bool]) -> bool:
+    result = should_stop()
+    if type(result) is bool:
+        return result
+    if inspect.isawaitable(result):
+        if inspect.iscoroutine(result):
+            result.close()
+        raise RightsMatrixInputError(RightsMatrixInputError.INVALID_PERIODIC_CONTROL)
+    raise RightsMatrixInputError(RightsMatrixInputError.INVALID_PERIODIC_CONTROL)
+
+
 def iter_rights_periodically(
     baseline: ApprovedRightsBaseline,
     reader: RightsMatrixReaderPort,
@@ -294,8 +305,9 @@ def iter_rights_periodically(
 
     This is a caller-driven scheduling primitive, not a service/runtime integration.
     Each iteration finishes ``scan_rights_once`` before sleeping, so reads never
-    overlap. ``sleep`` must be a synchronous callback. The caller owns the source
-    adapter, authentication, persistence and reporting. Exceptions from the
+    overlap. ``should_stop`` and ``sleep`` must be synchronous callbacks;
+    ``should_stop`` must return an exact boolean. The caller owns the source
+    adapter, authentication, persistence and reporting. Exceptions raised by
     callbacks and generator cancellation propagate.
     A stop request is observed between scans; it cannot interrupt a blocking reader.
     """
@@ -311,9 +323,9 @@ def iter_rights_periodically(
     if not callable(should_stop) or not callable(sleep):
         raise RightsMatrixInputError(RightsMatrixInputError.INVALID_PERIODIC_CONTROL)
 
-    while not should_stop():
+    while not _read_periodic_stop_flag(should_stop):
         yield scan_rights_once(baseline, reader)
-        if should_stop():
+        if _read_periodic_stop_flag(should_stop):
             return
         sleep_result = sleep(interval)
         if inspect.isawaitable(sleep_result):
