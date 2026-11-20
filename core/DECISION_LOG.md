@@ -2,6 +2,36 @@
 
 Append-only. One dated entry per durable decision, evidence or refusal that future work needs.
 
+## 2026-11-20 — Preserve archived scheduler/drift refs; record direct-helper boundary
+
+- Reconciled the unique scheduler/drift commits on `archive/ERP_MCP-phase2-2-95a6a92c`, `archive/ERP_MCP-phase2-3-aed0948f`, and `archive/ERP_MCP-phase2-7-d4bad307` against current `origin/main` source and named test files.
+- Current main retains the accepted-hash/candidate split and sanitizes arbitrary work exceptions; scheduler configuration has evolved finite/range guards. The old patches are not merge candidates.
+- The exported `backoff_delay` helper itself lacks the configured finite/range guard for direct callers. Recorded this narrow follow-up in the operator backlog; did not change historical bounded acceptance or run tests.
+- Preserve the archive refs pending the full worktree/reference cleanup audit; patch equivalence and source presence alone do not establish safe deletion.
+
+## 2026-11-20 — PR #41 S12 budget snapshot disposition
+
+- Compared the exact PR #41 migration `029_s12_budget_snapshot.sql` to current `origin/main` migration `029_scoped_operator_reads.sql` by Git blob contents.
+- The `budget_snapshot` SQL function and grants are already present in current migration 029; the migration also carries scoped read routines that PR #41's standalone file omits. Current migration 030 requires the snapshot function as a precondition.
+- Kept the broad PR #41 unmerged; no function transplant is needed based on this criterion. SQL files and named tests were inspected only; no database action or test was run.
+
+## 2026-11-20 — Archive G3/G4 evidence reconciliation
+
+- Reviewed the unique commits on `archive/ERP_MCP-phase2-5-bc25fb6d`: they add historical decision/evidence records, not source implementation. The G3 evidence-index blob matches current `origin/main` exactly; the G4 probe records are present in the current decision log.
+- Preserve the historical scope and non-pass boundary for G4; do not treat old account-specific observations as production qualification or repeat any live Drive call during this audit.
+- The archive's old final tree would remove later implementation and tests if merged as a whole. Preserve the ref pending final cleanup adjudication; no merge, ref deletion, credential access, or test was performed.
+
+## 2026-11-20 — Archive/7 promotion error metadata disposition
+
+- Compared archived commit `d4bad307` with current promotion source and named regression test source. Current main retains fixed public error codes for arbitrary exception class/message and unknown port metadata, with stronger distinct read/write uncertainty mapping.
+- No code port is needed from the archived patch. Preserve historical ref status; do not infer runtime correctness or delete the ref from source comparison alone. No tests were run.
+
+## 2026-11-20 — Archive/2 historical gate-document disposition
+
+- Compared the unique 2026-10-09 G0/G2/terminal acceptance documents on archive/2 with the current gate manifest, G0 reconciliation, project plan, and master plan.
+- The archived NO-GO/NOT-PASSED snapshot is historical; current G0 is manifest-backed PASSED while release remains NO_GO, production authorization NONE, G2–G7 not passed, and G8 not passed. Do not restore the stale snapshot over current status.
+- Preserve the archived files and ref as historical evidence; their commit and document-version inventories are retained in the rebaseline package. No gate or product status was changed.
+
 ## 2026-10-06 — Freeze E2E acceptance contract before product changes
 
 - Decision: `docs/E2E_ACCEPTANCE_CONTRACT.md` freezes U01–U18 and A01–A54 (actor, action,
@@ -3047,3 +3077,310 @@ Committed-code verification follow-up: after source commit `5eb9b7a94ced6f8c9506
 
 GPT-PM approved the bounded S20 candidate at exact source HEAD `282454abcfd0df49687a135bfe28b2086680efd7`; PR #72 merged that approved source at merge commit `7916d16ed8da13ee0060fbe4072e173ea5d2bf35`. Record S20-01 as `ACCEPTED_BOUNDED` and S20 as `CLOSED_BOUNDED_SPRINT`. The acceptance relies only on the focused test and review evidence in `reports/evidence/sprints/S20_S01_FOCUSED_TESTS.txt`; the same 14 broad-file failure node IDs reproduced on base and candidate, without broader failure attribution. Full suites/checks/CI and production, runtime, and live 1C qualification remain `NOT_RUN` or unqualified. This merge does not promote G8, release readiness, or production authorization.
 
+### 2026-11-20 — Program status and branch inventory refresh
+
+Reconciled the live project plan with the current project-document ledger, current Git refs, and open PR state. The project status remains 107/112 bounded-accepted with five residual task obligations; no sprint is active, Release 2 remains `NO_GO`, and production authorization remains `NONE`. Recorded a dated inventory in `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md`: 46 local branches are not merged into `main`, 45 worktrees exist and 18 are dirty (including the root checkout), and PR #41/#42 remain open with merge conflicts. PR base/head OIDs and the PR #42 local-vs-remote same-name divergence are recorded explicitly. No branch/worktree was merged or deleted. A cached one-pass `rev-list` ancestry calculation in the ignored, session-local `.harness-tools/report.py` copy produced a stable 51/112 remote-linked count, independently matched against Git; this local tool edit is not part of the project diff and is not a durable upstream harness change. Generated the live report and browsable HTML copies from their Markdown sources. This records evidence boundaries and a triage plan; it does not claim product completion or authorize production activity.
+
+
+2026-11-20 follow-up — accepted-task integration audit. At `origin/main` `7916d16ed8da13ee0060fbe4072e173ea5d2bf35`, ledger comparison finds 51/107 bounded-accepted task IDs whose every recorded task commit is an ancestor; 40 IDs have one or more recorded commits outside that ancestry, and 16 have no task-specific commit mapping. These are reconciliation items, not presumed missing code: patch-equivalent commits and later superseding changes must be reviewed against task criteria before any port or merge. The exact IDs and SHAs, including all 16 unmapped IDs, are in `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md`. Do not merge the conflicted PR41/PR42 stacks wholesale. No product/runtime gate or bounded task status is changed by this ancestry audit.
+
+2026-11-20 task-to-main follow-up: patch-ID comparison of the 39 distinct non-merge source commits referenced by the 40 bounded-accepted task IDs outside `origin/main` found zero exact patch-ID matches among non-merge commits on `origin/main`. One further SHA is a merge commit and has no single patch ID. This narrows the semantic review queue, but does not prove missing behavior because later or squashed commits can implement equivalent criteria. The branch audit now records the result and the next action is task-by-task behavior comparison, not cherry-pick or bulk merge.
+
+2026-11-20 source-path triage follow-up: the branch audit now maps each of the 39 distinct off-ancestry non-merge task commits to its accepted task IDs, commit subject, changed-path count, and whether each path exists in the frozen `origin/main` tree. The table is a locator, not a semantic verdict; current-path existence is not proof that a historical accepted behavior is present. Use it to focus the remaining criterion-to-source review and preserve all refs/worktrees until that review is complete.
+
+2026-11-20 focused semantic-triage update: Unicode-safe Git tree comparison corrected the earlier escaped-path false positives. Two old SQL migration paths are absent but their behavior is now carried by current 037 (company-scope RLS) and current 029/038 (S13 operator/in-flight reads). The six CT14 extension paths in S14-06 match current `origin/main` byte-for-byte. FIN-S1.1, R2-US-015 and R2-US-040 changed-path snapshots also match exactly. This is source-tree evidence only; no database migration or test was run. The exact dispositions and remaining caveat are in the branch audit.
+
+2026-11-20 report metric correction: the strict 51/107 metric requires every recorded task commit to be an ancestor of `origin/main`; it is not the count of task IDs with any code represented in remote history. The same ledger data yields 63/107 IDs with at least one recorded ancestor, 51/107 with every recorded SHA ancestral, 12 with mixed ancestry, 28 with recorded commits but none ancestral, and 16 with no task-specific SHA. The ignored session-local report generator now labels both ancestry measures separately and keeps the 107/112 bounded acceptance measure distinct. Its cache/label change is local to `.harness-tools/report.py` and must be promoted to a tracked harness source before future reliable regeneration.
+
+2026-11-20 ancestry-audit correction: the first task-to-main script compared ledger SHA strings directly with the full-OID set from `git rev-list`. The ledger stores many task commits as abbreviated prefixes, so that first result (51 all-ancestral, 40 with off-main SHAs, 39 distinct off-main commits) was invalid and was replaced. Resolving all 299 distinct task commit prefixes through `git cat-file --batch-check` yields 72/107 accepted IDs with all recorded commits ancestral, 75/107 with at least one, three mixed, 16 with recorded commits but none ancestral, and 16 with no task-specific commit mapping. The corrected Unicode-safe source-path audit covers 15 distinct zero-ancestry commits, 66 path snapshots (32 identical blobs, 32 different blobs, 2 old migration paths absent); the absent migrations are superseded by current 037 and 029/038. `.harness-tools/report.py` now resolves abbreviated IDs before calculating ancestry and labels all/any/mixed/unmapped separately. Re-read the corrected audit; do not reuse the initial counts.
+
+## 2026-11-20 — Restore S10 bounded evidence artifact
+
+- Decision: restore `reports/S10_RELEASE_EVIDENCE_MANIFEST.json` from historical Git blob `4445dd2c5d84011bdc6327bc314f599b75843dab`, with CRLF bytes matching the S11 exit receipt SHA-256 `C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE`. `.gitattributes` marks this evidence file `-text` so Git preserves the receipt-bound bytes despite `core.autocrlf=true`.
+- Evidence: the S11 receipt references the file and its expected digest, but current `origin/main` lacked the path. The later same-named PR #41 file has SHA-256 `FB8976D1B3F7953990ABE6DEFD9218D0696FB1F5F3CAC94397FE0A78A04446E4` and is not the approved artifact. The restored manifest says `BOUNDED_ENGINEERING_EVIDENCE_ONLY` and `NO-GO`.
+- Limit: this recovers the historical S11-bound artifact; it does not establish current-head release evidence, G8 PASS, runtime acceptance or production authorization.
+
+## 2026-11-20 — Promotion hardening branch disposition
+
+Read-only comparison of archived commit `5a63da880f5a3897fbfdbaf6370399a32447509` with frozen `origin/main` `7916d16ed8da13ee0060fbe4072e173ea5d2bf35` found that current promotion source already rejects stale/mismatched attestation identity and malformed field types before the write path, validates exact approval/reviewer types, and compares evidence digests in constant time. The current test source retains core mismatch and truthy-reviewer cases but not the archive's malformed-view/custom-equality regression set. Decision: do not port duplicate source code or merge the branch; preserve its ref until the complete branch inventory is adjudicated, and record the missing negative tests as a follow-up for an authorized verification scope. This is static source/test inspection only; no test was run and no product or production status changed.
+
+## 2026-11-20 — Old archive ref disposition
+
+`archive/ERP_MCP-phase2-0-065f3e66` has four commits whose patch IDs are equivalent to commits in local `main`, but its tip is 1,194 commits behind and its tree has 1,677 path differences from current main. Decision: do not merge the old snapshot and do not infer that its full tree is redundant from patch equivalence. Preserve its ref while the remaining branch/worktree inventory is reviewed; do not force-delete to bypass Git's ancestry protection. No source behavior, tests, or runtime state changed.
+
+## 2026-11-20 — Rebaseline queue and report metric disposition
+
+The three mixed-ancestry task reviews and shared source/evidence pointers for the 16 tasks without task-specific SHAs are already recorded in the branch audit. Keep those task `commits[]` arrays empty where no exclusive task commit exists: the supported `reconcile-project` command records project-plan statuses and ref hashes, not arbitrary task/source links. The live report's former hero emphasized `72/107` complete ancestry (67.3%) before the project acceptance count, which could be mistaken for overall task completion. The local harness renderer now leads with bounded acceptance `107/112` and labels `72/107` as secondary Git linkage; project acceptance, Git ancestry, and product/runtime readiness remain distinct. This renderer is in ignored `.harness-tools/report.py`; the generated report and browsable copies are project artifacts. No tests were run and no task acceptance changed.
+
+## 2026-11-20 — Older archive snapshot is not interchangeable
+
+`archive/ERP_MCP-phase2-6-c54be14e` has patch-equivalent commits but its tree differs from the phase2-0 archive in 11 paths and removes 360 lines of promotion/scheduler safeguards and tests. Current `origin/main` contains later error-classification, replay, lease-fence, and required-PostgreSQL protections. Decision: preserve the old ref, do not merge it over current main, and do not treat patch equivalence as branch deletion authorization. No tests or database operations were run.
+
+## 2026-11-20 — Rescue reader bootstrap is already represented on main
+
+Read-only review of `rescue/dangling-001-2026-10-20` found its reader-environment helper blob identical to current `origin/main`; the corresponding launcher behavior is present there, and an ancestor commit with the same subject adds a real-lane reset refusal plus focused guard cases. Decision: do not cherry-pick or merge the stale rescue commit. Preserve its non-ancestor ref until cleanup checks cover retention and worktree dependencies. No tests or runtime actions were run.
+
+## 2026-11-20 — Rescue lane runner variants contain unsafe canaries
+
+Read-only comparison of sibling refs `rescue/dangling-002/003/004-2026-10-20` found the runner implementation already present in current main, with later source hardening. Main's sanitizer/orchestrator test blobs match the synthetic-canary version from `-002`; refs `-003` and `-004` replace those canaries with owner business figures, and `-004` removes the warning about correction before publication. Decision: no code port; never merge or publish the `-003/-004` canary edits. Preserve all three local refs until the history/retention cleanup pass, and keep value details out of public documentation. No tests or runtime actions were run.
+
+## 2026-11-20 — Rescue architecture and OAuth fixes are represented on main
+
+`rescue/dangling-005` changes only the decision log; current main contains the corresponding ADR-0008 and decision. `rescue/dangling-006` adds the ChatGPT tunnel resource to read-gateway OAuth audiences; current main has that audience-list behavior, its named test source, an ancestral integration commit, and a distinct exact private-writer audience check. Decision: no source or design port from either rescue ref. Preserve their historical refs until cleanup dependencies are resolved. No tests or runtime calls were run.
+
+## 2026-11-20 — Rescue report sanitizer is present on main; sensitive variants stay local
+
+Read-only review of `rescue/dangling-007-2026-10-20` and its two parent commits found the private owner-assertion loader, public figure redaction, generated-output sweeps, and leak-abort test contract represented in current `origin/main`; main's current test blobs retain synthetic canaries. The current runbook link is corrected relative to the rescue tip. Decision: no code port; preserve the rescue history and do not publish its owner-figure canary variants. No tests, report run, or private evidence reads were performed.
+
+## 2026-11-20 — Rescue admin helpers are integrated; L2 report snapshots stay distinct
+
+The A34–A37 WIP snapshot's drifted Fake1C, rollback-only SQL, and capability-resync helpers are present in current main and used by later admin E2E cases; do not replace the newer support file. The A34–A37 rescue report package uses source HEAD `3742eb7`, while main's same-named report artifacts use source HEAD `1864bd9`; matching finding counts do not prove the output contents or evidence scope are interchangeable. Decision: no code port from `rescue/dangling-008`; preserve both report provenance versions and defer choosing/replacing report artifacts until criterion-level provenance and privacy reconciliation. No tests, report generator, or runtime was run.
+
+## 2026-11-20 — Keep shared task/source pointers out of task commit attribution
+
+The branch audit mapped the 16 accepted task IDs without task-specific commit SHAs to shared implementation/evidence anchors and separated those from commits authored for a single task. Decision: retain those mappings in `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md`, leave native task `commits[]` empty where no exclusive task commit exists, and do not extend the ledger schema or claim attribution from ancestry alone. This preserves the 107/112 bounded project acceptance result without conflating it with Git reachability or runtime/product acceptance. The audit refreshed the local branch/worktree inventory; it does not authorize a broad PR merge, branch deletion, or worktree removal.
+
+## 2026-11-20 — Preserve snapshot trees; do not replay stale consolidation
+
+Read-only comparison found the inherited backlog branch is superseded by an amended current-main document, the CI-off branches predate the current capability-role workflow fix, and the `consolidation-broken` tree has thousands of path differences after `-X ours` conflict merges. The three snapshot refs preserve old primary/Trash trees and a binary archive. Decision: no wholesale merge or deletion; use the conflict record and snapshot refs only as provenance leads, reconcile orphaned maintenance backlog IDs separately, and defer local ref pruning until worktree dependencies are checked. The stale `r2/*` tracking refs point to commits already ancestral to current origin main but remain pending cleanup inventory. No CI, tests, report generation, or runtime actions were run.
+
+## 2026-11-20 — Defer real1c grant utilities until endpoint confinement
+
+Static source review found the real1c auditor-grant repair utility and its verification utility do not validate the configured IdP endpoint before using the test identity. Decision: retain the historical October 9 7/7 report as bounded evidence, but remove the current copy-and-run repair instructions from `docs/INSTALLATION_GUIDE_RU.md` and mark both utilities non-runnable until the backlog's endpoint-confinement guard is implemented and reviewed. No credentials were read and no utility was run.
+
+## 2026-11-20 — Retain the earlier living-model hand merge
+
+The `living-model-connectors-reconciliation` content was manually resolved earlier at merge `1ec5395d`, whose change record preserves the five conflict resolutions and documents the one translated test-plan sentence. Both that merge and source tip `88753c2` are ancestors of current `origin/main`; a later `-X ours` merge `c5e2c5fd` matching its first parent does not mean those earlier changes were lost. Decision: keep the existing marked historical status blocks, use the current project plan for present status, and do not port these documents again.
+
+## 2026-11-20 — Include current project controls in the report document catalog
+
+The live report's supporting-document catalog omitted the normative document index, current installation guide, operator backlog and reconciled task ledger. Decision: add those sources to `.harness/report-documents.json` so the generated browsable report presents the same current plan, evidence boundaries and deferred work used by this rebaseline. Regenerate the live report and document copies after the audit delta is settled.
+
+## 2026-11-20 — Reconcile FIN current status after bounded closeout
+
+Decision: treat the 2026-11-17 FIN follow-up sections as immutable historical snapshots, not current task states. The current FIN table and roadmap use the ledger project reconciliation and exact GPT-PM bounded-closeout record for head `3f7fe83a94793bd97f0e3f5476d1e361668096a9` (request `3b7f1905-5e0e-463b-920f-ee003ab035c0`): nine bounded acceptances and FIN-S1.2 deferred to final project verification. This rebaseline reconciles existing evidence; it does not restart implementation or reopen accepted stories. Native harness completion (56/112) stays distinct from project-document bounded acceptance (107/112). Release 2 remains NO_GO, G8 not passed, writer UNQUALIFIED, production authorization NONE. No tests, runtime, 1C, Git refs or task verification state changed.
+
+## 2026-11-20 — Publish the reconciled program report
+
+Decision: after `ledger.py reconcile-project` completed from the corrected current plan (24 sprints, 112 tasks; native verification/review fields unchanged), run the designated `.harness-tools/report.py`. It exited 0 and regenerated `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` and its browsable document copies. The rendered current totals show 107/112 bounded acceptance and FIN 9/10; the old FIN 2/10 review snapshot is retained only as dated history. The separate Engineering Command Center copies differ in language and stale wrapper content; preserve them and make no overwrite until their current owner and desired canonical representation are established.
+
+## 2026-11-20 — Reconcile the functional-evidence summary with FIN closeout
+
+The high-level functional evidence document still described FIN-S2.1 through S3.3 as awaiting review and S3.1's final run as pending, while the exact-head GPT-PM closeout and reconciled plan record nine bounded acceptances. Decision: update only the current summary/matrix, explicitly retain the old run narratives as dated historical evidence, and keep dirty-tree, fake-backed, live-runtime and production limits visible. No test, runtime, database, 1C, or gate action was performed.
+
+## 2026-11-20 — Reject superseded PR #41 S3 source delta
+
+Read-only comparison of unique candidate `f5fc733f0a1c09bf86d961eb3cd485fa33d500d0` against current `origin/main` found only four differing blobs in the 16-file S3 batch. The candidate drops the pre-dispatch scope-epoch guard and its negative tests, and exposes arbitrary exception class names where current main keeps fixed `WORK_EXCEPTION` disclosure. Decision: do not port these superseded files; retain the accepted task status and record the stricter current-main source behavior separately. No tests were run.
+
+## 2026-11-20 — Preserve the old PR #41 S4 promotion API as superseded provenance
+
+Candidate `adc5ec7799b87f23abde350e68abc8ae5149f056` adds an Admin API and PostgreSQL promotion adapter. The current approved S4 design explicitly records that the candidate does not establish authenticated immutable evidence-byte binding and is not to be imported wholesale. Decision: keep the exact branch commit for provenance, rely on the later bounded S4 implementation recorded by R2-US-016, and keep product TC046–TC048/provider/runtime qualification `NOT_RUN`. No tests, SQL, or runtime were executed.
+
+## 2026-11-20 — Keep PR #41's weaker S5 parser candidate out of main
+
+Read-only source comparison of `11c15be62a105af5853a557dfe9f60ac291ed357` found the candidate's Windows memory cap represented in current main, while its parser would allow ZIP64 entry-list materialization and omits hidden-content refusals present in current main. The current plan records the later S17-01 parser/ZIP64 acceptance and its exact historical run. Decision: preserve the candidate ref but do not port or replace the stricter current parser. No tests or runtime were run.
+
+## 2026-11-20 — Record stale R2-US-015 test expectations without changing acceptance
+
+Current `model_graph.py` fails closed when any changed object is absent from dependency coverage, but the named `test_model_graph.py` still expects an unmapped addition to be non-impacting and a remove-plus-add to affect only one operation. Historical commit `a20c5685624371165617174fab16b1a4c8f83dd0` contains the corresponding two expectation corrections. Decision: keep R2-US-015's bounded acceptance unchanged, record a targeted test-maintenance follow-up in the operator backlog, and do not modify or run tests during this rebaseline. The discrepancy is static; runtime behavior was not exercised.
+
+## 2026-11-20 — Keep FIN-S1.2 malformed-result regression for final verification
+
+Current `SqlChangeLedger.budget_snapshot` retains the strict string-type guard from `f59db79ac9be7170f830c955838b0a44679458c9`, but its dedicated unhashable-value test file is not present on current main. Decision: record that targeted regression for FIN-S1.2 final verification without changing the deferred period-source status, adding a new acceptance claim, or running tests/database calls during this audit.
+
+## 2026-11-20 — Keep the evolved TC001 compatibility boundary
+
+Historical PR #42 commit `2c2798e2c0b967d9dc9bacab79a6c2bbf1494059` adds exact MCP tool inventory checking and limits structured errors by tool. Current main retains these boundaries with the later expanded tool inventory and a safer generic R1 error wrapper; its TC001 harness files were preserved in a later, materially different form. Decision: do not port the older commit or equate harness files with product acceptance. S0 remains accepted only within its bounded scope, and product TC001 remains `NOT_RUN`.
+
+## 2026-11-20 — Record PR #42 schema assertion gap without importing its branch
+
+Candidate `5336867aab` carries a compatibility assertion for `required` and `additionalProperties` on the three baseline MCP tool schemas. Current main has exact property-name checks and matching source signatures, but not those required-field/additional-property assertions; the candidate's assertions for three additive schemas are also absent. Decision: record a narrow named-test follow-up in `docs/phase2/OPERATOR_BACKLOG.md`; do not transplant the old PR or change the bounded S0 acceptance. The review was static and no tests ran.
+
+## 2026-11-20 — Keep R1 turnover response adjudication inside TC001
+
+Historical candidate `eaad33437f92e786f780efeb4ea09d8f4e749804` removes totals and profile-provenance fields from the base turnover response, while current main retains those fields and a current HTTP test expects them. The product acceptance for exact R1 equivalence is still `NOT_RUN`; no incompatibility has been demonstrated against its pinned reference contract. Decision: leave source and bounded S0 status unchanged and add this response-shape comparison to the existing TC001 adjudication scope. No test or runtime call was run.
+
+## 2026-11-20 — Defer explicit posting-provenance route to TC001 contract adjudication
+
+Candidate `e44bf3ec23e4737c338935b18606015843df6b9d` adds a separate provenance route and preserves a smaller payload on the baseline posting-rows route. Current main does not have that additive route and returns provenance fields from the baseline tool. Since no task independently accepts the candidate route and product TC001 remains `NOT_RUN`, decision: preserve this as an unresolved baseline/additive-contract delta; do not port the feature or declare current R1 compatibility until the pinned reference is compared. No tests or runtime calls were made.
+
+## 2026-11-20 — Defer cash/bank route split to TC001 and profile-policy adjudication
+
+Candidate `d85cfeb30832292c3ae54d755a24f599896e502b` adds explicit cash/bank provenance tools and makes baseline names refuse non-native profile classes. Current main exposes no split tools and returns configured profile provenance through the baseline names. With no separate plan acceptance for these names and product TC001 still `NOT_RUN`, decision: preserve the API/profile-policy discrepancy as an open contract question; do not port or treat it as a confirmed regression. No tests or 1C calls were run.
+
+## 2026-11-20 — Record inventory tool/source-test mismatch for contract adjudication
+
+Candidate `f8260da9` adds two provenance-specific inventory tools. Current server source has no registrations for them, but the current named TC001 inventory test calls them. The test is unexecuted and the current plan has no separate accepted story for those route names. Decision: record the mismatch and require the existing R1/R2 tool-inventory adjudication before porting or changing acceptance. No tests or provider calls were run.
+
+## 2026-11-20 — Record sales-provenance route/source-test mismatch
+
+Candidate `c393efdb` adds a sales-provenance route that is absent from current server source but is called by the retained TC001 document test. The baseline sales and purchase routes currently emit provenance themselves. Since TC001 is not executed and no story separately accepts the extra route, decision: preserve the exact inventory and payload difference for contract adjudication; do not port the route or alter bounded acceptance. No tests or provider calls were run.
+
+## 2026-11-20 — Record settlement-provenance route/source-test mismatch
+
+Candidate `eeded141` adds provenance-specific receivable/payable routes that current main does not register, while the retained TC001 settlement test calls them. Current baseline handlers return provenance fields directly. With product TC001 still `NOT_RUN` and no separate accepted story, decision: record the tool/profile-policy delta for R1/R2 contract adjudication; do not import the candidate or alter bounded acceptance. No tests or provider calls were run.
+
+## 2026-11-20 — Retain bounded S9 checksum scope without requiring hashes for every new plan unit
+
+Shared historical candidate `3ab770e1756e0e4795220f3180be15803641e101` requires exact migration-file checksums for every planned unit. Current main requires both candidate and recorded checksums for an already-applied version, rejects mismatches, and binds an optional checksum for a new unit into the plan digest when supplied. The accepted S9 wording is limited to stale/changed applied-file checksum refusal. Decision: retain current bounded behavior and do not broaden the contract from the historical candidate. Source/test/doc inspection only; no tests, migrations, or rehearsal ran.
+
+## 2026-11-20 — Keep merged sprint approvals historical in the live report
+
+The live-report approval tile compared the ledger's last GPT-PM-approved HEAD with the checkout HEAD unconditionally and called any mismatch stale. The current checkout has no active project sprint; its last approval belongs to S20 HEAD `282454a`, which is an ancestor of merged `origin/main` `7916d16`. Decision: show an exact-HEAD approval only when it matches; otherwise label an approval as historical when no sprint is active, and as not bound to the current HEAD when a sprint is active. This avoids implying that an already merged sprint approval is a pending or failed project gate. No tests or CI were run.
+
+## 2026-11-20 — Preserve shared S4/S6/S8 documentation history
+
+The nine commit IDs listed in semantic review 31 of `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md` occur in both open PR refs and change only historical plan, decision/task-ledger, or report documents. Current project/task documents retain their reconciled bounded outcomes, and the dated 2026-11-06 reports are not current status. Decision: preserve the shared commits in branch history, cite them once in the semantic crosswalk, and do not transplant dated reports or merge either conflicting whole-tree PR.
+
+## 2026-11-20 — Reconcile FIN-S1.2 synthetic budget snapshot history
+
+PR #41 candidate `42da6b59c7caa2582a3b6000ac3f569bf31e4e09` adds a standalone budget-snapshot migration and disposable-PostgreSQL test. Current main already has equivalent snapshot behavior consolidated into `029_scoped_operator_reads.sql`, SQL-ledger registration, and named synthetic budget tests. Decision: do not port a duplicate migration; record the absent dedicated integration test as a focused verification follow-up. This synthetic budget work does not satisfy FIN-S1.2's separate authenticated accounting-period status requirement, which remains deferred to final project verification. No test or migration was run during this source/document review.
+
+## 2026-11-20 — Retain evolved tunnel process reconciliation
+
+PR #41 candidate `13fac1fad9cf2ddcb50623cabf675be3f9e519bd` adds port-21090 startup reconciliation and a dedicated PowerShell test. Current main has a later implementation attributed by history to `6ec0ba08` that verifies the full executable path and command line and rechecks process identity before replacement. Decision: keep the evolved current implementation, do not port the older candidate, and record the absent dedicated behavioral test as a follow-up. No PowerShell test or tunnel runtime was run.
+
+## 2026-11-20 — Keep FIN-S1.2 tunnel records historical
+
+Nine PR #41 commits listed in semantic review 34 of `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md` preserve the 2026-11-08 tunnel/access troubleshooting chronology and an operator runbook edit. Later project records defer FIN-S1.2 live-source acceptance to final verification and prohibit repeating source discovery while credentials may have changed. Decision: preserve the historical observations as dated evidence, do not treat old key/access hypotheses as current authorization or blocker, and make no new credential, tunnel, or MCP probe in this audit.
+
+## 2026-11-20 — Preserve safe stack-start guard; defer behavioral regression
+
+PR #41 commit `3928177988f4ca8d2f26408d5f29663ec90ede64` adds a safe scheduled-task start after key persistence. Current `scripts/remote/set-tunnel-secret.ps1` has the same task/action/path/running-state guards and does not claim connection verification. Decision: retain current source, do not transplant duplicate behavior, and list the absent 9-case focused PowerShell test as a later regression follow-up. Its prior mocked pass remains historical and was not rerun.
+
+## 2026-11-20 — Keep merged bounded S10 source; preserve old PR #41 series
+
+The 15 S10 capture/manifest commits in semantic review 36 of `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md` are superseded by approved PR #65 head `1ba0cf3b27bc763767e6fa15e19f242264044f2a`, merged as `37239c04ed1c573c9afd8181f6cb83fd186ad14c` and verified as ancestors of `origin/main`. Current project documents record bounded acceptance for R2-US-042/R2-US-048 while product canary, signed release evidence, UAT, and G6/G7 remain open. Decision: retain historical PR #41 refs, do not transplant the obsolete implementation/evidence package, and preserve release NO-GO limits.
+
+## 2026-11-20 — Align PR #42 S0/S1 acceptance commits with existing reviews
+
+The ten full SHAs in the crosswalk-alignment section of `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md` correspond to existing R2-US-001/002 ancestry review 13, R2-US-003/004/005 reviews 1–3, and current S0/S1 project/task records. Keep their historical bounded evidence distinct from product execution and from main ancestry; preserve missing current-main regression cases in the operator backlog. No PR #42 whole-tree merge is authorized by these records.
+
+## 2026-11-20 — Backlog the S1 secret-failure coverage loss
+
+PR #42 commit `0de9a2e4e6f815e8db9bdc3dbe8336a8dc35da54` added an E2E assertion that failed secret lookups do not terminate the gateway and expanded log scanning to password values. The current test file no longer has those assertions. Decision: retain current bounded acceptance, record this as a focused named-test follow-up in `docs/phase2/OPERATOR_BACKLOG.md`, and do not infer an observed crash or leak without execution evidence. No test ran.
+
+## 2026-11-20 — Treat the 2026-11-05 full-program HTML as historical
+
+PR #42 commit `6f57fa2293b6a3476d4b5405540b10fb1437dfa3` published a dated full-program HTML snapshot with its own renderer. Decision: preserve it as history, use the current plan/ledger and the single `tools/report.py` live format for current status, and do not revive the older renderer or snapshot as current.
+
+## 2026-11-20 — Align the current sidecar provenance digest
+
+Branch review of PR #42 commits `41cf0f3c88930d59b7bb78a2c900d42e343ea793` and `ac97a979f814832fa2af8b22eda1e3a6f9480689` found that the current Dockerfile and runtime audit already pin the same sidecar image/runtime versions as the candidates, while the local CI provenance argument retained an older runtime digest. Align only that digest in `.github/workflows/ci.yml`; keep workflow triggers unchanged and disabled for push/PR. Do not run CI, builds, or tests. Candidate import sorting and existing absent provenance-route test calls remain separate from this pin correction.
+
+## 2026-11-20 — Finish the PR #42 unique-patch crosswalk
+
+Semantic reviews 40–41 in `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md` reconcile the S0 evidence-bundle builder and all remaining PR #42 lint, fixture, migration-chain, and API-declaration commits against current main. Preserve historical refs and bounded S0 dispositions; product cases stay NOT_RUN. The open PR is not a safe whole-tree merge unit. No tests, builds, migrations, or runtime actions were run.
+
+## 2026-11-20 — Keep the remaining-work plan separate from acceptance metrics
+
+The program rebaseline records 107/112 project tasks as `ACCEPTED_BOUNDED`, while the native harness reports 56/112 `done`; these measure different fields and must not be collapsed into one completion count. Five project obligations remain: FIN-S1.2 and R2-US-047 (`BLOCKED_EXTERNAL`), plus S16-04, S17-06, and S19-03 (`PARTIAL`). The branch audit is a separate open queue: PR #41/#42 patch crosswalks are complete, while other ref families and dirty worktrees still require semantic reconciliation. Sequence dependent work as S17-06 evidence before S19-03 runtime-matrix adjudication; keep FIN-S1.2 deferred to final project verification and do not repeat source discovery during implementation. No tests, MCP requests, merges, or branch deletions were run in this status pass.
+
+## 2026-11-20 — Extend the rebaseline crosswalk beyond PR #41/#42
+
+A fresh local-ref comparison found 152 unique patch commits across 46 non-merged local branches; 22 exact commit IDs were absent from the existing PR-only audit text. Their initial source/document dispositions and the still-open real1c/worktree reviews are recorded in `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md`, semantic review 42. The dirty S13 T16 candidate and other dirty worktrees are preserved; this decision does not authorize transplant, merge, cleanup, or test execution. No tests, migrations, external connectors, or 1C runtime were invoked.
+
+## 2026-11-20 — Measure dirty candidates against their own HEAD
+
+The S13 T16 worktree at `65c408657d5cae857c66ecfeef74028475680ad3` has 50 dirty paths (19 tracked modifications, 31 untracked), with six candidate SQL migrations and 23 named tests. Its diff against `origin/main` includes historical tree divergence and must not be described as the dirty-change size. The branch audit now records the correct baseline and comparison sequence. Preserve the candidate until its exact behavior is reconciled; no files were staged, tests or migrations run, or refs changed.
+
+## 2026-11-20 — S13 dirty migration bodies are represented on current main
+
+Compared candidate migrations 028–033 in the preserved S13 T16 worktree with their current-main counterparts 031–036. Each paired SQL body is identical; only migration IDs and prerequisite lists differ because current main has intervening migrations. Do not port these six files or reuse their stale sequence. The changed 027 schema and Python/test deltas remain under separate semantic review. No database action or test was performed.
+
+## 2026-11-20 — Reject wholesale transplant of dirty S13 T16 worktree
+
+Static comparison against current `origin/main` found that the dirty candidate relaxes lifecycle snapshot type/scope bounds, removes three current `SqlChangeLedger` APIs, skips local checkpoint signature verification on reused read-back, and changes mutex cancellation handling. These deltas are not approved for transplant; the SQL 027 additions need criterion-level reconciliation with current migrations before any implementation decision. Preserve the worktree and current-main behavior while the audit continues. No tests or migrations were run.
+
+## 2026-11-20 — Preserve bounded S13 acceptance during ledger reconciliation
+
+The project plan accepts S13-01 through S13-05 as bounded work and closes the sprint 5/5; native ledger project-status fields for S13-03/04/05 remain stale (`PARTIAL`/`IN_PROGRESS`) while their internal reviews are accepted. Reconcile those fields from the plan and exact approved evidence after the branch audit; do not reopen S13 or promote operational readiness. The dirty S13 T16 worktree is a separate unapproved candidate, not a reason to rerun the sprint.
+
+## 2026-11-20 — Keep current S13 preflight key separation
+
+Static comparison of the preserved S13 T16 worktree found its `dev_anchor_preflight.py` removes the current-main refusal when latestness/key-authority public keys overlap checkpoint signing keys. Keep the current separation behavior and reject this candidate delta; map its rewritten/new tests separately without executing them. No credentials, service, tests, or database were used.
+
+## 2026-11-20 — Correct S1-1 and FIN-S12 worktree attribution
+
+Fresh status across 45 registered worktrees found the S1-1 code candidate at `f23a7af75facb69e297958f4be13c337c005863c` with 13 dirty paths; the separately named FIN-S12 worktree has only an evidence-document edit and a PM-review SQL copy. The S1-1 budget snapshot function body is already in current migration 029, and its older period reader is not the current fail-closed, unconfigured source path. Preserve it without probing or rerunning FIN-S1.2 synthetic work; the registered-source qualification remains deferred to final project verification.
+
+## 2026-11-20 — Preserve S0 status and current private-writer identity API
+
+The dirty S0 TC001 worktree at detached HEAD `31afbc5c1ea205cc9d088e8c6ecb030e0c253f23` removes `PrivateWriterService.database_target_identity`, which current main exposes, and adds three barrier-ack test cases absent from the current named module. Reject the service deletion; retain the test cases as an unqualified coverage candidate pending criterion mapping. Its bounded S0 package changes do not change the current S0 acceptance or canonical product `NOT_RUN` status. No tests, bundle generation, or runtime were executed.
+
+## 2026-11-20 — Preserve S0 TC001 compatibility snapshot pending criterion mapping
+
+The `codex/s0-r2-tc001-compat-20261104` worktree contains a nested archive matching commit `57eb5b0` after CRLF normalization, plus a modified task-evidence ledger and seven discovery test sources absent from current main. Its exact-head evidence reports harness and negative controls passing but the R2 differential comparison failing and product acceptance open. Preserve this material for criterion-level reconciliation; do not merge the broad ledger, rerun tests, or infer product acceptance from the harness result. S0 remains bounded accepted and product TC001 remains `NOT_RUN`.
+
+The failed historical R2-TC001 comparison identifies three input-schema additions on legacy R1 tool names. Current main retains their original parameter lists and exposes the options under separate R2 tool names. Treat the source fix as already represented, but keep a current-head differential run as an unqualified product-verification candidate; do not import the failed historical implementation or its broad evidence ledger.
+
+The S12 branch's approval-epoch gate exists in current main as migration 039; its branch migration 028 and prerequisite list predate the current migration sequence. Preserve the two unrun epoch-race assertions as a coverage candidate and review the alternate grant/lock inventory against current source before reusing any text. Do not transplant the stale migration or replace current documents.
+
+The S10 canary worktree contains an early closeout at PR #53 and an untracked manifest/XML bundle; current project acceptance is later and bound to PR #65 HEAD `1ba0cf3`. Keep the older bundle as historical evidence only, reject its setup-error XML as pass evidence, and do not reopen S10 or commit the manifest independently of its approval context.
+
+The four dirty PM-review worktrees contain only local SDLC/evidence state and two contradictory `UNRECOGNIZED` review results bound to stale heads. Preserve them during the branch audit, but do not record them as approvals or publish their local state into project documentation.
+
+## 2026-11-20 — Record S12 UPDATE_DRAFT admission gap for planned work
+
+During the branch audit, current `proposal.py` was found to admit `UPDATE_DRAFT` into `ChangeProposal`, although its physical-writer parser rejects that kind and the frozen v2.0 operation set in the S14/S16 design is `CREATE_DRAFT`, `POST`, and `UNPOST`. A dirty S12 candidate contains a source/test correction that rejects the kind at proposal parsing, but it is uncommitted and untested. Record this as a bounded source-and-regression-test candidate for the next approved task plan; do not copy the candidate wholesale, claim it fixed, or expand the writer surface. No tests or writer operations were run.
+
+## 2026-11-20 — Keep P12 and FIN-S1.2 candidate evidence historical
+
+The detached S0 P12 worktree carries three hash-valid but older evidence snapshots with `product TC001=NOT_RUN`; the current task ledger has later review14 status and outstanding P12/product adjudication. The FIN-S12 worktree carries an earlier read-only source-discovery note, while current backlog/CHANGE_RECORD_403 defer FIN-S1.2 qualification until final project verification. Preserve these records without importing their state, repeating source discovery, or upgrading acceptance. The `.pm-review` SQL copy is not source: its hash differs from both candidate-branch and current-main files. No tests, source probes, or database operations were performed.
+
+## 2026-11-20 — Preserve 2026-11-08 reports as historical snapshots
+
+Audited detached worktree `fin-s12-pr41-update-20261108` at `727b2dac`. Its two dated HTML reports are static 2026-11-08 snapshots, not current program reports. Its decision-log addition records historical read-only OAuth discovery and corrects an earlier tunnel-host mapping, but explicitly does not prove consent or 1C period status. Keep those artifacts as history; use the reconciled project plan and generated live report for present status. No live OAuth, tunnel, or 1C check was made.
+
+## 2026-11-20 — Use the current S0 settlement contract tests
+
+The detached S0 settlement worktree contains only an older untracked copy of one balance-contract test. Current main retains that case and adds the R1 profile/unknown refusal and R2 provenance/cross-company denial cases. Treat the candidate as superseded test source; do not transplant it or infer product acceptance from static presence. No test was run.
+
+## 2026-11-20 — Keep S11 manifest fix and migration split as already integrated
+
+The dirty S11 pointer worktree's sole manifest change has the same bytes as current main and is the exact S11 evidence pointer change already authorized and merged in PR #57. The S11-only candidate migration 028 differs from current migration only in formatting; its current tests have evolved so 028 owns refusal-code parity while migration 029 owns scoped reads and budget snapshots. Do not repeat the manifest edit, copy candidate tests, or collapse the migration boundary. No tests or migrations were run.
+
+## 2026-11-20 — Do not transplant the S13 dirty migration 027
+
+The S13 worktree's migration 027 differs materially from the current migration: it adds a bounded base-scope admission check, lifecycle epoch binding, recovery target-lock planning, and receipt/verification overloads. The candidate's later migration numbers conflict with migrations already present on current main. Preserve the candidate for semantic mapping; do not overwrite migration 027 or copy the branch wholesale. Any required behavior must be implemented as a separate current-sequence change after criterion mapping. No tests, migrations, staging, or merge were performed.
+
+## 2026-11-20 — Keep S1-1 source implementation and map candidate assertions
+
+The S1-1 worktree's HEAD-relative dirty delta adds metadata-only schema discovery and period/budget observation support, while the current checkout already contains evolved implementations of those capabilities. Current tests cover source/company/grant refusal boundaries and fail-closed synthetic period observations. Candidate-only tests are not automatically new requirements: compare each assertion to the accepted criteria and current named tests before carrying a focused coverage item forward. Keep FIN-S1.2 deferred to final project verification and do not repeat metadata scans or synthetic runs. No tests or 1C reads were performed.
+
+## 2026-11-20 — Keep S0 shutdown behavior; carry only direct test gaps
+
+The S0 candidate's HEAD-relative dirty service changes for quiesce timeout and startup mutex cancellation are already present in current main. Its three added assertions are absent from the current named unit file, while current service E2E covers successful quiesce only. The `database_target_identity` difference belongs to the old branch base, not the dirty patch. Do not port service code or attribute historical tree differences to the patch; map the three candidate assertions to accepted S13/S14 failure criteria before deciding whether to carry them into a named verification task. No tests were run.
+
+## 2026-11-20 — Keep the seven S0 discovery variants as history
+
+The nested compatibility snapshot has seven files with the same single synthetic discovery test name. They are alternate fixture revisions; the current consolidated test already exercises the source mix, discovery outputs, company denial, and audit path. No separate formal criterion was found that justifies importing seven variants. Preserve them as history, do not multiply test files, and keep canonical TC001 product acceptance `NOT_RUN`.
+
+## 2026-11-20 — Carry exact S12 approval-epoch interleavings as test follow-up
+
+Current migration 039 implements approval-epoch checks at permit and dispatch effect boundaries, while the current SQL test has no direct cases for epoch rotation after dequeue/before permit or after permit/before `record_call`. The preserved candidate specifies both race windows and immutable-state assertions. Record only those assertions in backlog for a future named-test window; do not copy its stale migration 028 or harness. No tests or migration were run.
+
+## 2026-11-20 — Do not trust the S10 early manifest binding from current bytes
+
+The dirty S10 handoff cites manifest SHA-256 `C2013469...`, but a raw-byte hash of the manifest at candidate HEAD `75718fbc` is `FB8976D1...`; approved PR #65 HEAD `1ba0cf3` does not contain the manifest path. The local bytes therefore do not substantiate the cited early GPT-PM binding. Preserve the XML and handoff as historical artifacts, and use the later bounded S10 acceptance record independently; do not promote or commit this manifest by itself. No test or merge was run.
+
+
+## 2026-11-20 — Reject real1c candidate's public monetary-value regression
+
+The `3742eb7a`/`f28b8d37` real1c candidate removes the current public/private result split and no longer includes observed monetary values in the public artifact sweep; it also hard-codes those values in source. Current `scripts/real1c/run_lane.py` preserves monetary values only in the private result artifact and scans public outputs for them. Reject the candidate as a merge unit and retain current sanitization. The earlier detail-report functionality is already present in current main and needs no port. No tests or real1c command were run.
+
+Correction after direct tree comparison: the per-test detail-report modules and tests are present on current `main`; the final `f28b8d37` tree deletes them and omits 22 other current-main source/test paths, including read-only period-status and reader-environment modules. Their presence on current main does not make the older final candidate safe: its `run_lane.py` still removes public monetary-value filtering. No candidate files were copied.
+
+## 2026-11-20 — Residual local-ref audit scope
+
+Fresh read-only comparison found 46 non-merged local branches, 152 unique patch commits, and 26 unique commits without semantic references in the 2026-11-20 branch audit. Current worktree census is 45 registered trees, 18 dirty including root. The uncited patch set is not a merge instruction. Recorded dispositions distinguish current evolved source, historical status snapshots, preserved trash snapshots, and three explicit remaining audits: the ten `-X ours` conflict paths from `99b091da`, five legacy inherited-backlog items, and the changed paths in three early real1c runner revisions. FIN-S1.3's older migration 030 is superseded by current migrations 029/038; do not transplant it. Keep PR #41/#42 and every branch/worktree preserved until exact candidates and dependencies are reconciled. No tests, runtime calls, migration, merge, push, or deletion was performed.
+
+## 2026-11-20 — Conflict-record and inherited-backlog follow-up
+
+The ten paths in the 2026-10-20 `-X ours` consolidation record were compared with current document outlines and stable story/scenario identifiers. No branch-only `R2-US`, `TC`, or `REQ` identifiers were found in the compared Phase 2 documents; current copies are English and carry later status annotations. This does not resolve the `core/DECISION_LOG.md` conflict: its source-derived evidence boundary requires a sanitized comparison that emits only path, line number, and normalized-line digest. The five inherited maintenance items remain outside the 112 product tasks; their dated dispositions and evidence limits are recorded in `docs/BACKLOG_INHERITED_2026-10-21.md`. Early real1c runner revisions contain no missing sanitizer paths relative to `origin/main`; the public/private boundary remains in current source. Preserve all refs and worktrees; no tests, merge, push, or deletion was performed.
+
+The restricted decision-log comparison was completed at the permitted representation level. `docs/rebaseline/2026-11-20_DECISION_LOG_DIFF_DIGESTS.json` binds branch blob `9faa925f34360762185c256722a795c9900cbb4a` and `origin/main` blob `59cc4d40f32b2a85a847fe5627af1b9b776f1851`, with only line numbers and normalized-line digests; artifact SHA-256 is `a9356178af1d060d62af76a2ac0778f086ba5c220825d7d50885a90ac0c8d3cb`. This does not semantically classify source-derived decisions and neither version was copied.
+
+## RBF-01 — conflict-path and inherited-backlog crosswalk
+
+Reconciled all ten documented 2026-10-20 `-X ours` conflict paths against current canonical documents and stable acceptance identifiers; kept the decision-log semantic review intentionally unresolved under the source-handling rule and retained only its sanitized digest artifact. Reconciled all five inherited maintenance items without carrying stale counts into the current task denominator. Corrected the S16 `UPDATE_DRAFT` backlog wording after tracing the frozen facade admission gate; the generic S12 parser remains unchanged. No branches or worktrees were merged, pushed, or deleted.

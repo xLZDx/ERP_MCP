@@ -46,3 +46,17 @@ Severity values are guesses made at recording time, not reviewed ratings.
 - Origin: operator instruction of 2026-10-20 (merge ERP_MCP_R2 into ERP_MCP, one project); integration origin: e82022a.
 - Suggested acceptance test: operator decision recorded in `core/DECISION_LOG.md` for (a) the rename of the phase2 directories, with every reference and test path updated and tests green, and (b) retirement of `D:\Repo\ERP_MCP_R2` (archive plus verification that nothing is unique there); retirement is a deletion and remains operator-only.
 - Status: not fixed by integration by operator decision (operator decision pending).
+
+## Reconciliation against the 2026-11-20 program rebaseline
+
+The 2026-10-20 counts, severity guesses, and “not fixed by integration” labels above are historical. They are not current task status. This review reconciles scope and evidence without running prohibited checks or deleting/renaming repositories:
+
+| Item | Current disposition | Evidence boundary / next action |
+|---|---|---|
+| ERPMCP-INH-001 — English-only prose | Still open as a corpus-level documentation obligation; the 2026-10-20 file/line counts are stale and are not reused. | The repository rule requires English prose, while literal 1C names and explicitly localized/report content may be retained. Current corpus compliance remains unverified until a safe inventory classifies files without exposing source-derived business values; no new scan or translation is claimed here. |
+| ERPMCP-INH-002 — document registry | The generator contains the historical-ref-only Cyrillic escaping policy and safe output containment. | The generated registry is a point-in-time Git-ref snapshot. Exact-ref regeneration/acceptance is deferred until the branch audit is complete; no generator run is claimed in this reconciliation. |
+| ERPMCP-INH-003 — inherited red-test classification | Partially classified, runtime causes still unverified. | `docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md` reconciles 27 identifiers (13 errors, 14 failures), but labels causes as candidates and records runtime acceptance as `NOT_RUN`. Do not convert environment guesses into individual causes or acceptance. |
+| ERPMCP-INH-004 — locked install | Lock-file reconciliation is historically recorded; clean locked installation remains unproven. | `docs/commits/2026-10-21-erp-mcp-lock-reconcile.md` identifies local uv 0.12.9 versus CI-pinned 0.12.23 and says `uv sync` was not run. Fresh locked-install evidence remains a future named acceptance activity; no lock check or install was run in this reconciliation. |
+| ERPMCP-INH-005 — old layout/repository retirement | Repository retirement remains unapproved and is not part of this audit. | The old repository is not deleted. A Phase 2 path rename would be a separate broad change requiring an accepted scope and complete reference migration; no such change is needed to reconcile current statuses. |
+
+These dispositions separate completed historical bookkeeping from unresolved acceptance. The five IDs are not silently added to the 112 product-task denominator; any approved follow-up task must be added through the live ledger and linked to its own acceptance criteria.
