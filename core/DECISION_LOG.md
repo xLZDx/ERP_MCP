@@ -3387,3 +3387,8 @@ Reconciled all ten documented 2026-10-20 `-X ours` conflict paths against curren
 ## 2026-11-20 — RBF-01 post-commit lesson correction
 
 The first RBF-01 commit exposed that its appended lesson used a heading/paragraph format rejected by the lesson importer and preserved a now-disproved claim that generic S12 parsing was the S16 admission boundary. Correct the dated lesson in the established list format, retain the source-supported distinction between S12 and S16, and do not rewrite the existing commit.
+
+
+## RBF-02 — branch and worktree disposition
+
+The 2026-11-20 read-only census captured at 23:43:47 +02:00 records 45 registered worktrees, 18 dirty trees, and 370 dirty-path records across all trees; the root had 23 paths at that capture. Census SHA-256: `8ab3cfb038aeef2bd591252a403bde62c7f9f53ea16ee58a5c7f366ab762b07d`. The local/remote ref audit distinguishes non-ancestor candidates from refs already ancestral to `origin/main`, and evaluates PR #41/#42 at their exact remote heads. Both PRs remain conflicting broad snapshots; no branch or worktree was merged or deleted. The root dirty-path table preserves unrelated documentation, generated copies, the partial CI digest candidate, and the unresolved S10 manifest without bundling them into this audit commit. No tests, CI, migration, runtime call, push, merge, or deletion was performed.
