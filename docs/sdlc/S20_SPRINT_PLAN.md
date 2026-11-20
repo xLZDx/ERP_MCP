@@ -1,7 +1,7 @@
 # S20 — Bounded observability completion
 
 Date: 2026-11-20
-Status: IN_PROGRESS / implementation, focused verification, and routed reviews complete; GPT-PM exact-head review pending
+Status: IN_PROGRESS / PM round-1 MAJOR correction implemented; focused fault and duration verification complete; post-fix review and PM round 2 pending  
 Trace: `docs/MASTER_PLAN.md` §P8, `docs/DEFINITION_OF_DONE.md` D12, `docs/OBSERVABILITY_SRE.md` §§2–5
 Base: main at `7cea4dea18193d12a7514081aca5954f4fb19e0d`
 

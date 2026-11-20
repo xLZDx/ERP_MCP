@@ -200,6 +200,94 @@ async def test_tool_call_middleware_records_duration_and_propagates_cancellation
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["success", "exception", "cancelled"])
+async def test_tool_call_middleware_duration_metric_failure_preserves_call_outcome(monkeypatch, failure):
+    metrics = OperationalMetrics()
+
+    def fail_recording(*_args):
+        raise RuntimeError("METRIC-BACKEND-FAILURE")
+
+    monkeypatch.setattr(metrics, "record_operation_duration", fail_recording)
+    middleware = AuditCorrelationMiddleware(metrics)
+    ctx = SimpleNamespace(method="tools/call", params={"name": "source_health"})
+    observed = []
+    expected_result = object()
+    expected_error = ValueError("APPLICATION-FAILURE")
+
+    async def call_next(_ctx):
+        observed.append(current_request_correlation_id())
+        if failure == "exception":
+            raise expected_error
+        if failure == "cancelled":
+            raise asyncio.CancelledError
+        return expected_result
+
+    if failure == "exception":
+        with pytest.raises(ValueError) as raised:
+            await middleware(ctx, call_next)
+        assert raised.value is expected_error
+    elif failure == "cancelled":
+        with pytest.raises(asyncio.CancelledError):
+            await middleware(ctx, call_next)
+    else:
+        assert await middleware(ctx, call_next) is expected_result
+
+    assert len(observed) == 1 and observed[0] is not None
+    assert current_request_correlation_id() is None
+    assert "METRIC-BACKEND-FAILURE" not in metrics.render()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fault", ["metadata", "timing", "correlation_start"])
+async def test_tool_call_middleware_pre_dispatch_fault_still_calls_application(monkeypatch, fault):
+    from business_ai_gateway import audit as audit_module
+
+    metrics = OperationalMetrics()
+    middleware = AuditCorrelationMiddleware(metrics)
+    calls = []
+
+    class BrokenMetadata:
+        method = "tools/call"
+
+        @property
+        def params(self):
+            raise RuntimeError("PRIVATE-METADATA-FAILURE")
+
+    ctx = BrokenMetadata() if fault == "metadata" else SimpleNamespace(
+        method="tools/call", params={"name": "source_health"}
+    )
+
+    if fault == "timing":
+        monkeypatch.setattr(
+            audit_module.time,
+            "perf_counter",
+            lambda: (_ for _ in ()).throw(RuntimeError("CLOCK-FAILURE")),
+        )
+    elif fault == "correlation_start":
+        monkeypatch.setattr(
+            audit_module,
+            "begin_request_correlation_id",
+            lambda: (_ for _ in ()).throw(RuntimeError("CORRELATION-START-FAILURE")),
+        )
+
+    async def call_next(_ctx):
+        calls.append(current_request_correlation_id())
+        return "application-result"
+
+    assert await middleware(ctx, call_next) == "application-result"
+    assert len(calls) == 1
+    if fault in {"metadata", "timing"}:
+        assert calls[0] is not None
+    else:
+        assert calls[0] is None
+    assert current_request_correlation_id() is None
+    rendered = metrics.render()
+    assert "PRIVATE-METADATA-FAILURE" not in rendered
+    assert "CLOCK-FAILURE" not in rendered
+    assert "CORRELATION-START-FAILURE" not in rendered
+
+
+@pytest.mark.asyncio
 async def test_non_tool_mcp_message_does_not_record_tool_duration(monkeypatch):
     from business_ai_gateway import audit as audit_module
 

@@ -42,22 +42,43 @@ class AuditCorrelationMiddleware:
         self.metrics = metrics
 
     async def __call__(self, ctx, call_next):
-        token, _ = begin_request_correlation_id()
-        method = getattr(ctx, "method", None)
-        params = getattr(ctx, "params", None)
-        tool = params.get("name") if isinstance(params, Mapping) else None
-        measures_tool_call = method == "tools/call"
-        started = time.perf_counter()
         try:
+            token, _ = begin_request_correlation_id()
+        except (Exception, asyncio.CancelledError):
             return await call_next(ctx)
+
+        measures_tool_call = False
+        tool = None
+        started = None
+        try:
+            try:
+                method = getattr(ctx, "method", None)
+                params = getattr(ctx, "params", None)
+                tool = params.get("name") if isinstance(params, Mapping) else None
+                measures_tool_call = method == "tools/call"
+                if measures_tool_call:
+                    started = time.perf_counter()
+            except (Exception, asyncio.CancelledError):
+                # Telemetry setup is best-effort and must not prevent the MCP call.
+                measures_tool_call = False
+                started = None
+
+            try:
+                return await call_next(ctx)
+            finally:
+                if measures_tool_call and self.metrics is not None and started is not None:
+                    try:
+                        elapsed = time.perf_counter() - started
+                        self.metrics.record_operation_duration(tool, elapsed)
+                    except (Exception, asyncio.CancelledError):
+                        # A metrics failure cannot replace the MCP result, error, or cancellation.
+                        pass
         finally:
             try:
-                if measures_tool_call and self.metrics is not None:
-                    self.metrics.record_operation_duration(
-                        tool, time.perf_counter() - started
-                    )
-            finally:
                 end_request_correlation_id(token)
+            except (Exception, asyncio.CancelledError):
+                # Preserve the MCP outcome if correlation cleanup itself fails.
+                pass
 
 
 def query_fingerprint(query: dict[str, Any] | None) -> str | None:
