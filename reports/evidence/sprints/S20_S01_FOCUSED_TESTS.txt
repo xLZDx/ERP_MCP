@@ -101,3 +101,14 @@ The same 14 node IDs failed on both snapshots; both logs show AttributeError and
 - test_unconfirmed_settlement_mapping_is_denied_before_register_read[receivable_balance-receivable.balance]
 - test_unconfirmed_settlement_mapping_is_denied_before_register_read[payable_balance-payable.balance]
 Conclusion: the 14 failing test node IDs reproduce on both base and candidate; no claim is made that they are pre-existing beyond that comparison. Candidate adds 12 passing cases.
+
+----- Post-commit S20-01 functional verification (2026-11-20) -----
+Exact tested HEAD: e0da20d59629e2de179217174dc9796fb68df91c
+Command 1: & '.venv\Scripts\python.exe' -m pytest tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit -q
+Output: 1 passed in 0.31s
+Exit code: 0
+Command 2: & '.venv\Scripts\python.exe' -m pytest tests/test_observability.py tests/test_server_audit.py -q -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime or pre_dispatch_fault"
+Output: 12 passed, 27 deselected in 0.61s
+Exit code: 0
+Coverage: fixed registered-tool allowlist equality; exact bounded duration behavior; success, application exception, cancellation, metrics failure isolation; metadata/timer/correlation-start pre-dispatch faults; non-tool messages; runtime metrics wiring. Fault-injection assertions preserve the original return, ValueError instance, and cancellation, and confirm correlation cleanup; no exception text is exposed in rendered metrics.
+NOT_RUN: full test files and suite, per task scope.

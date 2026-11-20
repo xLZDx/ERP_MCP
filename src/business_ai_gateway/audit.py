@@ -53,15 +53,16 @@ class AuditCorrelationMiddleware:
         try:
             try:
                 method = getattr(ctx, "method", None)
-                params = getattr(ctx, "params", None)
-                tool = params.get("name") if isinstance(params, Mapping) else None
                 measures_tool_call = method == "tools/call"
                 if measures_tool_call:
                     started = time.perf_counter()
+                    params = getattr(ctx, "params", None)
+                    tool = params.get("name") if isinstance(params, Mapping) else None
             except (Exception, asyncio.CancelledError):
                 # Telemetry setup is best-effort and must not prevent the MCP call.
-                measures_tool_call = False
-                started = None
+                # Once the method identifies a tool call, missing metadata is labeled "other".
+                if not measures_tool_call:
+                    started = None
 
             try:
                 return await call_next(ctx)

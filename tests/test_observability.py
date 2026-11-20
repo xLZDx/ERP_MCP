@@ -285,6 +285,8 @@ async def test_tool_call_middleware_pre_dispatch_fault_still_calls_application(m
     assert "PRIVATE-METADATA-FAILURE" not in rendered
     assert "CLOCK-FAILURE" not in rendered
     assert "CORRELATION-START-FAILURE" not in rendered
+    if fault == "metadata":
+        assert 'erp_mcp_operation_duration_seconds_count{tool="other"} 1' in rendered
 
 
 @pytest.mark.asyncio
