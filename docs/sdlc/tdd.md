@@ -14,7 +14,13 @@ This handoff links the accepted finisher requirements to the settled design and 
 - [Approval UI specification](ui-spec.md) — page states and interaction contract.
 - [S16 sprint plan rev. 2](../phase2/S16_SPRINT_PLAN_2026-10-28.md) and [S12 contract amendment](../phase2/S12_CONTRACT_AMENDMENT_2026-10-28.md) — controlling domain contracts.
 
-The sprint scope is S12/S13 follow-ups, S16 rev. 2 fake-backed code, and the explicit connector/watchdog evidence requests in the requirements. S17–S19 are conditional on separate current authorization. S12/S13/S15 formal acceptance remains unverified until evidence is reconciled with the current gate manifest.
+This paragraph records the original handoff scope and is historical. Later bounded sprints S17–S20 were separately authorized and closed; their closeouts do not promote the product/runtime gates below.
+
+## Current program disposition — 2026-11-21
+
+The current project plan and sprint evidence supersede the original handoff status above. `REBASELINE_FOLLOWUP` is active with six audit tasks. The live registry records 107/118 project-document tasks as `ACCEPTED_BOUNDED` and 55/118 native harness tasks as done; the original 112-task baseline remains 107/112 project-accepted. Five product obligations remain open: `FIN-S1.2` and `R2-US-047` are `BLOCKED_EXTERNAL`, while `S16-04`, `S17-06`, and `S19-03` are `PARTIAL`. See [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md) for exact criterion evidence, owners, and next steps.
+
+Bounded acceptance means only the reviewed engineering slice passed its stated criteria. It does not establish production readiness, authenticated live 1C period status, a deployed writer, a qualified external H3 verifier, runtime execution of I1–I15, or G8. S17-01–05 are already accepted; do not rerun or reopen them to address S17-06's distinct N=30/external-receipt residual. S20-01 is bounded-accepted and merged; full suites, CI, deployment, live 1C mutation, and production GO remain unclaimed.
 
 ## Requirement to story to acceptance
 

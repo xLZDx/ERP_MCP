@@ -194,17 +194,9 @@ This is a **separate procedure**, not an extension of the synthetic environment.
 
 The historical **disposable** real-1C environment used `E2E_REAL1C=1`, `-Seed bootstrap-only`, and the correct `E2E_DIR`. `scripts.real1c.lane_setup` registers the test source and independently provisions a **data-plane source-wide grant** to `auditor` **only for `onec-818ha-reference`**. An administrative `AUDITOR` role does **not** automatically confer source read access. Other source IDs do not receive the grant.
 
-A previously seeded disposable environment can use the idempotent repair:
+**Current-source warning (2026-11-20): do not run the historical repair or verification utilities below this section as a current setup procedure.** Static review found that `lane_setup --repair-auditor-grant` checks test/real1c/bootstrap-only labels but does not pin the configured Identity Provider (IdP) endpoint before creating an Admin session. `verify_install` additionally checks the database host, E2E project prefix and loopback gateway, but still does not validate the IdP endpoint before using the configured identity. The historical **7/7** result below remains evidence for the isolated 2026-10-09 run; it does not prove the present utility endpoints are confined to that disposable lane. Endpoint confinement is tracked in `docs/phase2/OPERATOR_BACKLOG.md` and must be implemented and reviewed before either utility is used again.
 
-```powershell
-$env:E2E_DIR = 'PATH_TO_YOUR_DISPOSABLE_REAL1C_E2E_DIR'
-python -m scripts.real1c.lane_setup --repair-auditor-grant
-python -m scripts.real1c.verify_install
-```
-
-`verify_install` is read-only. It checks two positive real-1C calls, five negative ACL scenarios, and the corresponding audit evidence. Success is reported as `REAL1C_L2_INSTALL_SMOKE 7/7 PASS`. The script refuses execution outside the disposable loopback profile.
-
-**Never use this routine to provision arbitrary customer sources or production access.** It is limited to the `test/real1c/bootstrap-only` profile and uses the Admin API instead of directly updating database ACL rows.
+In the historical run, this routine was limited to the `test/real1c/bootstrap-only` profile and used the Admin API instead of directly updating database ACL rows. These labels do not validate the current IdP endpoint; the current utilities remain non-runnable until the endpoint-confinement guard is implemented and reviewed.
 
 During a first run from a remote/noninteractive Windows PowerShell environment, `ComSpec` may be absent. The shared E2E helper now verifies the `%SystemRoot%\System32\cmd.exe` path and sets the child-process path correctly. This does **not** justify relaxing global security settings.
 

@@ -3397,3 +3397,7 @@ The 2026-11-20 read-only census captured at 23:43:47 +02:00 records 45 registere
 ## RBF-03 — ordered follow-up queue
 
 Converted the confirmed product residuals and branch/document audit findings into an ordered queue with acceptance targets, evidence pointers, dependencies, owner/disposition and a rule for future ledger admission. Kept the 14 regression/maintenance follow-ups separate from already bounded-accepted product tasks; grouped the FIN-S1.2 malformed-result case into its single final verification, and retained R2-US-047 as deferred pending provider/data scope. No tests, builds, CI, migrations, runtime calls, merges, pushes or deletions were performed.
+
+## RBF-04 — current ledger and program report reconciliation
+
+Reconciled project-document task states from the current `PROJECT_PLAN.md`, supporting evidence documents and 102 Git refs without changing harness verify/review fields. The live registry contains 118 task IDs: 107 are project-accepted in bounded scope, 55 are native harness-done, two remain externally blocked, and the remaining product follow-ups are partial or not started. Regenerated the canonical Russian live report and its browsable document copies from `.harness-tools/report.py`; historical dated reports remain untouched. No tests, builds, CI, migrations, runtime calls, merges, pushes or deletions were performed.

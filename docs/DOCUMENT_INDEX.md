@@ -1,27 +1,39 @@
 # ERP_MCP — Normative Documentation Index
 
-## Current program rebaseline — 2026-11-17
+## Current program rebaseline — 2026-11-21
 
-The operator authorized a full program evidence rebaseline on 2026-11-17.
-Current execution order is in `../PROJECT_PLAN.md`. The candidate source
-reconciliation and its limits are summarized in
-`rebaseline/2026-11-17/SOURCE_RECONCILIATION.md`; the final row-by-row residual
-source-commit review is `rebaseline/2026-11-17/REMAINING_SOURCE_COMMIT_REVIEW_FINAL.json`.
-`CANDIDATE_REF_RECONCILIATION.json`, `BRANCH_INVENTORY.json`,
-`WORKTREE_STATES.json`, and the other audit inventories are dated snapshots of
-their stated observation window, not live inventories. The full findings,
-scope, and remaining main-integration work are in
-`rebaseline/2026-11-17/REBASELINE_CONTROL.md` and the linked audit documents.
+The operator authorized a full evidence-based program rebaseline across source,
+architecture, plans, reports, commits and branches. Current execution order is
+in `../PROJECT_PLAN.md`. The bounded REBASELINE and MAIN_CONSOLIDATION work is
+recorded closed; `REBASELINE_FOLLOWUP` is the active sprint for the supplemental
+branch/PR audit, next-work queue and status reconciliation. The latest audit snapshot is
+`rebaseline/2026-11-20_BRANCH_AUDIT.md`; current worktree path/status data is in
+`rebaseline/2026-11-20_WORKTREE_CENSUS.json`, and the source-restricted
+decision-log comparison is in
+`rebaseline/2026-11-20_DECISION_LOG_DIFF_DIGESTS.json`. These records state
+evidence limits and do not imply that every unique branch delta has been
+semantically cleared.
+
+The initial project-document reconciliation records 107/112 baseline tasks as
+`ACCEPTED_BOUNDED`; the remaining five product obligations are FIN-S1.2 and
+R2-US-047 (`BLOCKED_EXTERNAL`), plus S16-04, S17-06 and S19-03 (`PARTIAL`). The
+active `REBASELINE_FOLLOWUP` sprint adds six audit tasks, so the live registry
+has 118 tasks; none of these six is project-accepted yet. As of 2026-11-21,
+native harness completion is 55/118 and project-document acceptance is 107/118.
+Restricted to the original 112-task baseline these are 55/112 harness-done and
+107/112 project-accepted; keep the two measures distinct.
+Historical bounded acceptance does not establish runtime, product or production
+readiness.
 
 The live task ledger is local shared state resolved through the Git common
 directory; `rebaseline/LEDGER_LIFECYCLE.md` documents its bootstrap and backup
 rules. `rebaseline/LEDGER_BASELINE.json` is a dated recovery seed, not a live
-ledger or current approval. The original 104 product-task positions and the
-48 bounded-acceptance records from the initial audit remain preserved; restored
-R2-US-002's explicit story adjudication brings the current original-program count
-to49. Rebaseline audit and consolidation tasks remain separate work. PR59 merged
-the full-candidate GPT-PM-approved561256d into main3667b0e; closeout evidence is
-`rebaseline/2026-11-17/CONSOLIDATION_CLOSEOUT.md`. The global live report is
+ledger or current approval. The 104 original task positions and all historical
+acceptance records remain preserved in the 112-task baseline; the six current
+rebaseline follow-up tasks are additional and separately identified.
+PR59's approved merge and bounded consolidation closeout remain documented in
+`rebaseline/2026-11-17/CONSOLIDATION_CLOSEOUT.md`; open PRs #41 and #42 are not
+safe whole-tree merge candidates. The global live report is
 `../reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html`.
 
 This evidence reconciliation supersedes stale implementation-progress summaries,

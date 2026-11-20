@@ -332,6 +332,12 @@ Ferma production adapter:
 This does not defer Ferma's already accepted P5-B test/oracle role; P5-B is active committed test
 scope, not a production Ferma adapter.
 
+## Current program disposition — 2026-11-21
+
+The roadmap's engineering slices through S20 are recorded as bounded sprint outcomes in `PROJECT_PLAN.md`; `REBASELINE_FOLLOWUP` is active with six audit tasks. Current project-document acceptance is 107/118 tasks (107/112 in the original baseline); native harness completion is separately 55/118. The follow-up tasks remain unaccepted pending sprint verification. Product residuals are `FIN-S1.2` (external period-status source deferred until final project verification), `R2-US-047` (external provider and approved scope not selected), `S16-04` (writer route qualification partial), `S17-06` (N=30/external-receipt qualification partial), and `S19-03` (exact-head I1–I15 runtime/G8 evidence partial).
+
+These engineering outcomes do not satisfy the release gates. Release 2 remains `NO_GO`, production authorization is `NONE`, and G8 has not passed. P8's remaining observability/operations qualification and P9's real pilot, accounting reconciliation, and release-owner evidence remain required under `DEFINITION_OF_DONE.md`; no production deployment or 1C write is claimed.
+
 ## Dependency graph
 
 ```text
