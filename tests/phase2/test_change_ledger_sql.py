@@ -20,7 +20,7 @@ import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope, fixture_digest_for
 from _ed25519_fixtures import pub_hex, sign_hex
-from _pg_harness import disposable_cluster, fails, require_dsn, throwaway_db
+from _pg_harness import MIGRATIONS, apply_files, disposable_cluster, fails, require_dsn, throwaway_db
 
 from business_ai_gateway.phase2.change import canonical_json
 from business_ai_gateway.phase2.change_ledger._common import Scope
@@ -406,6 +406,40 @@ async def led():
         dsn = require_dsn()
         async with throwaway_db(dsn, seed=False) as db:
             await _setup(db.conn)
+            yield L(db)
+
+
+@pytest.fixture
+async def led_m039():
+    """Own a throwaway database with the complete current migration chain through 039."""
+    if os.environ.get("ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE") != "1":
+        pytest.fail("led_m039 requires ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1")
+    if os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS") != "1":
+        pytest.fail("led_m039 requires ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1")
+    if os.environ.get("ERP_PHASE2_TEST_DSN"):
+        pytest.fail("led_m039 refuses inherited ERP_PHASE2_TEST_DSN")
+
+    async with disposable_cluster() as (dsn, _container_name, _owner_token):
+        async with throwaway_db(dsn, migrate=False, seed=False) as db:
+            db.conn = await db.connect()
+            await apply_files(db.conn)  # shared base list is deliberately fixed at 001–018
+            post_base = sorted(
+                path for path in MIGRATIONS.glob("*.sql")
+                if path.name[:3].isdigit() and 19 <= int(path.name[:3]) <= 39
+            )
+            if [int(path.name[:3]) for path in post_base] != list(range(19, 40)):
+                raise AssertionError("expected the complete ordered Phase 2 migration chain 019–039")
+            for path in post_base:
+                raw = path.read_bytes()
+                await db.conn.execute("SELECT set_config('living.migration_checksum',$1,false)",
+                                      hashlib.sha256(raw).hexdigest())
+                await db.conn.execute(raw.decode("utf-8"))
+            await _setup(db.conn)
+            await db.conn.execute(
+                "INSERT INTO change_ledger.lifecycle_fences(tenant_id,company_id,state,epoch,reason) "
+                "VALUES($1,$2,'LEGACY',0,'TEST_FIXTURE') ON CONFLICT(tenant_id,company_id) DO NOTHING",
+                T, C,
+            )
             yield L(db)
 
 
@@ -1008,7 +1042,8 @@ async def test_begin_apply_then_permit_needs_a_real_readback_checkpoint_covering
     await fails("TICKET_SUPERSEDED", led.call("clt_wrk", "issue_permit", cid, gen + 1))
 
 
-async def test_approver_epoch_rotation_after_begin_apply_refuses_permit(led):
+async def test_m039_approver_epoch_rotation_after_begin_apply_refuses_permit(led_m039):
+    led = led_m039
     cid, tok, _call_id = await led.applying(request_id="epoch-before-permit", base="base-2")
     gen = tok["generation"]
 
@@ -1027,7 +1062,8 @@ async def test_approver_epoch_rotation_after_begin_apply_refuses_permit(led):
         "AND event_type IN ('PERMITTED','DISPATCHED')", cid) == 0
 
 
-async def test_approver_epoch_rotation_after_permit_refuses_dispatch(led):
+async def test_m039_approver_epoch_rotation_after_permit_refuses_dispatch(led_m039):
+    led = led_m039
     cid, tok, call_id, _permit = await led.permitted(request_id="epoch-after-permit", base="base-3")
     gen = tok["generation"]
     await led.verify_dispatch(cid, gen)
