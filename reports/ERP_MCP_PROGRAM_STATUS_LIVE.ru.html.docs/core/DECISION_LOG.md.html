@@ -3407,4 +3407,8 @@ Reconciled project-document task states from the current `PROJECT_PLAN.md`, supp
 ## RBF-05 — frozen S16 proposal admission source review
 
 Reviewed the current S16 `ChangeService.propose` guard, frozen operation set, and existing named boundary regression without executing tests. The facade rejects malformed or non-frozen kinds before requester authentication, registry reads, nonce issuance, proposal-port invocation, or storage; the frozen set remains `CREATE_DRAFT`, `POST`, and `UNPOST`, while generic S12 `UPDATE_DRAFT` parsing remains compatible. `test_non_frozen_or_malformed_kind_fails_before_registry_or_side_effects` includes both service and fake-port entry cases and asserts zero calls/effects. Test execution remains assigned to the sprint verification window; no physical writer was enabled.
+
+## RBF-06 — S12 approval-epoch effect-boundary regression cases
+
+Added two test-only cases to `tests/phase2/test_change_ledger_sql.py` against the current migration chain: approval-principal epoch rotation after `begin_apply` and before permit must refuse with `EPOCH_CHANGED` while the permit remains `NOT_PERMITTED`; rotation after dispatch verification and permit issuance must refuse `record_call` with `EPOCH_CHANGED`, preserving `PERMITTED` and emitting no `DISPATCHED` event. The assigned functional-test-reviewer authored these cases. The named SQL module has not yet run; no migration or production source changed.
 </pre></main></body></html>

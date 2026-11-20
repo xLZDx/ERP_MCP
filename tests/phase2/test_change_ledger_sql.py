@@ -1008,6 +1008,42 @@ async def test_begin_apply_then_permit_needs_a_real_readback_checkpoint_covering
     await fails("TICKET_SUPERSEDED", led.call("clt_wrk", "issue_permit", cid, gen + 1))
 
 
+async def test_approver_epoch_rotation_after_begin_apply_refuses_permit(led):
+    cid, tok, _call_id = await led.applying(request_id="epoch-before-permit", base="base-2")
+    gen = tok["generation"]
+
+    # A current REAL read-back checkpoint covers APPLYING and the epoch rotation.
+    await led.call("clt_dave", "bump_epoch", "principal:clt_bob")
+    await led.checkpoint()
+    await fails("EPOCH_CHANGED", led.call("clt_wrk", "issue_permit", cid, gen))
+
+    record = await led.rec(cid)
+    permit_state = await led.conn.fetchval(
+        "SELECT state FROM change_ledger.dispatch_permits WHERE change_id=$1 AND generation=$2", cid, gen)
+    assert record["dispatch_state"] == "NOT_PERMITTED"
+    assert permit_state == "NOT_PERMITTED"
+    assert await led.conn.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE change_id=$1 "
+        "AND event_type IN ('PERMITTED','DISPATCHED')", cid) == 0
+
+
+async def test_approver_epoch_rotation_after_permit_refuses_dispatch(led):
+    cid, tok, call_id, _permit = await led.permitted(request_id="epoch-after-permit", base="base-3")
+    gen = tok["generation"]
+    await led.verify_dispatch(cid, gen)
+
+    await led.call("clt_dave", "bump_epoch", "principal:clt_bob")
+    await fails("EPOCH_CHANGED", led.call("clt_wri", "record_call", cid, gen, call_id))
+
+    record = await led.rec(cid)
+    permit_state = await led.conn.fetchval(
+        "SELECT state FROM change_ledger.dispatch_permits WHERE change_id=$1 AND generation=$2", cid, gen)
+    assert record["dispatch_state"] == "PERMITTED"
+    assert permit_state == "PERMITTED"
+    assert await led.conn.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE change_id=$1 AND event_type='DISPATCHED'", cid) == 0
+
+
 # ============================================================================ T6c / dispatch CAS
 async def test_cancel_and_record_call_are_mutually_exclusive_sequentially(led):
     cid, tok, call_id, _ = await led.permitted(request_id="a", base="base-1")
