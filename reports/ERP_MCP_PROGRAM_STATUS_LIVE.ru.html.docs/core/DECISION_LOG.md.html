@@ -3403,4 +3403,8 @@ Converted the confirmed product residuals and branch/document audit findings int
 ## RBF-04 — current ledger and program report reconciliation
 
 Reconciled project-document task states from the current `PROJECT_PLAN.md`, supporting evidence documents and 102 Git refs without changing harness verify/review fields. The live registry contains 118 task IDs: 107 are project-accepted in bounded scope, 55 are native harness-done, two remain externally blocked, and the remaining product follow-ups are partial or not started. Regenerated the canonical Russian live report and its browsable document copies from `.harness-tools/report.py`; historical dated reports remain untouched. No tests, builds, CI, migrations, runtime calls, merges, pushes or deletions were performed.
+
+## RBF-05 — frozen S16 proposal admission source review
+
+Reviewed the current S16 `ChangeService.propose` guard, frozen operation set, and existing named boundary regression without executing tests. The facade rejects malformed or non-frozen kinds before requester authentication, registry reads, nonce issuance, proposal-port invocation, or storage; the frozen set remains `CREATE_DRAFT`, `POST`, and `UNPOST`, while generic S12 `UPDATE_DRAFT` parsing remains compatible. `test_non_frozen_or_malformed_kind_fails_before_registry_or_side_effects` includes both service and fake-port entry cases and asserts zero calls/effects. Test execution remains assigned to the sprint verification window; no physical writer was enabled.
 </pre></main></body></html>
