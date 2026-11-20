@@ -112,3 +112,17 @@ Output: 12 passed, 27 deselected in 0.61s
 Exit code: 0
 Coverage: fixed registered-tool allowlist equality; exact bounded duration behavior; success, application exception, cancellation, metrics failure isolation; metadata/timer/correlation-start pre-dispatch faults; non-tool messages; runtime metrics wiring. Fault-injection assertions preserve the original return, ValueError instance, and cancellation, and confirm correlation cleanup; no exception text is exposed in rendered metrics.
 NOT_RUN: full test files and suite, per task scope.
+
+----- Reviewer-requested post-commit metadata fallback regression (2026-11-20) -----
+Exact tested HEAD: 636aaf6f6b0ab7eb69010cb4847d61885be80167
+Command: .\.venv\Scripts\python.exe -m pytest tests/test_observability.py::test_tool_call_middleware_pre_dispatch_fault_still_calls_application tests/test_observability.py::test_tool_call_middleware_duration_metric_failure_preserves_call_outcome -q
+Output: ...... [100%]; 6 passed in 0.62s
+Exit code: 0
+Scope: metadata access failure dispatched the call, recorded exactly one bounded tool="other" duration sample, and cleared correlation; metrics failure preserved success, application exception, and cancellation. No full files or suite run.
+
+----- S20-01 isolated metadata/correlation fault regression -----
+Exact tested HEAD: dafd42a186a7919b17048a53d55d687a8429050c
+Command: .\.venv\Scripts\python.exe -m pytest tests/test_observability.py::test_tool_call_middleware_pre_dispatch_fault_still_calls_application tests/test_observability.py::test_tool_call_middleware_duration_metric_failure_preserves_call_outcome -q
+Output: 6 passed in 0.51s
+Exit code: 0
+Coverage: params metadata failure still dispatches and emits exactly one bounded tool=other duration; correlation initialization failure still dispatches without a correlation ID and emits one source_health duration; metrics failure preserves application success, ValueError, and cancellation and correlation cleanup is asserted.
