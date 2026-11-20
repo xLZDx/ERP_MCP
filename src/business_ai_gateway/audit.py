@@ -5,6 +5,7 @@ import hashlib
 import json
 import time
 import uuid
+from collections.abc import Mapping
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Any
@@ -35,14 +36,56 @@ def current_request_correlation_id() -> uuid.UUID | None:
 
 
 class AuditCorrelationMiddleware:
-    """Give every inbound MCP message one isolated audit correlation ID."""
+    """Correlate inbound MCP messages and measure bounded tool-call duration."""
+
+    def __init__(self, metrics: Any | None = None):
+        self.metrics = metrics
 
     async def __call__(self, ctx, call_next):
-        token, _ = begin_request_correlation_id()
+        token = None
+        measures_tool_call = False
+        tool = None
+        started = None
         try:
-            return await call_next(ctx)
+            try:
+                method = getattr(ctx, "method", None)
+                measures_tool_call = method == "tools/call"
+                if measures_tool_call:
+                    started = time.perf_counter()
+                    try:
+                        params = getattr(ctx, "params", None)
+                        tool = params.get("name") if isinstance(params, Mapping) else None
+                    except Exception:
+                        # Keep the known tool-call timing and bound an unavailable name to "other".
+                        tool = None
+            except Exception:
+                # Telemetry metadata is optional and must not prevent the MCP call.
+                measures_tool_call = False
+                started = None
+
+            try:
+                token, _ = begin_request_correlation_id()
+            except Exception:
+                # Correlation is optional; continue dispatching and retain tool timing.
+                token = None
+
+            try:
+                return await call_next(ctx)
+            finally:
+                if measures_tool_call and self.metrics is not None and started is not None:
+                    try:
+                        elapsed = time.perf_counter() - started
+                        self.metrics.record_operation_duration(tool, elapsed)
+                    except (Exception, asyncio.CancelledError):
+                        # A metrics failure cannot replace the MCP result, error, or cancellation.
+                        pass
         finally:
-            end_request_correlation_id(token)
+            if token is not None:
+                try:
+                    end_request_correlation_id(token)
+                except (Exception, asyncio.CancelledError):
+                    # Preserve the MCP outcome if correlation cleanup itself fails.
+                    pass
 
 
 def query_fingerprint(query: dict[str, Any] | None) -> str | None:

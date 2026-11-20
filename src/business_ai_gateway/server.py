@@ -216,7 +216,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             validate_token_resource=True,
         )
 
-    kwargs["middleware"] = [AuditCorrelationMiddleware()]
+    kwargs["middleware"] = [AuditCorrelationMiddleware(getattr(runtime, "metrics", None))]
     mcp = StructuredErrorMCPServer(
         "ERP_MCP — 1C Production",
         title="ERP_MCP — secure read-only 1C/ERP gateway",

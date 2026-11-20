@@ -29,11 +29,13 @@ class OperationalMetrics:
     TOOLS = frozenset({
         "system_status", "sources_list", "source_health", "rsv_metadata", "companies_list",
         "onec_capabilities", "onec_metadata_summary", "onec_find_entities",
-        "accounting_balance_and_turnovers", "accounting_balance_by_analytics",
+        "onec_metadata_schema_detail", "onec_find_entities_with_property_types",
+        "accounting_balance_and_turnovers", "accounting_balance_and_turnovers_by_account",
+        "accounting_balance_by_analytics",
         "inventory_balance", "inventory_movements",
         "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
         "payable_balance", "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
-        "sales_documents", "purchase_documents", "onec_read", "audit",
+        "sales_documents", "purchase_documents", "purchase_documents_filtered", "onec_read", "audit",
         "external_evidence_manifest", "counterparty_find",
     })  # fixed registered MCP names plus the reserved internal audit-append operation
     DEPENDENCIES = frozenset(
@@ -42,6 +44,7 @@ class OperationalMetrics:
 
     def __init__(self) -> None:
         self._operations: dict[tuple[str, str], int] = defaultdict(int)
+        self._operation_duration: dict[str, tuple[int, float]] = defaultdict(lambda: (0, 0.0))
         self._dependencies: dict[tuple[str, str], int] = defaultdict(int)
         self._dependency_duration: dict[tuple[str, str], tuple[int, float]] = defaultdict(
             lambda: (0, 0.0)
@@ -51,6 +54,17 @@ class OperationalMetrics:
         safe_tool = tool if isinstance(tool, str) and tool in self.TOOLS else "other"
         safe_outcome = outcome if isinstance(outcome, str) and outcome in self.OUTCOMES else "error"
         self._operations[(safe_tool, safe_outcome)] += 1
+
+    def record_operation_duration(self, tool: str, elapsed_seconds: float) -> None:
+        safe_tool = tool if isinstance(tool, str) and tool in self.TOOLS else "other"
+        if type(elapsed_seconds) is int:
+            elapsed = 3600.0 if elapsed_seconds >= 3600 else float(max(0, elapsed_seconds))
+        elif type(elapsed_seconds) is float and math.isfinite(elapsed_seconds):
+            elapsed = min(3600.0, max(0.0, elapsed_seconds))
+        else:
+            elapsed = 0.0
+        count, total = self._operation_duration[safe_tool]
+        self._operation_duration[safe_tool] = (count + 1, min(1e300, total + elapsed))
 
     def record_dependency(self, dependency: str, outcome: str, elapsed_seconds: float = 0.0) -> None:
         safe_dependency = dependency if isinstance(dependency, str) and dependency in self.DEPENDENCIES else "other"
@@ -72,6 +86,14 @@ class OperationalMetrics:
             lines.append(
                 f'erp_mcp_operations_total{{tool="{tool}",outcome="{outcome}"}} {count}'
             )
+        lines.extend([
+            "# HELP erp_mcp_operation_duration_seconds MCP tool-call duration by bounded tool name.",
+            "# TYPE erp_mcp_operation_duration_seconds summary",
+        ])
+        for tool, (count, total) in sorted(self._operation_duration.items()):
+            labels = f'tool="{tool}"'
+            lines.append(f'erp_mcp_operation_duration_seconds_sum{{{labels}}} {total:.9f}')
+            lines.append(f'erp_mcp_operation_duration_seconds_count{{{labels}}} {count}')
         lines.extend(
             [
                 "# HELP erp_mcp_dependency_requests_total Dependency calls by bounded dependency and outcome.",

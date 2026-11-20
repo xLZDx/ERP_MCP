@@ -1,9 +1,9 @@
 ---
 project: ERP_MCP
-as_of: 2026-11-19
-active_sprint: null
+as_of: 2026-11-20
+active_sprint: S20
 scope: single_sprint
-approved_sprints: FIN, REBASELINE, MAIN_CONSOLIDATION
+approved_sprints: FIN, REBASELINE, MAIN_CONSOLIDATION, S20
 operator_approved: true
 ---
 # ERP_MCP - project plan
@@ -322,6 +322,16 @@ Goal: Release candidate and acceptance.
 | S19-05 | canary recipe | Prepare safeguards and rollback for a later separately authorized canary without executing it or implying production approval. | ACCEPTED_BOUNDED | GPT-PM approved bounded acceptance at exact HEAD `1e359e3bc6e6d86f712123b1b83590e86da72ecb`; the recipe remains non-executable, with target, company, operation, limit, window, rollback owner and signature unset. No canary ran; production authorization remains `NONE`. | Codex | S17, S18 | e464d135 |
 
 S19 bounded closeout (2026-11-19): GPT-PM returned `APPROVE` under request `678c6012-e086-4bd9-9f26-36b48c1a634c`, correlated reply `40cddbb0-4ea6-4881-b577-4ab0b1ea614a`, bound to exact HEAD `1e359e3bc6e6d86f712123b1b83590e86da72ecb`. PR #71 merged at `74527f821548297b66b6407437b06e7f896d6aeb`. S19-01/02/04/05 are accepted in bounded scope; S19-03 remains `PARTIAL`. The review noted that two uploaded evidence copies differed from manifest hashes; a read-only hash check against the committed Git blobs at the reviewed HEAD matched the manifest values. The rows remain `RECORDED_UNVERIFIED` because matching digests do not adjudicate their contents. Exact-head I1-I15 runtime evidence remains `NOT_RUN`, scenario/lane coverage `NOT_ADJUDICATED`, G8 `NOT_PASSED`, and production authorization `NONE`. No S20 sprint is currently defined in the approved roadmap; derive and document the next sprint from the existing master plan and backlog before adding its tasks to the ledger.
+
+## Sprint S20 — Bounded observability completion (P8 / D12)
+
+Goal: complete the missing operation-level observability wiring for the existing gateway, following the frozen D12 contract. This is an engineering-only slice: no new data collection, public endpoint, source/company labels, production deployment, or production-readiness claim. S19's bounded result and S17-06/S19-03 runtime residuals are unchanged. FIN-S1.2 remains deferred to final project verification.
+
+| ID | Title | Acceptance criteria | Status | Evidence | Owner | Dependency | Commits |
+|---|---|---|---|---|---|---|---|
+| S20-01 | Wire bounded MCP operation duration | AC-1 every registered MCP tool call records exactly one bounded duration aggregate under its fixed tool name; reconcile the allowlist with the registered tool inventory, including `purchase_documents_filtered`; AC-2 unknown names map to `other`; AC-3 failures/cancellation still record one duration sample and propagate unchanged; AC-4 aggregation uses bounded fixed-key count/sum and finite capped durations, never a per-call sample list; AC-5 no source/company IDs, caller input, query, result, URL, credential, or business payload is emitted as a metric label or log field; AC-6 audit append remains sole owner of tool/outcome counters and post-insert accounting; AC-7 focused functional tests falsify duplicate/missing duration observations and unsafe labels without double-counting outcomes. | IN_REVIEW | GPT-PM round 1 REVISE at `baa1b8d7` found one MAJOR: telemetry could replace MCP outcomes and metadata faults could skip cleanup. Fixes are committed at `e0da20d5`, `636aaf6f`, and `dafd42a1`; the last correction preserves duration when params or correlation initialization fail. Post-fix exact-HEAD fault selectors: 6 passed in 0.51s at `dafd42a1`; focused selectors at `e0da20d5`: 12 passed/27 deselected and allowlist 1 passed. Base/candidate comparison reproduced the same 14 broad-file failures on both snapshots. Code, Python, and silent-failure reviews returned zero findings at `dafd42a1`, and ledger verify/review are recorded. GPT-PM round 2 remains pending. Full evidence: `reports/evidence/sprints/S20_S01_FOCUSED_TESTS.txt`. | Codex | existing D12 telemetry and `OperationalMetrics` | e0da20d5, 636aaf6f, dafd42a1 |
+
+S20 is limited to the existing DoD D12 observability gap: the gateway already exposes HTTP request metrics and `OperationalMetrics` already defines a fixed MCP tool allowlist; audit append owns operation outcome counters, while S20 adds only bounded duration at MCP tool dispatch. Keep the audit append layer as the sole owner of tool/outcome counters to avoid duplicate outcomes or post-insert semantic changes. Alert delivery, source-specific runtime qualification, workload measurement, backup/restore, production deployment, pilot, G8 and production authorization are not part of this slice and remain governed by their existing gates. GPT-PM round 1 found a MAJOR fault-isolation gap. The fixes, final fault-injection run, and routed reviews are complete at source HEAD `dafd42a1`; the same 14 broad-file failures reproduced on base and candidate snapshots. Exact-head GPT-PM round 2 remains pending. No full suite, lint, typecheck, build, verify script, CI or migration is included.
 
 ## FIN-S3.2 follow-up — 2026-11-17
 

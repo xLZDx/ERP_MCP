@@ -138,6 +138,13 @@ individual duration samples at one hour to prevent overflow. HTTP status labels 
 names and tool/dependency/adapter/outcome values use fixed allowlists; unknown/free-text values
 become `other`, never raw private data.
 
+MCP tool-call duration is also exposed as the `erp_mcp_operation_duration_seconds` summary with
+only a fixed registered-tool label and aggregate sum/count. It is recorded by the shared MCP
+observation middleware on success, protocol refusal/error, and cancellation; individual call
+samples are never retained. The audit append layer remains the sole owner of tool/outcome counters,
+and the duration observer never adds a second outcome count. This is per-process engineering
+telemetry, not durable audit evidence or production qualification.
+
 Audit operation outcomes are emitted AFTER the INSERT completes, not before. Failed or cancelled
 append emits the original operation's error, reserved `tool="audit",outcome="error"` and
 `dependency="audit",outcome="error"`; failures still propagate, never substitute a successful

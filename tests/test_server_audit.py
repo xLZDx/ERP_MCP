@@ -9,6 +9,7 @@ import pytest
 from mcp.server.mcpserver.exceptions import UnexpectedToolError
 
 from business_ai_gateway.audit import AuditCorrelationMiddleware
+from business_ai_gateway.observability import OperationalMetrics
 from business_ai_gateway.semantic import SemanticMappingUnconfirmed
 from business_ai_gateway.server import build_mcp
 from business_ai_gateway.settings import Settings
@@ -41,8 +42,10 @@ def create_mcp(*, rate_limit_error=None):
     audit = RecordingAudit()
     rate_limit = SimpleNamespace(check=AsyncMock(side_effect=rate_limit_error))
     onec = SimpleNamespace(health=AsyncMock(return_value={"status": "ok"}))
+    metrics = OperationalMetrics()
     runtime = SimpleNamespace(
         audit=audit,
+        metrics=metrics,
         registry=TestRegistry(),
         rate_limit=rate_limit,
         onec=onec,
@@ -54,6 +57,22 @@ def test_mcp_registers_audit_correlation_middleware():
     mcp, _audit, _rate_limit, _onec = create_mcp()
 
     assert any(isinstance(item, AuditCorrelationMiddleware) for item in mcp.middleware)
+
+
+@pytest.mark.asyncio
+async def test_build_mcp_wires_runtime_metrics_to_tool_call_middleware():
+    mcp, _audit, _rate_limit, _onec = create_mcp()
+    middleware = next(item for item in mcp.middleware if isinstance(item, AuditCorrelationMiddleware))
+    expected_result = object()
+    ctx = SimpleNamespace(method="tools/call", params={"name": "source_health"})
+
+    async def call_next(_ctx):
+        return expected_result
+
+    assert await middleware(ctx, call_next) is expected_result
+    body = middleware.metrics.render()
+    assert 'erp_mcp_operation_duration_seconds_count{tool="source_health"} 1' in body
+    assert "erp_mcp_operations_total{" not in body
 
 
 @pytest.mark.asyncio

@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from pydantic import SecretStr
 
-from business_ai_gateway.audit import current_request_correlation_id
-from business_ai_gateway.observability import HTTPMetrics, metrics_response, trace_span
+from business_ai_gateway.audit import AuditCorrelationMiddleware, current_request_correlation_id
+from business_ai_gateway.observability import (
+    HTTPMetrics,
+    OperationalMetrics,
+    metrics_response,
+    trace_span,
+)
 
 
 @pytest.mark.asyncio
@@ -88,6 +95,216 @@ def test_operational_metrics_have_bounded_labels():
     assert 'tool="other",outcome="success"' in body
     assert 'dependency="redis",outcome="error"' in body
     assert "DO_NOT_LABEL" not in body
+
+
+def test_operation_duration_uses_fixed_tool_labels_and_bounded_aggregates():
+    metrics = OperationalMetrics()
+    for _ in range(25):
+        metrics.record_operation_duration("purchase_documents_filtered", 0.25)
+    metrics.record_operation_duration("unregistered-private-tool", 0.5)
+    metrics.record_operation_duration("source_health", 7200.0)
+    metrics.record_operation_duration("source_health", float("inf"))
+
+    body = metrics.render()
+    assert (
+        'erp_mcp_operation_duration_seconds_sum{tool="purchase_documents_filtered"} 6.250000000'
+        in body
+    )
+    assert (
+        'erp_mcp_operation_duration_seconds_count{tool="purchase_documents_filtered"} 25'
+        in body
+    )
+    assert 'erp_mcp_operation_duration_seconds_sum{tool="other"} 0.500000000' in body
+    assert 'erp_mcp_operation_duration_seconds_count{tool="other"} 1' in body
+    assert 'erp_mcp_operation_duration_seconds_sum{tool="source_health"} 3600.000000000' in body
+    assert 'erp_mcp_operation_duration_seconds_count{tool="source_health"} 2' in body
+    assert "unregistered-private-tool" not in body
+    assert len(metrics._operation_duration) == 3
+    assert all(isinstance(value, tuple) and len(value) == 2 for value in metrics._operation_duration.values())
+
+
+@pytest.mark.asyncio
+async def test_tool_call_middleware_records_one_duration_and_preserves_result(monkeypatch):
+    from business_ai_gateway import audit as audit_module
+
+    clock = iter((10.0, 10.25))
+    monkeypatch.setattr(audit_module.time, "perf_counter", lambda: next(clock))
+    metrics = OperationalMetrics()
+    middleware = AuditCorrelationMiddleware(metrics)
+    ctx = SimpleNamespace(
+        method="tools/call",
+        params={"name": "purchase_documents_filtered", "arguments": {"source_id": "private"}},
+    )
+    observed_correlation = []
+    expected_result = object()
+
+    async def call_next(_ctx):
+        observed_correlation.append(current_request_correlation_id())
+        return expected_result
+
+    assert await middleware(ctx, call_next) is expected_result
+    body = metrics.render()
+    assert observed_correlation[0] is not None
+    assert (
+        'erp_mcp_operation_duration_seconds_sum{tool="purchase_documents_filtered"} 0.250000000'
+        in body
+    )
+    assert 'erp_mcp_operation_duration_seconds_count{tool="purchase_documents_filtered"} 1' in body
+    assert "erp_mcp_operations_total{" not in body
+    assert current_request_correlation_id() is None
+
+
+@pytest.mark.asyncio
+async def test_tool_call_middleware_records_duration_when_handler_raises(monkeypatch):
+    from business_ai_gateway import audit as audit_module
+
+    clock = iter((20.0, 20.5))
+    monkeypatch.setattr(audit_module.time, "perf_counter", lambda: next(clock))
+    metrics = OperationalMetrics()
+    middleware = AuditCorrelationMiddleware(metrics)
+    ctx = SimpleNamespace(method="tools/call", params={"name": "source_health"})
+
+    async def fail(_ctx):
+        raise RuntimeError("PRIVATE-RESULT-MUST-NOT-BE-LOGGED")
+
+    with pytest.raises(RuntimeError, match="PRIVATE-RESULT-MUST-NOT-BE-LOGGED"):
+        await middleware(ctx, fail)
+
+    body = metrics.render()
+    assert 'erp_mcp_operation_duration_seconds_sum{tool="source_health"} 0.500000000' in body
+    assert 'erp_mcp_operation_duration_seconds_count{tool="source_health"} 1' in body
+    assert "PRIVATE-RESULT-MUST-NOT-BE-LOGGED" not in body
+    assert current_request_correlation_id() is None
+
+
+@pytest.mark.asyncio
+async def test_tool_call_middleware_records_duration_and_propagates_cancellation(monkeypatch):
+    from business_ai_gateway import audit as audit_module
+
+    clock = iter((30.0, 30.75))
+    monkeypatch.setattr(audit_module.time, "perf_counter", lambda: next(clock))
+    metrics = OperationalMetrics()
+    middleware = AuditCorrelationMiddleware(metrics)
+    ctx = SimpleNamespace(method="tools/call", params={"name": "source_health"})
+
+    async def cancel(_ctx):
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        await middleware(ctx, cancel)
+
+    body = metrics.render()
+    assert 'erp_mcp_operation_duration_seconds_sum{tool="source_health"} 0.750000000' in body
+    assert 'erp_mcp_operation_duration_seconds_count{tool="source_health"} 1' in body
+    assert current_request_correlation_id() is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["success", "exception", "cancelled"])
+async def test_tool_call_middleware_duration_metric_failure_preserves_call_outcome(monkeypatch, failure):
+    metrics = OperationalMetrics()
+
+    def fail_recording(*_args):
+        raise RuntimeError("METRIC-BACKEND-FAILURE")
+
+    monkeypatch.setattr(metrics, "record_operation_duration", fail_recording)
+    middleware = AuditCorrelationMiddleware(metrics)
+    ctx = SimpleNamespace(method="tools/call", params={"name": "source_health"})
+    observed = []
+    expected_result = object()
+    expected_error = ValueError("APPLICATION-FAILURE")
+
+    async def call_next(_ctx):
+        observed.append(current_request_correlation_id())
+        if failure == "exception":
+            raise expected_error
+        if failure == "cancelled":
+            raise asyncio.CancelledError
+        return expected_result
+
+    if failure == "exception":
+        with pytest.raises(ValueError) as raised:
+            await middleware(ctx, call_next)
+        assert raised.value is expected_error
+    elif failure == "cancelled":
+        with pytest.raises(asyncio.CancelledError):
+            await middleware(ctx, call_next)
+    else:
+        assert await middleware(ctx, call_next) is expected_result
+
+    assert len(observed) == 1 and observed[0] is not None
+    assert current_request_correlation_id() is None
+    assert "METRIC-BACKEND-FAILURE" not in metrics.render()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fault", ["metadata", "timing", "correlation_start"])
+async def test_tool_call_middleware_pre_dispatch_fault_still_calls_application(monkeypatch, fault):
+    from business_ai_gateway import audit as audit_module
+
+    metrics = OperationalMetrics()
+    middleware = AuditCorrelationMiddleware(metrics)
+    calls = []
+
+    class BrokenMetadata:
+        method = "tools/call"
+
+        @property
+        def params(self):
+            raise RuntimeError("PRIVATE-METADATA-FAILURE")
+
+    ctx = BrokenMetadata() if fault == "metadata" else SimpleNamespace(
+        method="tools/call", params={"name": "source_health"}
+    )
+
+    if fault == "timing":
+        monkeypatch.setattr(
+            audit_module.time,
+            "perf_counter",
+            lambda: (_ for _ in ()).throw(RuntimeError("CLOCK-FAILURE")),
+        )
+    elif fault == "correlation_start":
+        monkeypatch.setattr(
+            audit_module,
+            "begin_request_correlation_id",
+            lambda: (_ for _ in ()).throw(RuntimeError("CORRELATION-START-FAILURE")),
+        )
+
+    async def call_next(_ctx):
+        calls.append(current_request_correlation_id())
+        return "application-result"
+
+    assert await middleware(ctx, call_next) == "application-result"
+    assert len(calls) == 1
+    if fault in {"metadata", "timing"}:
+        assert calls[0] is not None
+    else:
+        assert calls[0] is None
+    assert current_request_correlation_id() is None
+    rendered = metrics.render()
+    assert "PRIVATE-METADATA-FAILURE" not in rendered
+    assert "CLOCK-FAILURE" not in rendered
+    assert "CORRELATION-START-FAILURE" not in rendered
+    if fault == "metadata":
+        assert 'erp_mcp_operation_duration_seconds_count{tool="other"} 1' in rendered
+    elif fault == "correlation_start":
+        assert 'erp_mcp_operation_duration_seconds_count{tool="source_health"} 1' in rendered
+
+
+@pytest.mark.asyncio
+async def test_non_tool_mcp_message_does_not_record_tool_duration(monkeypatch):
+    from business_ai_gateway import audit as audit_module
+
+    monkeypatch.setattr(audit_module.time, "perf_counter", lambda: 40.0)
+    metrics = OperationalMetrics()
+    middleware = AuditCorrelationMiddleware(metrics)
+    ctx = SimpleNamespace(method="tools/list", params={})
+
+    async def call_next(_ctx):
+        return {"tools": []}
+
+    await middleware(ctx, call_next)
+    assert "erp_mcp_operation_duration_seconds_sum" not in metrics.render()
 
 
 @pytest.mark.asyncio

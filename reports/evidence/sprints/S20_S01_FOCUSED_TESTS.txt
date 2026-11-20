@@ -1,0 +1,128 @@
+S20-01 focused functional evidence
+Command:
+& 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_observability.py tests/test_server_audit.py -q -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime"
+Prior full named-file run (separate earlier run): 14 failed, 19 passed in 12.29s. Failed node IDs: tests/test_server_audit.py::test_account_turnovers_uses_confirmed_mapping_and_enforces_company_scope; tests/test_server_audit.py::test_account_turnovers_unconfirmed_mapping_is_audited_and_not_dispatched; tests/test_server_audit.py::test_sales_documents_uses_only_confirmed_profile_entity_and_company_filter; tests/test_server_audit.py::test_inventory_balance_uses_exact_profile_and_point_in_time_company_condition; tests/test_server_audit.py::test_inventory_movements_uses_live_entity_and_company_timezone_profile; tests/test_server_audit.py::test_inventory_movements_denies_entity_absent_from_live_metadata; tests/test_server_audit.py::test_accounting_posting_rows_requires_live_entity_and_uses_profile_projection; tests/test_server_audit.py::test_unconfirmed_inventory_profile_is_audited_without_register_dispatch; tests/test_server_audit.py::test_cash_movements_uses_exact_profile_and_live_metadata; tests/test_server_audit.py::test_bank_balance_uses_only_confirmed_profile_and_exact_source_register; tests/test_server_audit.py::test_settlement_balance_uses_company_scoped_confirmed_mapping[receivable_balance-receivable.balance-AccumulationRegister_TestReceivables]; tests/test_server_audit.py::test_settlement_balance_uses_company_scoped_confirmed_mapping[payable_balance-payable.balance-AccumulationRegister_TestPayables]; tests/test_server_audit.py::test_unconfirmed_settlement_mapping_is_denied_before_register_read[receivable_balance-receivable.balance]; tests/test_server_audit.py::test_unconfirmed_settlement_mapping_is_denied_before_register_read[payable_balance-payable.balance].
+----- Current focused run raw output -----
+......                                                                   [100%]
+6 passed, 27 deselected in 1.30s
+Exit code: 0
+Attribution note: The 14 failures in the earlier full named-file run were observed on this working tree; no prior-head baseline was run, so their relation to this diff is unverified.
+----- Additional registered-tool allowlist contract test -----
+& 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit -q
+F                                                                        [100%]
+================================== FAILURES ===================================
+__ test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit ___
+
+    def test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit():
+        source = Path('src/business_ai_gateway/server.py').read_text(encoding='utf-8')
+        names = {node.name for node in ast.walk(ast.parse(source))
+                 if isinstance(node, ast.AsyncFunctionDef) and any(
+                     isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute)
+                     and isinstance(decorator.func.value, ast.Name) and decorator.func.value.id == 'mcp'
+                     and decorator.func.attr == 'tool' for decorator in node.decorator_list)}
+>       assert OperationalMetrics.TOOLS == names | {'audit'}
+E       AssertionError: assert frozenset({'a...ements', ...}) == {'accounting_...balance', ...}
+E
+E         Extra items in the right set:
+E         'accounting_balance_and_turnovers_by_account'
+E         'onec_metadata_schema_detail'
+E         'onec_find_entities_with_property_types'
+E         Use -v to get more diff
+
+tests\test_audit_metric_contract.py:35: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit
+1 failed in 2.26s
+Exit code: 1
+----- Rerun after allowlist source correction -----
+Command 1: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit -q
+.                                                                        [100%]
+1 passed in 0.87s
+Exit code: 0
+Command 2: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_observability.py tests/test_server_audit.py -q -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime"
+......                                                                   [100%]
+6 passed, 27 deselected in 1.06s
+Exit code: 0
+----- Verification at committed HEAD 5eb9b7a94ced6f8c95067e3563e301abd42da72d -----
+Command 1: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit -q
+.                                                                        [100%]
+1 passed in 1.14s
+Exit code: 0
+Command 2: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_observability.py tests/test_server_audit.py -q -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime"
+......                                                                   [100%]
+6 passed, 27 deselected in 1.56s
+Exit code: 0
+----- S20-01 fault-injection rerun (2026-11-20) -----
+Initial system-Python attempt (environment diagnostic; not evidence):
+Command: $env:PYTHONPATH='.'; python -m pytest tests/test_observability.py::test_tool_call_middleware_duration_metric_failure_preserves_call_outcome tests/test_observability.py::test_tool_call_middleware_pre_dispatch_fault_still_calls_application tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit tests/test_observability.py tests/test_server_audit.py -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime or test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit"
+Output: ImportError while loading tests/conftest.py: cannot import name 'MCPServer' from 'mcp.server' (C:\Users\koros\AppData\Roaming\Python\Python314\site-packages\mcp\server\__init__.py).
+Exit code: 1
+Initial venv new-node run before correcting one test expectation:
+Command: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_observability.py::test_tool_call_middleware_duration_metric_failure_preserves_call_outcome tests/test_observability.py::test_tool_call_middleware_pre_dispatch_fault_still_calls_application -q
+Output: ....F. [100%]; timing case expected correlation to be absent inside call_next, but the middleware had already acquired a token. 1 failed, 5 passed in 1.84s. Test expectation corrected; source unchanged.
+Corrected new-node run:
+Command: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_observability.py::test_tool_call_middleware_duration_metric_failure_preserves_call_outcome tests/test_observability.py::test_tool_call_middleware_pre_dispatch_fault_still_calls_application -q
+Output: ...... [100%]; 6 passed in 0.51s.
+Registered-tool allowlist selector:
+Command: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit -q
+Output: . [100%]; 1 passed in 0.34s.
+Focused observability/server-audit selectors, including pre-dispatch fault tests:
+Command: & 'D:\Repo\ERP_MCP\.venv\Scripts\python.exe' -m pytest tests/test_observability.py tests/test_server_audit.py -q -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime or pre_dispatch_fault"
+Output: ............ [100%]; 12 passed, 27 deselected in 1.66s.
+
+----- GPT-PM round-1 and base/candidate reconciliation -----
+PM request: f7a02c1e-91d8-4a2c-a510-19e40dd20f47
+PM candidate HEAD: baa1b8d7ed46337984093e62dc0f2ffe87d88320
+PM verdict: REVISE; 1 MAJOR, instrumentation setup/recording failures could change call_next outcome or prevent correlation cleanup.
+
+Fault-isolation regression run (project .venv):
+- New fault-injection nodes: 6 passed in 0.51s, exit 0.
+- Exact registered-tool allowlist node: 1 passed in 0.34s, exit 0.
+- Focused observability/server-audit selectors including new pre-dispatch faults: 12 passed, 27 deselected in 1.66s, exit 0.
+- Initial system-Python attempt failed importing MCPServer; no tests ran with that interpreter. Corrected to the project .venv.
+- First new-node run: 5 passed, 1 failed in 1.84s because the test incorrectly expected no correlation ID during call_next after a clock fault. Corrected only the assertion; rerun above passed.
+
+Attribution rerun requested by GPT-PM, limited to the same two named files:
+Base snapshot: D:\tmp\S20_BASE_7cea4dea_20261120, source HEAD 7cea4dea18193d12a7514081aca5954f4fb19e0d, using project venv and base src via PYTHONPATH. Result: exit 1, 14 failed, 13 passed in 7.36s.
+Candidate: D:\Repo\ERP_MCP, before PM-fix commit. Result: exit 1, 14 failed, 25 passed in 6.95s.
+The same 14 node IDs failed on both snapshots; both logs show AttributeError and UnexpectedToolError / outcome error:
+- test_account_turnovers_uses_confirmed_mapping_and_enforces_company_scope
+- test_account_turnovers_unconfirmed_mapping_is_audited_and_not_dispatched
+- test_sales_documents_uses_only_confirmed_profile_entity_and_company_filter
+- test_inventory_balance_uses_exact_profile_and_point_in_time_company_condition
+- test_inventory_movements_uses_live_entity_and_company_timezone_profile
+- test_inventory_movements_denies_entity_absent_from_live_metadata
+- test_accounting_posting_rows_requires_live_entity_and_uses_profile_projection
+- test_unconfirmed_inventory_profile_is_audited_without_register_dispatch
+- test_cash_movements_uses_exact_profile_and_live_metadata
+- test_bank_balance_uses_only_confirmed_profile_and_exact_source_register
+- test_settlement_balance_uses_company_scoped_confirmed_mapping[receivable_balance-receivable.balance-AccumulationRegister_TestReceivables]
+- test_settlement_balance_uses_company_scoped_confirmed_mapping[payable_balance-payable.balance-AccumulationRegister_TestPayables]
+- test_unconfirmed_settlement_mapping_is_denied_before_register_read[receivable_balance-receivable.balance]
+- test_unconfirmed_settlement_mapping_is_denied_before_register_read[payable_balance-payable.balance]
+Conclusion: the 14 failing test node IDs reproduce on both base and candidate; no claim is made that they are pre-existing beyond that comparison. Candidate adds 12 passing cases.
+
+----- Post-commit S20-01 functional verification (2026-11-20) -----
+Exact tested HEAD: e0da20d59629e2de179217174dc9796fb68df91c
+Command 1: & '.venv\Scripts\python.exe' -m pytest tests/test_audit_metric_contract.py::test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit -q
+Output: 1 passed in 0.31s
+Exit code: 0
+Command 2: & '.venv\Scripts\python.exe' -m pytest tests/test_observability.py tests/test_server_audit.py -q -k "operation_duration or tool_call_middleware or non_tool_mcp or build_mcp_wires_runtime or pre_dispatch_fault"
+Output: 12 passed, 27 deselected in 0.61s
+Exit code: 0
+Coverage: fixed registered-tool allowlist equality; exact bounded duration behavior; success, application exception, cancellation, metrics failure isolation; metadata/timer/correlation-start pre-dispatch faults; non-tool messages; runtime metrics wiring. Fault-injection assertions preserve the original return, ValueError instance, and cancellation, and confirm correlation cleanup; no exception text is exposed in rendered metrics.
+NOT_RUN: full test files and suite, per task scope.
+
+----- Reviewer-requested post-commit metadata fallback regression (2026-11-20) -----
+Exact tested HEAD: 636aaf6f6b0ab7eb69010cb4847d61885be80167
+Command: .\.venv\Scripts\python.exe -m pytest tests/test_observability.py::test_tool_call_middleware_pre_dispatch_fault_still_calls_application tests/test_observability.py::test_tool_call_middleware_duration_metric_failure_preserves_call_outcome -q
+Output: ...... [100%]; 6 passed in 0.62s
+Exit code: 0
+Scope: metadata access failure dispatched the call, recorded exactly one bounded tool="other" duration sample, and cleared correlation; metrics failure preserved success, application exception, and cancellation. No full files or suite run.
+
+----- S20-01 isolated metadata/correlation fault regression -----
+Exact tested HEAD: dafd42a186a7919b17048a53d55d687a8429050c
+Command: .\.venv\Scripts\python.exe -m pytest tests/test_observability.py::test_tool_call_middleware_pre_dispatch_fault_still_calls_application tests/test_observability.py::test_tool_call_middleware_duration_metric_failure_preserves_call_outcome -q
+Output: 6 passed in 0.51s
+Exit code: 0
+Coverage: params metadata failure still dispatches and emits exactly one bounded tool=other duration; correlation initialization failure still dispatches without a correlation ID and emits one source_health duration; metrics failure preserves application success, ValueError, and cancellation and correlation cleanup is asserted.
