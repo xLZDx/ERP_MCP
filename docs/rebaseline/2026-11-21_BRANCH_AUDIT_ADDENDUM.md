@@ -16,6 +16,8 @@ This addendum refreshes the 2026-11-20 branch audit after the RBF follow-up work
 
 The 350 path/status tuples in the first 11/21 scan were a subset of the 370 tuples from the 11/20 audited snapshot (zero additions, 20 removals). The five paths added by this addendum scan are its own root audit updates, so no new non-root dirty content appeared between scans. The prior audit's per-tree and per-candidate mapping remains applicable to all preserved non-root dirty content; the three operator-owned root entries are explicitly preserved above.
 
+The preserved root workflow digest line matches candidate commit `ac97a979f814832fa2af8b22eda1e3a6f9480689`. Its sidecar Dockerfile runtime pin is already present on current `origin/main`; its five TC001 test-file changes only reorder imports. The single workflow config disposition remains as additional queue order 22. The untracked S10-named manifest is resolved as the historical S11 receipt-bound artifact by the exact hash/blob crosswalk in branch-audit review 14; it is not the distinct S10 candidate manifest and does not alter PR #65's accepted source line.
+
 ## Pull requests checked on 2026-11-21
 
 - PR #41: `OPEN`, `merged=false`, `mergeable=false`; base `main` at `db30f968728c13ddabad6d6b11d8a9b03592ca63`, head `codex/erp-mcp-autonomous-2026-10-21` at `900a3d060c648b9a809a6b7094adb430fb60f0bd`.
