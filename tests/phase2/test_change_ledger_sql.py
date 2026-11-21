@@ -1068,12 +1068,12 @@ async def test_m039_approver_epoch_rotation_after_begin_apply_refuses_permit(led
     gen = tok["generation"]
 
     await led.call("clt_dave", "bump_epoch", "principal:clt_bob")
-    before = await _m039_effect_snapshot(led, cid, gen)
+    before = await _m039_effect_snapshot(led, cid)
     with pytest.raises(LedgerError) as refusal:
         await _m039_issue_permit(led, cid, tok, call_id)
     assert refusal.value.code == "EPOCH_CHANGED"
 
-    after = await _m039_effect_snapshot(led, cid, gen)
+    after = await _m039_effect_snapshot(led, cid)
     assert after == before
     record, permits, events = after
     permit = next((row for row in permits if row["generation"] == gen), None)
@@ -1100,7 +1100,7 @@ async def test_m039_approver_epoch_rotation_after_permit_refuses_dispatch(led_m0
     ) is True
 
     await led.call("clt_dave", "bump_epoch", "principal:clt_bob")
-    before = await _m039_effect_snapshot(led, cid, gen)
+    before = await _m039_effect_snapshot(led, cid)
     identity = await _m039_admission_identity(led, cid, call_id)
     with pytest.raises(asyncpg.PostgresError, match="EPOCH_CHANGED"):
         await _m039_private_call(
@@ -1111,7 +1111,7 @@ async def test_m039_approver_epoch_rotation_after_permit_refuses_dispatch(led_m0
             json.dumps(identity), instance_id, service_epoch, scope=(T, C),
         )
 
-    after = await _m039_effect_snapshot(led, cid, gen)
+    after = await _m039_effect_snapshot(led, cid)
     assert after == before
     record, permits, events = after
     permit = next((row for row in permits if row["generation"] == gen), None)
@@ -1121,7 +1121,7 @@ async def test_m039_approver_epoch_rotation_after_permit_refuses_dispatch(led_m0
     assert not any(e["event_type"] == "DISPATCHED" for e in events)
 
 
-async def _m039_effect_snapshot(led, cid, gen):
+async def _m039_effect_snapshot(led, cid):
     """Capture the whole affected record, permit, and ordered event history around a refused effect."""
     record = dict(await led.rec(cid))
     permits = await led.conn.fetch(

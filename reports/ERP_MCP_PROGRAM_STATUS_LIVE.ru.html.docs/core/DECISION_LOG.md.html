@@ -3449,4 +3449,8 @@ Captured `docs/rebaseline/2026-11-21_REF_CENSUS.json` from `git for-each-ref ref
 ## 2026-11-21 — RBF-02 root-residue disposition and queue handoff
 
 Corrected the root-path table in `docs/rebaseline/2026-11-20_BRANCH_AUDIT.md`: the current untracked S10-named manifest is the distinct historical S11 receipt artifact whose exact hash is already cross-referenced to its receipt and historical blob; it is not the different S10 candidate manifest. Preserved the operator-owned bytes and `-text` rule. The operator&#x27;s dirty workflow digest line matches candidate commit `ac97a979`; the adapter Dockerfile pin is already current and five candidate test-file changes only reorder imports. The one-line config disposition is now additional queue order 22. No candidate was cherry-picked, and no CI or test was run for this disposition.
+
+## 2026-11-21 — RBF-06 whole-generation snapshot helper clarification
+
+The routed code-reviewer found the `_m039_effect_snapshot(led, cid, gen)` helper accepted a generation argument that its query deliberately did not use: the assertion snapshots every permit generation for the change. Removed that unused argument and its four call arguments without changing the query or scenario behavior. The two named nodes were rerun from the project `.venv` with only the fixture&#x27;s required process-local disposable opt-ins and no inherited DSN; the working-tree run reported `2 passed in 140.00s`, exit 0, and both disposable context managers exited cleanly. Because this run preceded the cleanup commit, repeat the same two nodes at the committed task head before ledger verification. Initial attempts using global Python and then missing one or both fixture opt-ins stopped before creating resources.
 </pre></main></body></html>
