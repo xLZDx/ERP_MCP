@@ -3457,3 +3457,7 @@ The exact committed-head rerun was then performed at `09b9178e135ecb0f89bc3f9c6f
 The final RBF-06 review found stale prose in `docs/phase2/OPERATOR_BACKLOG.md` that described an earlier ledger-attribution refusal as current. Rewrote it as a historical attempt, linked it to the later successful exact-head verification at `09b9178e`, and clarified that the earlier zero-finding review did not cover later changes. No source, test behavior, acceptance scope, or recorded test result changed.
 
 The final RBF-06 silent-failure review also found a stale project-plan summary at 55/118 and 55/112 after the ledger had recorded task 56 as done. Updated both current counters to 56 and clarified the per-task versus sprint-level review state: RBF-01 is verified, RBF-02–04 are implemented, and all six audit-sprint tasks still await one sprint-level consensus/GPT-PM decision. The accepted-project denominator remains 107/118 and 107/112.
+
+## 2026-11-21 — RBF-05 exact named S16 boundary verification
+
+The designated functional-test-reviewer ran only the service-entry `UPDATE_DRAFT` parameter from `tests/phase2/test_s16_proposal_boundary.py` at current HEAD `2d7dcce13f51c125b4809fcea05c1a3c52a595b7`: `1 passed, 11 deselected in 1.50s`, exit 0. `.harness/ledger.json` records the pass against this exact HEAD. The fake-proposal-port parameter and other malformed-input parameters were not rerun. The case asserts rejection before target/principal lookups, nonce issuance, proposal-port construction, or store insertion; it does not enable or invoke a physical writer.
