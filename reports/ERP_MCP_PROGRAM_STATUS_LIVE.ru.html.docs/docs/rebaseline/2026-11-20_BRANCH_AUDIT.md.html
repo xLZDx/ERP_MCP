@@ -855,4 +855,8 @@ The 17 non-root dirty trees map to dirty-worktree reviews 1–14; review 7 cover
 | `core/DECISION_LOG.md`, `core/LESSONS_LOG.md` | Record the bounded RBF-02 decision and the lesson on keeping snapshot-wide counts separate from root-only counts. | Included in RBF-02 commit; census records the path statuses. |
 
 The candidate CI digest change and S10 manifest remain preserved but are not bundled into the RBF-02 commit. No unrelated root dirty path is staged by this task.
+
+## Current worktree census refresh — 2026-11-21
+
+Refreshed the sanitized path/status snapshot from `git worktree list --porcelain` and `git status --porcelain=v1 --untracked-files=all` in every registered tree. The snapshot records 45 worktrees, 18 dirty trees and 350 dirty path/status entries. Against the 2026-11-20 census, the exact path/status comparison found 0 additions and 20 removals; the root checkout decreased from 23 dirty paths to 3. Current snapshot: `docs/rebaseline/2026-11-21_WORKTREE_CENSUS.json`, SHA-256 `fbb3d2161a99083f671e174be7d96c5373e2804b2bb688541819c24b7d979c37`. The snapshot contains ref/HEAD and path/status metadata only, no file contents. All branches and worktrees remain preserved; this refresh does not authorize merge, branch deletion, repository retirement or worktree cleanup.
 </pre></main></body></html>

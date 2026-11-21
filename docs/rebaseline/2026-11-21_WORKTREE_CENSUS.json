@@ -1,0 +1,1742 @@
+{
+  "as_of_local": "2026-11-21T06:50:40+02:00",
+  "source": "git worktree list --porcelain; per-tree git status --porcelain=v1 --untracked-files=all",
+  "tree_count": 45,
+  "dirty_tree_count": 18,
+  "dirty_path_count": 350,
+  "trees": [
+    {
+      "path": "D:/Repo/ERP_MCP",
+      "head": "f6179346f97d02ad210bab95b465d7ad0304c818",
+      "branch": "refs/heads/codex/rebaseline-status-20261120",
+      "dirty_count": 3,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": ".gitattributes"
+        },
+        {
+          "status": " M",
+          "path": ".github/workflows/ci.yml"
+        },
+        {
+          "status": "??",
+          "path": "reports/S10_RELEASE_EVIDENCE_MANIFEST.json"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/codex-s0-p12-exact-10e7973",
+      "head": "b8cb958aa79588104780eb5224404ccc69cdcf8b",
+      "branch": "detached",
+      "dirty_count": 6,
+      "dirty_paths": [
+        {
+          "status": "??",
+          "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-clean-review2.json"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-clean-review2.json.sha256"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-clean-review3.json"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/evidence/tc001-r1-preservation-10e7973-clean-review3.json.sha256"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/evidence/tc001-r1-preservation-b8cb958-review1.json"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/evidence/tc001-r1-preservation-b8cb958-review1.json.sha256"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/codex-s0-r2-tc001-compat",
+      "head": "f8260da96b578176d7e06353b12d8a3e04d1256b",
+      "branch": "refs/heads/codex/s0-r2-tc001-compat-20261104",
+      "dirty_count": 227,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "docs/phase2/TASK_LEDGER.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/.dockerignore"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/.env.development.example"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/.env.production.example"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/.github/workflows/ci.yml"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/.gitignore"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/.gitmodules"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/AGENTS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/CLAUDE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/CODEX.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/CONTRIBUTING.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/Dockerfile"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/ERP_MCP_ENGINEERING_COMMAND_CENTER.html"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/README.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/SECURITY.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/SKILLS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/THIRD_PARTY_NOTICES.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/adapters/odata-sidecar/Dockerfile"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/adapters/odata-sidecar/server.mjs"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/adapters/odata-sidecar/server.test.mjs"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/compose.development.yml"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/001_init.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/002_capability_profiles.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/003_company_scope_and_audit_provenance.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/004_capability_drift_lifecycle.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/005_register_capability_profiles.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/006_semantic_profiles.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/007_semantic_profile_events.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/008_confirmed_semantic_mappings.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/db/migrations/009_audit_semantic_profile_fingerprint.sql"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/PRODUCTION.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/ROLLBACK.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/alerts/prometheus.rules.yml"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/fault-injection.compose.yml"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/pilot/evidence.manifest.template.json"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/runbooks/ADAPTER_CRASH_RECOVERY.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/runbooks/ALERT_RESPONSE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/runbooks/CREDENTIAL_ROTATION_AND_DRIFT.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/runbooks/DEPENDENCY_FAILURE_MATRIX.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/deploy/runbooks/ONBOARDING_OFFBOARDING.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/ADAPTER_CENSUS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/ADAPTER_CONTRACT_ODATA_SIDECAR.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/ADAPTER_CONTRACT_RSV_METADATA.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/ADAPTER_INTAKE_PLAN.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/ARCHITECTURE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/COMPATIBILITY.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/DATA_MODEL.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/DEFINITION_OF_DONE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/DOCUMENT_INDEX.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/GOVERNANCE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/INTEGRATION.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/MASTER_PLAN.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/MVP_SCOPE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/OBSERVABILITY_SRE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/PACKAGE_MANIFEST.json"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/PILOT_EVIDENCE_GATE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/RELEASE_OPERATIONS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/REQUIREMENTS_TRACEABILITY.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/RISK_REGISTER.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/SCOPE_FREEZE_BASELINE_2026-10-06.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/SEMANTIC_PROFILES.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/TDD.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/TEST_STRATEGY.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/THREAT_MODEL.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/adr/ADR-0001-read-only-mvp.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/adr/ADR-0002-control-data-plane.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/adr/ADR-0003-reuse-before-rewrite.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/adr/ADR-0004-capability-routing.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/adr/ADR-0005-no-direct-1c-sql.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/adr/ADR-0006-copyleft-isolation.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/docs/runbooks/RSV_DATA_BRIDGE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/pyproject.toml"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/DOD_STATUS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/EXECUTION_LOG.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/IMPLEMENTATION_GAP_ANALYSIS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/IMPLEMENTATION_STATUS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/INTEGRATION_PR_DESCRIPTION.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/LOCAL_1C_SETUP_HANDOFF.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/PR_INTEGRATION_MATRIX.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/RISK_STATUS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/RSVDATA_ARTIFACT_PROVENANCE.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/RSVDATA_EXTENSION_AUDIT.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/SUPPLY_CHAIN_REPORT.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/reports/SYNTHETIC_LOAD_DRILL.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/requirements-runtime.lock"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/acl_load_drill.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/admin.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/audit_node_runtime.mjs"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/capability_report.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/check_db_privileges.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/check_document_consistency.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/check_report_references.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/dependency_failure_matrix.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/docker_fault_runner.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/doctor.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/fake_rsv_process.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/fanout_load_drill.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/fault_injection_runner.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/migrate.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/mutation_negative_pack.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/performance_benchmark.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/postgres_restore_drill.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/release_evidence_bundle.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/release_preflight.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/rollback_rehearsal.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/rsv_lifecycle_harness.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/rsv_process_harness.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/scan_sensitive_artifacts.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/security_regression_pack.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/semantic_profiles.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/ssrf_fuzz_matrix.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/synthetic_fixture_profiles.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/validate_metrics.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/validate_performance_evidence.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/validate_pilot_evidence.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/validate_scenarios.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/scripts/write_image_provenance.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/erp/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/erp/adapter.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/ferma/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/ferma/adapter.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/onec/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/onec/adapter.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/onec/atom.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/onec/client.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/onec/metadata.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/onec/rsv_bridge.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/adapters/onec/sidecar_client.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/aging.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/app.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/audit.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/auth.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/compatibility.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/db.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/fanout.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/models.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/network_policy.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/observability.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/pilot_evidence.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/principal.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/rate_limit.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/registry.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/runtime.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/secrets.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/semantic.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/server.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/settings.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/testbed/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/src/business_ai_gateway/testbed/fake1c.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/README.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/REAL_1C_SEED_SPEC.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/fake1c/__init__.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/fake1c/app.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/fake1c/fixtures/seed.json"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/fake1c/fixtures/synthetic_profiles.json"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/real1c/README.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/scenarios/accounting_scenarios.json"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/snapshots/README.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/testbed/snapshots/manifest.template.json"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_cash_bank.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery_accounting.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery_companies.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery_current.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery_expanded.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery_metadata.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery_naive.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_discovery_rsv.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_documents.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_inventory.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_postings.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_settlements.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/phase2/test_tc001_http_turnover.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_aging.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_app_smoke.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_atom.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_audit.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_audit_provenance.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_auth.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_auth_jwks_http.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_autonomous_harnesses.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_capability_drift_migration.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_company_migration.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_company_scope.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_compatibility.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_db_schema.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_documentation_package.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_fake1c.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_fanout.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_health_routes.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_live_rsv_metadata.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_metadata.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_metadata_drift_policy.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_migrate_runner.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_models.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_network_policy.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_observability.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_odata_sidecar_client.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_onec_client.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_operations_artifacts.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_pilot_evidence.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_rate_limit.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_real_1c_integration.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_register_capability_migration.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_registry_postgres_integration.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_release_operations.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_rsv_bridge.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_rsv_metadata_tool.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_scenario_contract.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_secrets.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_semantic_profiles.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_server_audit.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_settings.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_unblocked_operations.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/tests/test_vendor_intake.py"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/uv.lock"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/vendor/UPSTREAMS.md"
+        },
+        {
+          "status": "??",
+          "path": ".tmp-tc001-baseline-57eb5b0/vendor/intake.json"
+        },
+        {
+          "status": "??",
+          "path": "artifacts/phase2/r2-tc001-2c2798e-evidence.json"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_tc001_http_cash_bank.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_tc001_http_discovery.py"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/codex-s0-tc001-cash-bank",
+      "head": "219c5e96ea21927b0507bce41289db2446423781",
+      "branch": "detached",
+      "dirty_count": 1,
+      "dirty_paths": [
+        {
+          "status": "??",
+          "path": "tests/phase2/test_tc001_http_settlements.py"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/codex-s0-tc001-cash-bank-integration",
+      "head": "31afbc5c1ea205cc9d088e8c6ecb030e0c253f23",
+      "branch": "detached",
+      "dirty_count": 10,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "AGENTS.md"
+        },
+        {
+          "status": " M",
+          "path": "PROJECT_PLAN.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/DECISION_LOG.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/TASK_LEDGER.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/MANIFEST.sha256"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/test_cases.yaml"
+        },
+        {
+          "status": " M",
+          "path": "scripts/phase2/build_spec_bundle.py"
+        },
+        {
+          "status": " M",
+          "path": "src/erp_mcp_private_writer/service.py"
+        },
+        {
+          "status": " M",
+          "path": "tests/phase2/test_private_writer_barrier_ack.py"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/codex-s12-05-post-go-20261109-4d990e",
+      "head": "7e1e732ead6a130c9e39159c8a2efbe72c4411b8",
+      "branch": "detached",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/fin-s12-budget-snapshot-20261107",
+      "head": "7d9bbc00006be30b1e85610d379d5a23eca4693d",
+      "branch": "refs/heads/codex/fin-s12-budget-snapshot-20261107",
+      "dirty_count": 2,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "docs/sdlc/verify-evidence.md"
+        },
+        {
+          "status": "??",
+          "path": ".pm-review-c7b0fa29/sql_ledger.py"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/fin-s12-pr41-update-20261108",
+      "head": "727b2dac91b8da0fdaac237d1b8b7cd94a0654b8",
+      "branch": "detached",
+      "dirty_count": 3,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "docs/phase2/DECISION_LOG.md"
+        },
+        {
+          "status": "??",
+          "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-08.en.html"
+        },
+        {
+          "status": "??",
+          "path": "reports/ERP_MCP_PHASE2_STATUS_2026-11-08.ru.html"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/fin-s13-inflight-status-20261107",
+      "head": "015e9fc0967d3a98466e9e03033b4500181f1c1c",
+      "branch": "refs/heads/codex/fin-s13-inflight-status-20261107",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/fin-s13-integration-20261107",
+      "head": "b6557547075df0b9864fd0a8f8d51a067e748d35",
+      "branch": "refs/heads/codex/fin-s13-integration-20261107",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/pm-review-03297ec",
+      "head": "03297eca8fb4939bbc3f3677acdc4be1672af618",
+      "branch": "detached",
+      "dirty_count": 2,
+      "dirty_paths": [
+        {
+          "status": "??",
+          "path": "docs/sdlc/AF_STATE.md"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/state.json"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/pm-review-3af",
+      "head": "3af73797533e7cb4d8dd6762c42e847416b4cea8",
+      "branch": "detached",
+      "dirty_count": 7,
+      "dirty_paths": [
+        {
+          "status": "??",
+          "path": "docs/sdlc/.pm-review/packet-code-3af73797533e.md"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/.pm-review/prompt-code-3af73797533e.txt"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/.pm-review/result-code-3af73797533e.json"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/AF_STATE.md"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/state.json"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/verify-evidence.json"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/verify-evidence.md"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/pm-review-4e32714",
+      "head": "4e327147cde0d10e9cee206495cbc384bc3a24d7",
+      "branch": "detached",
+      "dirty_count": 5,
+      "dirty_paths": [
+        {
+          "status": "??",
+          "path": "docs/sdlc/.pm-review/packet-code-4e327147cde0.md"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/.pm-review/prompt-code-4e327147cde0.txt"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/.pm-review/result-code-4e327147cde0.json"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/AF_STATE.md"
+        },
+        {
+          "status": "??",
+          "path": "docs/sdlc/state.json"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/pm-review-713627f",
+      "head": "713627facae2c9ce9ed11d682eedf81a99b2c575",
+      "branch": "detached",
+      "dirty_count": 2,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "docs/sdlc/AF_STATE.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/sdlc/state.json"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s0-pr42-repair-20261107",
+      "head": "3b2bd0acb5a061f798c288b7671c9639f89e1269",
+      "branch": "refs/heads/codex/s0-pr42-finalize-20261107",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s0-r2-us-001",
+      "head": "c67de52f5ef1b203b2c0835b291fb1f2540cd896",
+      "branch": "detached",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s1-1-isolated-current",
+      "head": "f23a7af75facb69e297958f4be13c337c005863c",
+      "branch": "refs/heads/codex/s1-1-isolated-current",
+      "dirty_count": 13,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/adapters/onec/adapter.py"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/adapters/onec/metadata.py"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/models.py"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/server.py"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/settings.py"
+        },
+        {
+          "status": " M",
+          "path": "tests/test_metadata.py"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/029_s12_budget_snapshot.sql"
+        },
+        {
+          "status": "??",
+          "path": "src/business_ai_gateway/phase2/change/observations.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s12_period_observations.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s12_sql_budget_snapshot.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/test_metadata_period_schema_detail.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/test_s12_metadata_summary_mcp_e2e.py"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s1-us006-integration-20261106",
+      "head": "b23604c92149f3c8cc78e4e93e2cfe49b9933e65",
+      "branch": "detached",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s10-r2-canary-dev-20261108",
+      "head": "75718fbc38de2b882f0ba6caab42b6325332801e",
+      "branch": "refs/heads/codex/s10-r2-canary-dev-20261108",
+      "dirty_count": 7,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "PROJECT_PLAN.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/S10_RELEASE_HANDOFF.md"
+        },
+        {
+          "status": "??",
+          "path": "reports/evidence/s10/test-runs/R2-US-048-e2e-37157e4.xml"
+        },
+        {
+          "status": "??",
+          "path": "reports/evidence/s10/test-runs/R2-US-048-e2e-bound-37157e4.xml"
+        },
+        {
+          "status": "??",
+          "path": "reports/evidence/s10/test-runs/R2-US-048-functional-bound-37157e4.xml"
+        },
+        {
+          "status": "??",
+          "path": "reports/evidence/s10/test-runs/R2-US-048-functional-via-e2e-37157e4.xml"
+        },
+        {
+          "status": "??",
+          "path": "reports/evidence/s10/test-runs/R2-US-048-manifest-validation-37157e4.xml"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s11-exit-reconcile-20261109",
+      "head": "5803c2061bc48fc4226c729d4eb9e071e6d07a01",
+      "branch": "refs/heads/codex/s11-exit-reconcile-20261109",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s11-lf-identity-receipt-20261109",
+      "head": "0e344c97d717e0a3a7239e49619928f249a00b32",
+      "branch": "refs/heads/codex/s11-lf-identity-receipt-20261109",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s11-lf-pointer-fix-20261109",
+      "head": "89e7a498abd449fc00eb93d763b1499ae92f124a",
+      "branch": "refs/heads/codex/s11-lf-pointer-fix-20261109",
+      "dirty_count": 1,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "governance/GATE_MANIFEST.json"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s11-lf-validator-reconcile-20261109",
+      "head": "7b36785e5d19c53be77c86f9de9baa01fa16fe77",
+      "branch": "detached",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s11-only-s1-1",
+      "head": "9454d904d60d371920608088cb326b688895f0cf",
+      "branch": "refs/heads/codex/s11-only-s1-1",
+      "dirty_count": 3,
+      "dirty_paths": [
+        {
+          "status": "??",
+          "path": "db/phase2/028_refusal_codes_parity.sql"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s11_sql_code_parity_candidate.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s12_sql_code_parity.py"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s12-06-pr54-adaptation-20261109",
+      "head": "2629aa2a20f6e40641a5ece7de42a1587a2748a1",
+      "branch": "refs/heads/codex/s12-06-pr54-adaptation-20261109",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s12-contract-revision-20261109",
+      "head": "061e921a595a9df7fc648dc9db5e19842a65ff8d",
+      "branch": "refs/heads/codex/s12-contract-revision-20261109",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s3-pr-noci-20261105",
+      "head": "f5fc733f0a1c09bf86d961eb3cd485fa33d500d0",
+      "branch": "refs/heads/codex/s3-pr-noci-20261105",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s3-review-20261105",
+      "head": "2c731147deb541afde8cb62ba9c9a022495d99ac",
+      "branch": "refs/heads/codex/s3-bounded-closure-20261105",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s4-plan-closeout-20261107",
+      "head": "97a8916e264d9646094fb1fc9533bc06a622e5dc",
+      "branch": "refs/heads/codex/s4-plan-closeout-20261107",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s4-postmerge-closeout-20261106",
+      "head": "2d12b95c0cd79fb832e36a6d5cc51701527b71d3",
+      "branch": "refs/heads/codex/s4-postmerge-closeout-20261106",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s4-us015-candidate-20261106",
+      "head": "57842bbc75699151d4d88b8c6730fe9cd54fae11",
+      "branch": "refs/heads/codex/s4-us015-candidate-20261106",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s5-pr-closeout-20261106",
+      "head": "11c15be62a105af5853a557dfe9f60ac291ed357",
+      "branch": "refs/heads/codex/s5-pr-closeout-20261106",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s5-windows-memory-closeout-20261106",
+      "head": "b156154cf195e438e9dc057c408fe0f2e692d3a3",
+      "branch": "refs/heads/codex/s5-windows-memory-closeout-20261106",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s6-closeout-20261106",
+      "head": "b4859c67e58e6f6515eb681e89b419c6bc1b3c9e",
+      "branch": "refs/heads/codex/s6-closeout-20261106",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s6b-us032-major01-20261106",
+      "head": "572a9cda2877c20831171f227fd4ba34e5992a3c",
+      "branch": "refs/heads/codex/s6b-us032-major01-20261106",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s8-us040-source-owner-20261106",
+      "head": "bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e",
+      "branch": "refs/heads/codex/s8-us040-source-owner-20261106",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s9-plan-closeout-20261107",
+      "head": "dba68fbf5aaf64a4f1de2617a219cfaa83e216ab",
+      "branch": "refs/heads/codex/s9-plan-closeout-20261107",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s9-us043-closeout-20261107",
+      "head": "588ddd1f1bd08c8fe7579d3c03345de722eb07b0",
+      "branch": "refs/heads/codex/s9-us043-closeout-20261107",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s9-us044-submit-588ddd1-20261107",
+      "head": "4bf347e0be47e64e91bf4214aa8728d95742e21c",
+      "branch": "detached",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/s9-us044-verification-e2eb-20261107",
+      "head": "a6351cd29e32aab75ec4380807556fbe8176846a",
+      "branch": "detached",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/v2-s12-01-origin-main-20261108",
+      "head": "7e1e732ead6a130c9e39159c8a2efbe72c4411b8",
+      "branch": "refs/heads/codex/v2-s12-01-20261108",
+      "dirty_count": 6,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "docs/phase2/DECISION_LOG.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/S13_SOURCE_FINAL_GRANT_AND_LOCK_INVENTORY_2026-10-22.md"
+        },
+        {
+          "status": " M",
+          "path": "tests/phase2/_pg_harness.py"
+        },
+        {
+          "status": " M",
+          "path": "tests/phase2/test_change_registry_sql.py"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/028_approval_epoch_effect_gate.sql"
+        },
+        {
+          "status": "??",
+          "path": "docs/phase2/S12_ENTRY_PREREQUISITE_CORRELATION_2026-11-09.md"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/v2-s12-01-review-20261108",
+      "head": "78a852c5155ea4ba93a3596037175ed10ff54a7e",
+      "branch": "refs/heads/codex/v2-s12-01-review-20261108",
+      "dirty_count": 2,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/phase2/change/proposal.py"
+        },
+        {
+          "status": " M",
+          "path": "tests/phase2/test_change_offline.py"
+        }
+      ]
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/v2-s13-01-ledger-20261110",
+      "head": "e3c98f2d514f2d25981030379558a1ab4b0a9407",
+      "branch": "refs/heads/codex/v2-s13-01-ledger-20261110",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/v2-s13-02-transactional-claim-20261110",
+      "head": "06b6895c162aececba26bdb210b94deac75db794",
+      "branch": "refs/heads/codex/v2-s13-02-transactional-claim-20261110",
+      "dirty_count": 0,
+      "dirty_paths": []
+    },
+    {
+      "path": "D:/Repo/ERP_MCP/.worktrees/v2-s13-03-key-auth-20261110",
+      "head": "65c408657d5cae857c66ecfeef74028475680ad3",
+      "branch": "refs/heads/codex/v2-s13-03-key-auth-20261110",
+      "dirty_count": 50,
+      "dirty_paths": [
+        {
+          "status": " M",
+          "path": "core/DECISION_LOG.md"
+        },
+        {
+          "status": " M",
+          "path": "core/LESSONS_LOG.md"
+        },
+        {
+          "status": " M",
+          "path": "db/phase2/027_private_writer_admission_schema.sql"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/CHANGE_RECORD_361.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/DECISION_LOG.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/OPERATOR_BACKLOG.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/S13_SCOPE_FENCE_IMPLEMENTATION_DESIGN_2026-10-22.md"
+        },
+        {
+          "status": " M",
+          "path": "docs/phase2/S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/phase2/change_ledger/checkpoint.py"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/phase2/change_ledger/lifecycle.py"
+        },
+        {
+          "status": " M",
+          "path": "src/business_ai_gateway/phase2/change_ledger/sql_ledger.py"
+        },
+        {
+          "status": " M",
+          "path": "src/erp_mcp_private_writer/postgres_identity.py"
+        },
+        {
+          "status": " M",
+          "path": "src/erp_mcp_private_writer/postgres_store.py"
+        },
+        {
+          "status": " M",
+          "path": "src/erp_mcp_private_writer/service.py"
+        },
+        {
+          "status": " M",
+          "path": "src/erp_mcp_private_writer/t16_recovery.py"
+        },
+        {
+          "status": " M",
+          "path": "testlane/onec_extension/scripts/ct14_metadata_inventory_readonly.py"
+        },
+        {
+          "status": " M",
+          "path": "tests/phase2/test_s13_completion_outcome_e2e.py"
+        },
+        {
+          "status": " M",
+          "path": "tests/phase2/test_s13_t16_recovery_error_mapping.py"
+        },
+        {
+          "status": " M",
+          "path": "tests/phase2/test_s13_universal_fence_matrix.py"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/028_t16_database_identity.sql"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/029_s13_recovery_hold_guard.sql"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/030_s13_recovery_retry_verify_guard.sql"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/031_s13_recovery_release_claim_guard.sql"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/032_s13_recovery_cancel_permit_guard.sql"
+        },
+        {
+          "status": "??",
+          "path": "db/phase2/033_s13_base_recovery_begin.sql"
+        },
+        {
+          "status": "??",
+          "path": "docs/phase2/S13_DEV_ANCHOR_PREFLIGHT.md"
+        },
+        {
+          "status": "??",
+          "path": "src/business_ai_gateway/phase2/change_ledger/dev_anchor_preflight.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_anchor_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_base_recovery_begin_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_base_recovery_com_fence_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_base_recovery_integration_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_base_recovery_preflight.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_base_registration_race_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_budget_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_declare_business_key_lifecycle_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_dev_anchor_preflight_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_dispatch_receipt_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_epoch_dependency_fence_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_kill_switch_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_nonce_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_observe_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_override_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_permit_signature_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_registry_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_requester_mutation_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_revoke_change_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_sweep_policy_legacy_bridge_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_t16_runtime_db_binding_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_windows_authority_mutex_e2e.py"
+        },
+        {
+          "status": "??",
+          "path": "tests/phase2/test_s13_writer_resource_legacy_bridge_e2e.py"
+        }
+      ]
+    }
+  ]
+}
