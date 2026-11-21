@@ -27,3 +27,12 @@ The preserved root workflow digest line matches candidate commit `ac97a979f81483
 ## Disposition
 
 No refs, branches, pull requests or worktrees were merged, closed, reset or deleted by this refresh. The remaining audit work is criterion-level mapping of the preserved dirty worktree content and any unique branch commits not yet reconciled in `2026-11-20_BRANCH_AUDIT.md`.
+
+## Subsequent rebaseline closeout — 2026-11-21
+
+- GPT-PM approved the RBF-01–06 code/contract package at exact HEAD `2fdf8ee457891166b3d4a58c4741d7ddb1dcf8de`; PR #73 merged to `main` as `b991658159634553a48f7d21d4e0bd9b293aa1a4` after head and mergeability verification. The repository deleted the temporary remote topic ref after merge. The local `codex/rebaseline-status-20261120` branch remains available as an audit ref; no other branches or worktrees were removed.
+- The merge did not include the three pre-existing root dirty items: `.gitattributes`, `.github/workflows/ci.yml`, and `reports/S10_RELEASE_EVIDENCE_MANIFEST.json`. They remain unstaged and must not be treated as part of the approved PR.
+- RBF-01–06 project status is bounded accepted. RBF-06 evidence remains limited to two sequential disposable-database scenarios; true concurrent requests, retry, and crash-mid-operation behavior are not established.
+- PR #41 and #42 remain open/conflicting at their audited historical heads and are not safe whole-tree merge candidates. Continue candidate-specific disposition from the existing audit rather than merge or delete those refs in bulk.
+
+The report renderer was corrected to honor `active_sprint: none` after closeout instead of falling back to a historical ledger sprint. The regenerated dashboard now has no active-sprint task table until the next sprint is planned. This is reporting behavior only; it changes no harness state or product acceptance.
