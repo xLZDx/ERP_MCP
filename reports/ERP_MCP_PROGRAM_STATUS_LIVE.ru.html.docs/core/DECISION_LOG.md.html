@@ -3433,4 +3433,8 @@ The designated functional-test-reviewer ran exactly these nodes with the disposa
 ## 2026-11-21 — Refresh branch and worktree census
 
 Created `docs/rebaseline/2026-11-21_WORKTREE_CENSUS.json` from the registered worktree list and per-tree porcelain status. It records 45 trees, 18 dirty trees and 350 dirty path/status entries. Comparing exact tree/status/path tuples with the 2026-11-20 snapshot found zero additions and 20 removals; the root checkout decreased from 23 dirty paths to 3. Snapshot SHA-256 is `fbb3d2161a99083f671e174be7d96c5373e2804b2bb688541819c24b7d979c37`.
+
+## 2026-11-21 — RBF-01 exact historical stable-ID comparison
+
+Compared the nine non-log paths named by the 2026-10-20 consolidation record using the exact source-tip blobs from the three `-X ours` merge lines and corresponding `origin/main` blobs. The read-only identifier extraction covered historical `R2-US`, `TC`, and `REQ` identifiers: no historical ID is absent from current main. Eight path ID sets match; the current story catalog adds only `REQ28`, which the current project plan associates with R2-US-001/TC003. For `core/DECISION_LOG.md`, the sanitized path/line/digest artifact remains the sole comparison; its source content was not read or emitted. This is a stable-ID crosswalk, not full prose equivalence or product acceptance.
 </pre></main></body></html>
