@@ -1,0 +1,517 @@
+{
+  "as_of_local": "2026-11-21",
+  "source": "git for-each-ref refs/heads refs/remotes",
+  "ref_count": 102,
+  "refs": [
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-0-065f3e66",
+      "oid": "065f3e66ab2a09d59b3f580dd27d2cd41f212050",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-1-5a63da88",
+      "oid": "5a63da880f5a3897fbfdbaf6370399a32447509c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-2-95a6a92c",
+      "oid": "95a6a92c94935673d92f1e46e9da7738e156bf59",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-3-aed0948f",
+      "oid": "aed0948fb1da1b72f76d5e46a9e3ab5c688ba97e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-4-af2f36a1",
+      "oid": "af2f36a17e16d8bafc3bfa36cbe569898e5b299d",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-5-bc25fb6d",
+      "oid": "bc25fb6d723382683cfe22e723002011b0020730",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-6-c54be14e",
+      "oid": "c54be14ee82b5dd2b5c8a52d988b8cf7229527a3",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/ERP_MCP-phase2-7-d4bad307",
+      "oid": "d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime",
+      "oid": "ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/backlog/2026-10-21",
+      "oid": "e738ef35c4c7453af32a54a53b15bb148d5d2968",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/backlog/2026-10-21-final",
+      "oid": "4dfceeddb071a63e7d8f815e7c276555de6d2375",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/ci-off/ERP_MCP-20261112",
+      "oid": "969d0b7d767b334a497d6e5ff41510c9303a4bc8",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/ci-off/ERP_MCP-20261112-183553",
+      "oid": "44fc5ec99dfde404d8e0544621f98cedaa39427f",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/erp-mcp-autonomous-2026-10-21",
+      "oid": "c8f986bcafdcb3be09aae9d5026e08c2805a32a5",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/fin-s12-budget-snapshot-20261107",
+      "oid": "7d9bbc00006be30b1e85610d379d5a23eca4693d",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/fin-s13-inflight-status-20261107",
+      "oid": "015e9fc0967d3a98466e9e03033b4500181f1c1c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/fin-s13-integration-20261107",
+      "oid": "b6557547075df0b9864fd0a8f8d51a067e748d35",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/rebaseline-status-20261120",
+      "oid": "b11102849cbc0649ff45bccdc7b8d11a56495f05",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s0-pr42-finalize-20261107",
+      "oid": "3b2bd0acb5a061f798c288b7671c9639f89e1269",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s0-r2-tc001-compat-20261104",
+      "oid": "f8260da96b578176d7e06353b12d8a3e04d1256b",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s1-1-isolated-current",
+      "oid": "f23a7af75facb69e297958f4be13c337c005863c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s10-r2-canary-dev-20261108",
+      "oid": "75718fbc38de2b882f0ba6caab42b6325332801e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s11-exit-reconcile-20261109",
+      "oid": "5803c2061bc48fc4226c729d4eb9e071e6d07a01",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s11-lf-identity-receipt-20261109",
+      "oid": "0e344c97d717e0a3a7239e49619928f249a00b32",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s11-lf-pointer-fix-20261109",
+      "oid": "89e7a498abd449fc00eb93d763b1499ae92f124a",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s11-only-s1-1",
+      "oid": "9454d904d60d371920608088cb326b688895f0cf",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s12-06-pr54-adaptation-20261109",
+      "oid": "2629aa2a20f6e40641a5ece7de42a1587a2748a1",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s12-contract-revision-20261109",
+      "oid": "061e921a595a9df7fc648dc9db5e19842a65ff8d",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s16-approval-evidence-20261118",
+      "oid": "12df2ca369d694860d16317ef97fc20a41905e8c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s17-untrusted-file-boundary-20261118",
+      "oid": "8db542d846cd6b10097c6cdba6c325fc83aef650",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s18-reliability-security-20261119",
+      "oid": "e4894685a2700978e2f09ecaceab15ab54b22dfb",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s19-release-candidate-20261119",
+      "oid": "1e359e3bc6e6d86f712123b1b83590e86da72ecb",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s3-bounded-closure-20261105",
+      "oid": "2c731147deb541afde8cb62ba9c9a022495d99ac",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s3-pr-noci-20261105",
+      "oid": "f5fc733f0a1c09bf86d961eb3cd485fa33d500d0",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s4-plan-closeout-20261107",
+      "oid": "97a8916e264d9646094fb1fc9533bc06a622e5dc",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s4-postmerge-closeout-20261106",
+      "oid": "2d12b95c0cd79fb832e36a6d5cc51701527b71d3",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s4-us015-candidate-20261106",
+      "oid": "57842bbc75699151d4d88b8c6730fe9cd54fae11",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s5-pr-closeout-20261106",
+      "oid": "11c15be62a105af5853a557dfe9f60ac291ed357",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s5-windows-memory-closeout-20261106",
+      "oid": "b156154cf195e438e9dc057c408fe0f2e692d3a3",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s6-closeout-20261106",
+      "oid": "b4859c67e58e6f6515eb681e89b419c6bc1b3c9e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s6b-us032-major01-20261106",
+      "oid": "572a9cda2877c20831171f227fd4ba34e5992a3c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s8-us040-source-owner-20261106",
+      "oid": "bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s9-plan-closeout-20261107",
+      "oid": "dba68fbf5aaf64a4f1de2617a219cfaa83e216ab",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/s9-us043-closeout-20261107",
+      "oid": "588ddd1f1bd08c8fe7579d3c03345de722eb07b0",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/v2-s12-01-20261108",
+      "oid": "7e1e732ead6a130c9e39159c8a2efbe72c4411b8",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/v2-s12-01-review-20261108",
+      "oid": "78a852c5155ea4ba93a3596037175ed10ff54a7e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/v2-s13-01-ledger-20261110",
+      "oid": "e3c98f2d514f2d25981030379558a1ab4b0a9407",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/v2-s13-02-transactional-claim-20261110",
+      "oid": "06b6895c162aececba26bdb210b94deac75db794",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/codex/v2-s13-03-key-auth-20261110",
+      "oid": "65c408657d5cae857c66ecfeef74028475680ad3",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/consolidation-broken-2026-10-20",
+      "oid": "99b091da80dff38727021c8f48f372624233b288",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/feature/admin-control-center-implementation",
+      "oid": "d66fbdcac823895ce1937b701f2f5bae21b60ed2",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/feature/chatgpt-mcp-integration",
+      "oid": "39623fbc0c916bde996d8208faf361c71edccfae",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/integrate/2026-10-20",
+      "oid": "db9512f14b3a54c646733d2dc4cb20f8880bb9a3",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/integration/1c-mvp-production-candidate",
+      "oid": "125cd8caff236212202552196290179550bb5597",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/main",
+      "oid": "b8a2e2f59c4a054baf409dd2e29428ae64b4fc65",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/phase/p6-rsv-bridge-boundary",
+      "oid": "c9a3bf4a70a2b1ad949030f47a65200e09134d14",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-001-2026-10-20",
+      "oid": "1294b42a280f429d329acf523f0d4d6f1858e50b",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-002-2026-10-20",
+      "oid": "3225af765887bb5d6d9235b073c2cd67303df4bd",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-003-2026-10-20",
+      "oid": "aca610e22acdebbf8a68421f3faacffbdb07d121",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-004-2026-10-20",
+      "oid": "5aaa5ae16957326227ca8634f95dc295474b8999",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-005-2026-10-20",
+      "oid": "6aaed8c732e8c8546fa171d61044dd88ce1d9947",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-006-2026-10-20",
+      "oid": "9e3ed8e55991a1d8ff800418df2d90330c5f1acc",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-007-2026-10-20",
+      "oid": "debf62f5deccf35239ed154c7215144e8e6533b9",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-008-2026-10-20",
+      "oid": "7b4b9417e50038baca833c2f57311a9304450b8f",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/rescue/dangling-009-2026-10-20",
+      "oid": "b354df58ac5671cda81646713e994fe16c3c9b54",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/snapshot/ERP_MCP-primary-2026-10-20",
+      "oid": "33fc453246356d24c7e7dc6336aecf41a2e98def",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/snapshot/trash-ERP_MCP-chatgpt-2026-10-20",
+      "oid": "04ec959072d95bfa03c104cb8839f300198937d5",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/heads/snapshot/trash-ERP_MCP-phase2-2026-10-20",
+      "oid": "8c138f94951f3c882596420ced91ef150e9072d1",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/HEAD",
+      "oid": "7916d16ed8da13ee0060fbe4072e173ea5d2bf35",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-0-065f3e66",
+      "oid": "065f3e66ab2a09d59b3f580dd27d2cd41f212050",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-1-5a63da88",
+      "oid": "5a63da880f5a3897fbfdbaf6370399a32447509c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-2-95a6a92c",
+      "oid": "95a6a92c94935673d92f1e46e9da7738e156bf59",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-3-aed0948f",
+      "oid": "aed0948fb1da1b72f76d5e46a9e3ab5c688ba97e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-4-af2f36a1",
+      "oid": "af2f36a17e16d8bafc3bfa36cbe569898e5b299d",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-5-bc25fb6d",
+      "oid": "bc25fb6d723382683cfe22e723002011b0020730",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-6-c54be14e",
+      "oid": "c54be14ee82b5dd2b5c8a52d988b8cf7229527a3",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/ERP_MCP-phase2-7-d4bad307",
+      "oid": "d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/archive/wt-ERP_MCP-supplier-debt-runtime",
+      "oid": "ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/erp-mcp-autonomous-2026-10-21",
+      "oid": "900a3d060c648b9a809a6b7094adb430fb60f0bd",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/fin-s12-budget-snapshot-20261107",
+      "oid": "7d9bbc00006be30b1e85610d379d5a23eca4693d",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s0-r2-tc001-compat-20261104",
+      "oid": "3b2bd0acb5a061f798c288b7671c9639f89e1269",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s10-r2-canary-dev-20261108",
+      "oid": "75718fbc38de2b882f0ba6caab42b6325332801e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s11-exit-reconcile-20261109",
+      "oid": "5803c2061bc48fc4226c729d4eb9e071e6d07a01",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s11-lf-identity-receipt-20261109",
+      "oid": "0e344c97d717e0a3a7239e49619928f249a00b32",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s11-lf-pointer-fix-20261109",
+      "oid": "7b36785e5d19c53be77c86f9de9baa01fa16fe77",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s12-contract-revision-20261109",
+      "oid": "061e921a595a9df7fc648dc9db5e19842a65ff8d",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s3-bounded-closure-20261105",
+      "oid": "3410869017a860caedab09904e80211e708af873",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s4-us015-candidate-20261106",
+      "oid": "57842bbc75699151d4d88b8c6730fe9cd54fae11",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s5-pr-closeout-20261106",
+      "oid": "11c15be62a105af5853a557dfe9f60ac291ed357",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s6-closeout-20261106",
+      "oid": "b4859c67e58e6f6515eb681e89b419c6bc1b3c9e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s6b-us032-major01-20261106",
+      "oid": "572a9cda2877c20831171f227fd4ba34e5992a3c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s8-us040-source-owner-20261106",
+      "oid": "bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/codex/s9-us043-closeout-20261107",
+      "oid": "4bf347e0be47e64e91bf4214aa8728d95742e21c",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/docs/english-only-translation-20261010",
+      "oid": "8d17448cf2788f48a2b3f26eb70800cefed4d992",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/docs/public-readme-install-guide-20261009",
+      "oid": "26324d43e9d42af8512f0f531f98770c0cf7daa0",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/integration/1c-mvp-production-candidate",
+      "oid": "78493a3ab5a5d7309aeadd1af21c6b69b6d03448",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/main",
+      "oid": "7916d16ed8da13ee0060fbe4072e173ea5d2bf35",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/origin/phase2/living-model-connectors-reconciliation",
+      "oid": "88753c207602927c0a72ce2805534b4929e4879f",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/r2/main",
+      "oid": "7d9a01df9c649b2137bc19bf25590968d63eeaca",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/r2/worktree-agent-abd0046aa55cead7b",
+      "oid": "dd819a4a85ff16ecedb0efcaf8e52911076682b8",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/r2/worktree-agent-aebf3202355a7a3f7",
+      "oid": "f03852476d66c61c552c66fcb994ad25611d5d57",
+      "type": "commit"
+    },
+    {
+      "ref": "refs/remotes/r2local/main",
+      "oid": "7d9a01df9c649b2137bc19bf25590968d63eeaca",
+      "type": "commit"
+    }
+  ]
+}

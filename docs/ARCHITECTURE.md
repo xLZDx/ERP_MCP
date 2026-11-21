@@ -484,3 +484,9 @@ Effective access is queried for one exact principal/source, with at most 200 com
 grant evidence entries per company; all matching grants still determine deny precedence.
 Group membership uses verified caller claims or a future trusted directory. Other subjects'
 memberships remain unknown. Company navigation expansion is unavailable until separately proven.
+
+## 14. Current as-built qualification boundary — 2026-11-21
+
+The frozen architecture above remains the design authority. Since its 2026-10-23 baseline, separately reviewed bounded engineering work has been integrated through S20, including isolated S16 approval/MCP code, S17 intake/workbench, S18 recovery, S19 residual-checking, and S20 bounded operation-duration metrics. `REBASELINE_FOLLOWUP` is active; its six audit tasks do not change the production read-only invariant, and no production writer, public approval route, or production binding is authorized by their bounded acceptance.
+
+Current unresolved architecture evidence is tracked in `PROJECT_PLAN.md`: S16-04 has no qualified outbound writer route/listener; S17-06 lacks a qualified external verifier, fixed N=30 dataset and authenticated lane receipt; S19-03 lacks exact-head I1–I15 runtime results and G8 evidence. The full program also remains `NO_GO` for production. See the task rows for the evidence boundary and next action; do not treat test doubles or code presence as runtime qualification.

@@ -20,10 +20,10 @@ import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope, fixture_digest_for
 from _ed25519_fixtures import pub_hex, sign_hex
-from _pg_harness import disposable_cluster, fails, require_dsn, throwaway_db
+from _pg_harness import MIGRATIONS, apply_files, disposable_cluster, fails, require_dsn, throwaway_db
 
 from business_ai_gateway.phase2.change import canonical_json
-from business_ai_gateway.phase2.change_ledger._common import Scope
+from business_ai_gateway.phase2.change_ledger._common import LedgerError, Scope
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
 
 pytestmark = pytest.mark.integration
@@ -65,7 +65,12 @@ DEFAULT_GRANT = {(T, C): uuid.UUID("00000000-0000-4000-8000-0000000000a1"),
 RUNTIME_ROLES = ["requester_role", "approver_role", "operator_role", "writer_role", "worker_role",
                  "auditor_role", "checkpoint_role"]
 JSON_FUNCS = {"issue_permit", "ledger_head", "verify_chain", "check_anchor"}
-COMPOSITE_FUNCS = {"claim", "begin_apply"}
+COMPOSITE_FUNCS = {"claim", "begin_apply", "change_ledger_begin_apply_v1"}
+M039_SIGNER_KEY_VERSION = "rbf06-synthetic-v1"
+M039_WRITER_SERVICE = "rbf06-synthetic-service"
+M039_WRITER_HOST = "host-1"
+RBF06_BEFORE_PERMIT_BASE = hashlib.sha256(b"rbf06-approver-rotation-before-permit").hexdigest()
+RBF06_AFTER_PERMIT_BASE = hashlib.sha256(b"rbf06-approver-rotation-after-permit").hexdigest()
 
 
 def sha(s):
@@ -406,6 +411,53 @@ async def led():
         dsn = require_dsn()
         async with throwaway_db(dsn, seed=False) as db:
             await _setup(db.conn)
+            yield L(db)
+
+
+@pytest.fixture
+async def led_m039():
+    """Own a throwaway database with the complete current migration chain through 039."""
+    if os.environ.get("ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE") != "1":
+        pytest.fail("led_m039 requires ERP_PHASE2_CHANGE_LEDGER_DISPOSABLE=1")
+    if os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS") != "1":
+        pytest.fail("led_m039 requires ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1")
+    if os.environ.get("ERP_PHASE2_TEST_DSN"):
+        pytest.fail("led_m039 refuses inherited ERP_PHASE2_TEST_DSN")
+
+    async with disposable_cluster() as (dsn, _container_name, _owner_token):
+        async with throwaway_db(dsn, migrate=False, seed=False) as db:
+            db.conn = await db.connect()
+            await apply_files(db.conn)  # shared base list is deliberately fixed at 001–018
+            post_base = sorted(
+                path for path in MIGRATIONS.glob("*.sql")
+                if path.name[:3].isdigit() and 19 <= int(path.name[:3]) <= 39
+            )
+            if [int(path.name[:3]) for path in post_base] != list(range(19, 40)):
+                raise AssertionError("expected the complete ordered Phase 2 migration chain 019–039")
+            for path in post_base:
+                raw = path.read_bytes()
+                await db.conn.execute("SELECT set_config('living.migration_checksum',$1,false)",
+                                      hashlib.sha256(raw).hexdigest())
+                await db.conn.execute(raw.decode("utf-8"))
+            await db.conn.execute(
+                "INSERT INTO change_ledger.lifecycle_fences(tenant_id,company_id,state,epoch,reason) "
+                "VALUES($1,$2,'READY',1,'SYNTHETIC_TEST_FIXTURE') "
+                "ON CONFLICT(tenant_id,company_id) DO UPDATE SET state='READY',epoch=1,"
+                "reason='SYNTHETIC_TEST_FIXTURE'",
+                T, C,
+            )
+            await _setup(db.conn)
+            await db.conn.execute(
+                "UPDATE change_ledger.targets SET epoch=1 WHERE tenant_id=$1 AND company_id=$2",
+                T, C,
+            )
+            for base in (RBF06_BEFORE_PERMIT_BASE, RBF06_AFTER_PERMIT_BASE):
+                await db.conn.execute(
+                    "INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,"
+                    "organization_ref,target_class,epoch) VALUES($1,$2,$3,$4,'DISPOSABLE_CLONE',1) "
+                    "ON CONFLICT(tenant_id,company_id,base_fingerprint) DO UPDATE SET epoch=1",
+                    T, C, base, ORG,
+                )
             yield L(db)
 
 
@@ -1006,6 +1058,196 @@ async def test_begin_apply_then_permit_needs_a_real_readback_checkpoint_covering
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1 AND "
                                    "event_type='PERMITTED'", cid) == 1
     await fails("TICKET_SUPERSEDED", led.call("clt_wrk", "issue_permit", cid, gen + 1))
+
+
+async def test_m039_approver_epoch_rotation_after_begin_apply_refuses_permit(led_m039):
+    led = led_m039
+    cid, tok, call_id = await _m039_applying(
+        led, request_id="epoch-before-permit", base=RBF06_BEFORE_PERMIT_BASE,
+    )
+    gen = tok["generation"]
+
+    await led.call("clt_dave", "bump_epoch", "principal:clt_bob")
+    before = await _m039_effect_snapshot(led, cid)
+    with pytest.raises(LedgerError) as refusal:
+        await _m039_issue_permit(led, cid, tok, call_id)
+    assert refusal.value.code == "EPOCH_CHANGED"
+
+    after = await _m039_effect_snapshot(led, cid)
+    assert after == before
+    record, permits, events = after
+    permit = next((row for row in permits if row["generation"] == gen), None)
+    assert permit is not None
+    assert record["dispatch_state"] == "NOT_PERMITTED"
+    assert permit["state"] == "NOT_PERMITTED"
+    assert not any(e["event_type"] in ("PERMITTED", "DISPATCHED") for e in events)
+
+
+async def test_m039_approver_epoch_rotation_after_permit_refuses_dispatch(led_m039):
+    led = led_m039
+    instance_id, service_epoch = await _m039_seed_private_writer_service(led, RBF06_AFTER_PERMIT_BASE)
+    cid, tok, call_id = await _m039_applying(
+        led, request_id="epoch-after-permit", base=RBF06_AFTER_PERMIT_BASE,
+    )
+    gen = tok["generation"]
+    permit = await _m039_issue_permit(led, cid, tok, call_id)
+    assert permit["permit_id"]
+    writer = SqlChangeLedger(
+        led.conn, actors={"writer": "clt_wri"}, private_writer_schema_enabled=True,
+    )
+    assert await writer.verify_dispatch_payload(
+        Scope(T, C), cid, gen, canonical_json(FIXTURE_PAYLOAD), as_class="writer",
+    ) is True
+
+    await led.call("clt_dave", "bump_epoch", "principal:clt_bob")
+    before = await _m039_effect_snapshot(led, cid)
+    identity = await _m039_admission_identity(led, cid, call_id)
+    with pytest.raises(asyncpg.PostgresError, match="EPOCH_CHANGED"):
+        await _m039_private_call(
+            led.conn,
+            "SELECT pg_catalog.to_jsonb(change_ledger.private_writer_admit_v1("
+            "pg_catalog.jsonb_populate_record(NULL::change_ledger.private_writer_identity_v1,$1::jsonb),"
+            "$2::text,$3::bigint))",
+            json.dumps(identity), instance_id, service_epoch, scope=(T, C),
+        )
+
+    after = await _m039_effect_snapshot(led, cid)
+    assert after == before
+    record, permits, events = after
+    permit = next((row for row in permits if row["generation"] == gen), None)
+    assert permit is not None
+    assert record["dispatch_state"] == "PERMITTED"
+    assert permit["state"] == "PERMITTED"
+    assert not any(e["event_type"] == "DISPATCHED" for e in events)
+
+
+async def _m039_effect_snapshot(led, cid):
+    """Capture the whole affected record, permit, and ordered event history around a refused effect."""
+    record = dict(await led.rec(cid))
+    permits = await led.conn.fetch(
+        "SELECT * FROM change_ledger.dispatch_permits WHERE change_id=$1 ORDER BY generation", cid)
+    events = await led.conn.fetch(
+        "SELECT * FROM change_ledger.events WHERE change_id=$1 ORDER BY seq", cid)
+    return record, tuple(dict(permit) for permit in permits), tuple(dict(event) for event in events)
+
+
+async def _m039_applying(led, **kw):
+    """Use migration 027's versioned runtime entrypoint; these cases never invoke a physical writer."""
+    cid = await led.approved(**kw)
+    tok = await led.claimed(cid, kw.get("requester", "clt_alice"))
+    call_id = uuid.uuid4()
+    await led.call(kw.get("requester", "clt_alice"), "change_ledger_begin_apply_v1",
+                   tok["token_id"], call_id, M039_WRITER_HOST, "sess-1")
+    return cid, tok, call_id
+
+
+async def _m039_seed_checkpoint_signer(led, base):
+    valid_from = datetime(2000, 1, 1, tzinfo=UTC)
+    valid_until = datetime(2100, 1, 1, tzinfo=UTC)
+    public_key = bytes.fromhex(pub_hex("vk-chk"))
+    await led.conn.execute(
+        "UPDATE change_ledger.verifier_keys SET role_name='checkpoint_role',key_algorithm='ED25519',"
+        "key_material=$3,status='ACTIVE' WHERE tenant_id=$1 AND company_id=$2 AND key_id='vk-chk'",
+        T, C, pub_hex("vk-chk"),
+    )
+    await led.conn.execute(
+        "INSERT INTO change_ledger.private_writer_signer_key_versions(key_id,key_version,public_key,"
+        "signer_role,service_id,host_id,valid_from,valid_until) "
+        "VALUES('vk-chk',$1,$2,'checkpoint_signer',$3,$4,$5,$6)",
+        M039_SIGNER_KEY_VERSION, public_key, M039_WRITER_SERVICE, M039_WRITER_HOST,
+        valid_from, valid_until,
+    )
+    await led.conn.execute(
+        "INSERT INTO change_ledger.private_writer_signer_key_scopes(key_id,key_version,tenant_id,company_id,"
+        "organization_ref,base_fingerprint) VALUES('vk-chk',$1,$2,$3,$4,$5)",
+        M039_SIGNER_KEY_VERSION, T, C, ORG, base,
+    )
+
+
+async def _m039_issue_permit(led, cid, tok, call_id):
+    scope = Scope(T, C)
+    worker = SqlChangeLedger(
+        led.conn, actors={"worker": "clt_wrk"}, private_writer_schema_enabled=True,
+    )
+    intent = await worker.dispatch_intent_for_call(scope, call_id, as_class="worker")
+    assert intent is not None
+    base = await led.conn.fetchval("SELECT base_fingerprint FROM change_ledger.records WHERE change_id=$1", cid)
+    await _m039_seed_checkpoint_signer(led, base)
+    await led.checkpoint()
+    applying_seq = await led.conn.fetchval(
+        "SELECT max(seq) FROM change_ledger.events WHERE change_id=$1 AND event_type='APPLYING'", cid,
+    )
+    checkpoint = await led.conn.fetchrow(
+        "SELECT cp.seq,cp.ledger_seq,cp.sink_kind,cp.read_back_confirmed,cp.verified,cp.written_by "
+        "FROM change_ledger.checkpoints cp WHERE cp.tenant_id=$1 AND cp.company_id=$2 "
+        "AND cp.sink_kind='REAL' AND cp.read_back_confirmed AND cp.verified "
+        "AND cp.written_by IS NOT NULL AND cp.ledger_seq >= $3 ORDER BY cp.seq DESC LIMIT 1",
+        T, C, applying_seq,
+    )
+    assert checkpoint is not None, "migration 039 fixture requires a written, read-back REAL checkpoint"
+    permit_id = uuid.uuid4()
+    digest = hashlib.sha256(f"{cid}:{tok['generation']}:{checkpoint['seq']}".encode()).hexdigest()
+    signature = sign_hex("vk-chk", "change-ledger-permit|v1|" + digest)
+    return await worker.issue_permit_s13(
+        scope, cid, tok["generation"], intent["dispatch_intent_id"], permit_id,
+        "vk-chk", M039_SIGNER_KEY_VERSION, signature,
+    )
+
+
+async def _m039_private_call(conn, sql, *args, scope=None):
+    async with conn.transaction():
+        await conn.execute('SET LOCAL ROLE "business_ai_private_writer"')
+        if scope is not None:
+            await conn.fetchval(
+                "SELECT pg_catalog.set_config('change_ledger.tenant_id',$1,true),"
+                "pg_catalog.set_config('change_ledger.company_id',$2,true)", *scope,
+            )
+        return await conn.fetchval(sql, *args)
+
+
+async def _m039_seed_private_writer_service(led, base):
+    session_user = await led.conn.fetchval("SELECT session_user::text")
+    await led.conn.execute(
+        "INSERT INTO change_ledger.role_scope(role_name,tenant_id,company_id) VALUES"
+        "('business_ai_private_writer',$1,$2) ON CONFLICT DO NOTHING", T, C,
+    )
+    await led.conn.execute(
+        "INSERT INTO change_ledger.physical_base_slots(base_fingerprint) VALUES($1) ON CONFLICT DO NOTHING",
+        base,
+    )
+    await led.conn.execute(
+        "INSERT INTO change_ledger.private_writer_service_bindings(\"session_user\",base_fingerprint,"
+        "writer_service_id,writer_host_id) VALUES($1,$2,$3,$4)",
+        session_user, base, M039_WRITER_SERVICE, M039_WRITER_HOST,
+    )
+    instance_id = str(uuid.uuid4())
+    startup = await _m039_private_call(
+        led.conn,
+        "SELECT pg_catalog.to_jsonb(change_ledger.private_writer_startup_recovery_state_v1($1::text))",
+        instance_id, scope=(T, C),
+    )
+    if isinstance(startup, str):
+        startup = json.loads(startup)
+    assert startup["readiness_ref"]
+    return instance_id, int(startup["service_epoch"])
+
+
+async def _m039_admission_identity(led, cid, call_id):
+    row = await led.conn.fetchrow(
+        "SELECT i.tenant_id,i.company_id,i.organization_ref,i.change_id::text AS change_id,"
+        "i.claim_generation AS generation,i.call_id::text AS call_id,i.operation_kind AS operation,"
+        "i.target_ref,i.expected_pre_version AS target_version,i.auth_epoch AS epoch,i.payload_digest,"
+        "b.permit_id::text AS permit_id,b.permit_digest,i.base_fingerprint,"
+        "i.repair_authorization_id::text AS repair_authorization_id "
+        "FROM change_ledger.private_writer_dispatch_intents i "
+        "JOIN change_ledger.private_writer_permit_bindings b USING(dispatch_intent_id) "
+        "WHERE i.change_id=$1 AND i.call_id=$2",
+        cid, call_id,
+    )
+    assert row is not None
+    identity = dict(row)
+    identity["host_id"] = M039_WRITER_HOST
+    return identity
 
 
 # ============================================================================ T6c / dispatch CAS
