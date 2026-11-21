@@ -3463,4 +3463,8 @@ The final RBF-06 silent-failure review also found a stale project-plan summary a
 ## 2026-11-21 — RBF-05 exact named S16 boundary verification
 
 The designated functional-test-reviewer ran only the service-entry `UPDATE_DRAFT` parameter from `tests/phase2/test_s16_proposal_boundary.py` at current HEAD `2d7dcce13f51c125b4809fcea05c1a3c52a595b7`: `1 passed, 11 deselected in 1.50s`, exit 0. `.harness/ledger.json` records the pass against this exact HEAD. The fake-proposal-port parameter and other malformed-input parameters were not rerun. The case asserts rejection before target/principal lookups, nonce issuance, proposal-port construction, or store insertion; it does not enable or invoke a physical writer.
+
+## 2026-11-21 — RBF-01 GPT-PM reproducibility finding
+
+Round 1 GPT-PM returned one MAJOR: `tests/test_rebaseline_rbf01_contract.py` read the canonical document target through mutable `origin/main` and checked the sanitized decision-log artifact against mutable origin refs. Confirmed the audit&#x27;s immutable input commits: canonical `origin/main` was `7916d16ed8da13ee0060fbe4072e173ea5d2bf35`; the source branch `origin/phase2/living-model-connectors-reconciliation` was `88753c207602927c0a72ce2805534b4929e4879f`. Their `core/DECISION_LOG.md` blobs are exactly `59cc4d40f32b2a85a847fe5627af1b9b776f1851` and `9faa925f34360762185c256722a795c9900cbb4a`, matching the sanitized artifact. Updated the test to read both blobs only by immutable commit IDs, validate each object resolves as that exact commit, and retain ref names only as provenance labels. Exact named rerun and ledger evidence are pending; the code fix alone does not close the finding.
 </pre></main></body></html>

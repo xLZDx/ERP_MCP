@@ -43,7 +43,11 @@ MERGE_PARENTS = {
         "26324d43e9d42af8512f0f531f98770c0cf7daa0",
     ),
 }
-CURRENT_CANONICAL = "origin/main"
+# Immutable audit inputs captured on 2026-11-21; refs below are provenance labels only.
+CURRENT_CANONICAL_REF = "origin/main"
+CURRENT_CANONICAL_COMMIT = "7916d16ed8da13ee0060fbe4072e173ea5d2bf35"
+DECISION_LOG_BRANCH_REF = "origin/phase2/living-model-connectors-reconciliation"
+DECISION_LOG_BRANCH_COMMIT = "88753c207602927c0a72ce2805534b4929e4879f"
 DECISION_LOG_ARTIFACT = Path(
     "docs/rebaseline/2026-11-20_DECISION_LOG_DIFF_DIGESTS.json"
 )
@@ -63,6 +67,9 @@ def blob_text(revision: str, path: str) -> str:
 
 class RBF01ContractTests(unittest.TestCase):
     def test_historical_document_ids_are_preserved_or_explicitly_extended(self):
+        for commit in (CURRENT_CANONICAL_COMMIT, DECISION_LOG_BRANCH_COMMIT):
+            self.assertEqual(git("rev-parse", f"{commit}^{{commit}}"), commit)
+
         for merge, (ours_parent, source_parent) in MERGE_PARENTS.items():
             with self.subTest(merge=merge):
                 parents = git("show", "-s", "--format=%P", merge).split()
@@ -73,7 +80,7 @@ class RBF01ContractTests(unittest.TestCase):
             for path in paths:
                 compared_paths.add(path)
                 historical_ids = set(STABLE_ID.findall(blob_text(historical_ref, path)))
-                current_ids = set(STABLE_ID.findall(blob_text(CURRENT_CANONICAL, path)))
+                current_ids = set(STABLE_ID.findall(blob_text(CURRENT_CANONICAL_COMMIT, path)))
                 with self.subTest(path=path):
                     self.assertTrue(historical_ids <= current_ids)
                     current_only = current_ids - historical_ids
@@ -118,15 +125,15 @@ class RBF01ContractTests(unittest.TestCase):
         artifact = json.loads((ROOT / DECISION_LOG_ARTIFACT).read_text(encoding="utf-8"))
         self.assertEqual(artifact["kind"], "sanitized_line_digest_diff")
         self.assertEqual(artifact["path"], "core/DECISION_LOG.md")
-        self.assertEqual(artifact["branch_ref"], "origin/phase2/living-model-connectors-reconciliation")
-        self.assertEqual(artifact["target_ref"], CURRENT_CANONICAL)
+        self.assertEqual(artifact["branch_ref"], DECISION_LOG_BRANCH_REF)
+        self.assertEqual(artifact["target_ref"], CURRENT_CANONICAL_REF)
         self.assertEqual(
             artifact["branch_blob"],
-            git("rev-parse", "origin/phase2/living-model-connectors-reconciliation:core/DECISION_LOG.md"),
+            git("rev-parse", f"{DECISION_LOG_BRANCH_COMMIT}:core/DECISION_LOG.md"),
         )
         self.assertEqual(
             artifact["target_blob"],
-            git("rev-parse", "origin/main:core/DECISION_LOG.md"),
+            git("rev-parse", f"{CURRENT_CANONICAL_COMMIT}:core/DECISION_LOG.md"),
         )
         self.assertIn("source lines are not emitted", artifact["normalization"])
         self.assertEqual(artifact["branch_line_count"], 511)
