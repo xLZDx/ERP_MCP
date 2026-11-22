@@ -6,13 +6,12 @@
   script is the logon starter for the scheduled task "ERP_MCP_Lane_Autostart". It has no periodic watchdog trigger.
 
   Order: Docker Desktop + lane PostgreSQL/Redis -> Apache (1C OData publication) -> lane proxies 8191-8193
-         -> real sidecar 21768 -> Tailscale Funnel host for the test IdP -> IdP 21080 -> gateway 21000
+         -> real sidecar 21768 -> Cloudflare Tunnel host for the test IdP -> IdP 21080 -> gateway 21000
          -> OpenAI tunnel-client (profile erp-mcp-local).
 
-  The IdP is published through Tailscale Funnel on this machine, so its public host is stable. If the host ever
-  differs from the issuer in env.ps1 and idp-config.json, this script rewrites both and restarts the IdP and
-  gateway; ChatGPT must then press Reconnect once. The tunnel-client profile must trust the same origin
-  (mcp.oauth_trusted_origins in the tunnel-client profile erp-mcp-local).
+  The IdP is published through the remotely managed Cloudflare Tunnel. Tailscale remains available for private
+  machine access, but this startup script never starts Funnel or changes the public issuer back to Tailscale.
+  The tunnel-client profile remains a separate MCP connection and trusts the origin configured in its own profile.
 #>
 [CmdletBinding()]
 param(
@@ -35,7 +34,6 @@ $Httpd     = 'D:\ERP_MCP_Testbed\apache24\bin\httpd.exe'
 $HttpdConf = "D:/ERP_MCP_Testbed/apache24/conf/httpd-erp-mcp-test-ready-$ApachePort.conf"
 $Node      = 'C:\Program Files\nodejs\node.exe'
 $Sidecar   = 'D:\ERP_MCP_Testbed\real1c_sidecar_app'
-$Tailscale = 'C:\Program Files\Tailscale\tailscale.exe'
 $TunnelPs1 = 'D:\Repo\ERP_MCP-chatgpt\.chatgpt\start-real1c-tunnel.ps1'
 $Logs      = Join-Path $Lane 'logs'
 $LogFile   = Join-Path $Logs 'autostart.log'
@@ -72,7 +70,7 @@ function Test-DockerDaemon([int]$TimeoutMilliseconds = 10000) {
     try {
         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
         $startInfo.FileName = $Docker
-        $startInfo.Arguments = 'info'
+        $startInfo.Arguments = 'ps -q'
         $startInfo.WorkingDirectory = $Runtime
         $startInfo.UseShellExecute = $false
         $startInfo.CreateNoWindow = $true
@@ -82,7 +80,7 @@ function Test-DockerDaemon([int]$TimeoutMilliseconds = 10000) {
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $startInfo
         if (-not $process.Start()) {
-            Log 'docker info probe could not start'
+            Log 'docker ps connectivity probe could not start'
             return $false
         }
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
@@ -97,10 +95,10 @@ function Test-DockerDaemon([int]$TimeoutMilliseconds = 10000) {
             if ($terminated) {
                 $stdoutTask.GetAwaiter().GetResult() | Out-Null
                 $stderrTask.GetAwaiter().GetResult() | Out-Null
-                Log ('docker info probe timed out after ' + $TimeoutMilliseconds + ' ms; child ' + $processId + ' terminated')
+                Log ('docker ps connectivity probe timed out after ' + $TimeoutMilliseconds + ' ms; child ' + $processId + ' terminated')
             } else {
                 $script:DockerProbeUnsafe = $true
-                Log ('docker info probe timed out after ' + $TimeoutMilliseconds + ' ms; child ' + $processId + ' termination not confirmed')
+                Log ('docker ps connectivity probe timed out after ' + $TimeoutMilliseconds + ' ms; child ' + $processId + ' termination not confirmed')
             }
             return $false
         }
@@ -109,7 +107,7 @@ function Test-DockerDaemon([int]$TimeoutMilliseconds = 10000) {
         $stderrTask.GetAwaiter().GetResult() | Out-Null
         return ($process.ExitCode -eq 0)
     } catch {
-        Log ('docker info probe failed: ' + $_.Exception.GetType().Name)
+        Log ('docker ps connectivity probe failed: ' + $_.Exception.GetType().Name)
         return $false
     } finally {
         if ($null -ne $process) { $process.Dispose() }
@@ -161,7 +159,7 @@ try {
         exit 1
     }
     if (-not $dockerReady) {
-        Log 'docker daemon not reachable, starting Docker Desktop'
+        Log 'docker daemon connection failed, starting Docker Desktop'
         if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
             Start-Process -FilePath $DockerUi -WindowStyle Hidden
         }
@@ -224,33 +222,26 @@ try {
         } else { Log 'FAIL: BAG_ODATA_SIDECAR_TOKEN not found in env.ps1' }
     }
 
-    # 5. Stable public host for the test IdP: Tailscale Funnel on this machine (the host never changes)
-    $funnelHost = $null
-    try {
-        $dns = ((& $Tailscale status --json 2>$null) | ConvertFrom-Json).Self.DNSName
-        if ($dns) { $funnelHost = $dns.TrimEnd('.') }
-    } catch { }
-    if ($funnelHost) {
-        $funnelState = (& $Tailscale funnel status 2>&1 | Out-String)
-        if ($funnelState -notmatch '21080') {
-            & $Tailscale funnel --bg 21080 *> $null
-            Log ('tailscale funnel to 21080 started for ' + $funnelHost)
+    # 5. Keep the test IdP issuer bound to the Cloudflare hostname; never start Tailscale Funnel here.
+    $envPath = Join-Path $Lane 'env.ps1'
+    $cfgPath = Join-Path $Lane 'idp-config.json'
+    $targetIdpHost = 'razer-erp-mcp-idp.sptr.space'
+    $envRaw = [IO.File]::ReadAllText($envPath)
+    $current = [regex]::Match($envRaw, 'https://([A-Za-z0-9.-]+)/realms/erp-mcp-test').Groups[1].Value
+    if (-not $current) {
+        Log 'FAIL: Cloudflare IdP issuer is missing from env.ps1; refusing lane startup'
+        exit 1
+    }
+    if ($current -ne $targetIdpHost) {
+        $utf8 = New-Object System.Text.UTF8Encoding($false)
+        [IO.File]::WriteAllText($envPath, $envRaw.Replace($current, $targetIdpHost), $utf8)
+        [IO.File]::WriteAllText($cfgPath, [IO.File]::ReadAllText($cfgPath).Replace($current, $targetIdpHost), $utf8)
+        Log ('IdP public host changed ' + $current + ' -> ' + $targetIdpHost + '; restarting IdP and gateway.')
+        foreach ($component in 'gateway', 'idp') {
+            $env:E2E_DIR = $Lane; $env:E2E_REAL1C = '1'
+            & (Join-Path $Runtime 'scripts\e2e\fault.ps1') -Component $component -Action stop *> $null
         }
-        $envPath = Join-Path $Lane 'env.ps1'
-        $cfgPath = Join-Path $Lane 'idp-config.json'
-        $envRaw = [IO.File]::ReadAllText($envPath)
-        $current = [regex]::Match($envRaw, 'https://([A-Za-z0-9.-]+)/realms/erp-mcp-test').Groups[1].Value
-        if ($current -and $current -ne $funnelHost) {
-            $utf8 = New-Object System.Text.UTF8Encoding($false)
-            [IO.File]::WriteAllText($envPath, $envRaw.Replace($current, $funnelHost), $utf8)
-            [IO.File]::WriteAllText($cfgPath, [IO.File]::ReadAllText($cfgPath).Replace($current, $funnelHost), $utf8)
-            Log ('IdP public host changed ' + $current + ' -> ' + $funnelHost + '; restarting IdP and gateway. ChatGPT must press Reconnect once.')
-            foreach ($component in 'gateway', 'idp') {
-                $env:E2E_DIR = $Lane; $env:E2E_REAL1C = '1'
-                & (Join-Path $Runtime 'scripts\e2e\fault.ps1') -Component $component -Action stop *> $null
-            }
-        } else { Log ('IdP public host unchanged: ' + $funnelHost) }
-    } else { Log 'WARN: Tailscale DNS name not available; IdP host not checked' }
+    } else { Log ('Cloudflare IdP host unchanged: ' + $targetIdpHost) }
 
     # 6. IdP and gateway through the project scripts (idempotent; they refuse to start without reader credentials)
     $env:E2E_DIR = $Lane
@@ -258,7 +249,14 @@ try {
     foreach ($component in 'idp', 'gateway') {
         $port = if ($component -eq 'idp') { 21080 } else { 21000 }
         if (-not (Test-Port $port)) {
-            & (Join-Path $Runtime 'scripts\e2e\fault.ps1') -Component $component -Action start *>> $LogFile
+            $previousLogSuffix = $env:E2E_COMPONENT_LOG_SUFFIX
+            $env:E2E_COMPONENT_LOG_SUFFIX = 'razer-' + [string]$port
+            try {
+                & (Join-Path $Runtime 'scripts\e2e\fault.ps1') -Component $component -Action start *>> $LogFile
+            } finally {
+                if ($null -eq $previousLogSuffix) { Remove-Item Env:E2E_COMPONENT_LOG_SUFFIX -ErrorAction SilentlyContinue }
+                else { $env:E2E_COMPONENT_LOG_SUFFIX = $previousLogSuffix }
+            }
             Log ($component + ' started: ' + (Test-Port $port))
         }
     }

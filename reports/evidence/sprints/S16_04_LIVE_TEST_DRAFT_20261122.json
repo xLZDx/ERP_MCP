@@ -1,0 +1,60 @@
+{
+  "acceptance_scope": "S16-04 bounded private TEST composition only",
+  "approval_path": "separate HTTPS S16 approval page",
+  "apply_status": "APPLIED",
+  "base_fingerprint_sha256": "ba088320c79afcca81f01dd545289f77cad4e1f14761c7e7d4c2a9d32c2b84d2",
+  "change_id": "3b2d78a5-cfb5-48fd-b74d-62ad7b8888bf",
+  "currency_code": "498",
+  "document_date": "2026-11-22",
+  "document_number": "S16TEST-7FC07E2A4145",
+  "document_ref": "10315b83-e6a3-11f1-8715-7cb27df6fcde",
+  "evidence_time_utc": "2026-11-22T18:32:32.495631+00:00",
+  "listener": {
+    "bind": "127.0.0.1",
+    "lifecycle": "ephemeral; shut down after the flow",
+    "tls": true
+  },
+  "native_readback": {
+    "document_number_matches": true,
+    "document_ref_matches": true,
+    "document_total_10": true,
+    "item_reference_matches": true,
+    "line_amount_10": true,
+    "line_count_one": true,
+    "line_quantity_one": true,
+    "line_vat_1_67": true,
+    "marker_hash_shape_ok": true,
+    "marker_matches_change_id": true,
+    "not_posted": true
+  },
+  "one_c_target": {
+    "class": "TEST",
+    "clone_alias": "818HA_test_ready",
+    "runtime_writer_roles": 2
+  },
+  "public_r1_changed": false,
+  "runtime_auth_and_stores": {
+    "identity_provider": "TEST fixture",
+    "proposal_and_approval_stores": "in-memory TEST fixtures"
+  },
+  "source_head_at_runtime_staging": "8fbeab3b982b682447941e16e649a73c1a0f919a",
+  "source_runtime": "isolated copy of ERP_MCP S16/S14 source on Ivan",
+  "target_total": "10",
+  "vat_amount": "1.67",
+  "workflow": [
+    "MCP propose",
+    "separate approval-page decision",
+    "MCP apply through factory-qualified Windows COM lane",
+    "fresh native COM read-back"
+  ],
+  "write_count": 1,
+  "posted": false,
+  "limitations": [
+    "not a persistent service deployment",
+    "not real IdP or secret-provider qualification",
+    "not durable S12/S13 store qualification",
+    "not public or tunnel exposure",
+    "not production routing or production-class S14 qualification",
+    "does not authorize posting"
+  ]
+}
