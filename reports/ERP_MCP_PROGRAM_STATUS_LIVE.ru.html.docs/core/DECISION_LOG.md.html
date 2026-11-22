@@ -3534,6 +3534,12 @@ After the operator confirmed the interactive 1C session was logged in, a one-off
 
 Decision: retain the source/test S16-04 status `ACCEPTED_BOUNDED`; keep runtime deployment and real-client qualification separate. The previous reply incorrectly named the absence of a deployed S16 gateway as a blocker to the already accepted S16-04 task. Do not turn that separate deployment gap into an operator blocker unless it is explicitly brought into scope with its own runtime acceptance criteria.
 
+## 2026-11-23 — Correct S16-04 and Cloudflare ingress scope attribution
+
+The S16-04 acceptance contract is the private TEST gateway/listener boundary: the five S16 tools and approval page are exposed only on the configured private listener; each request is authenticated; public, wildcard, forwarded-header, wrong-host, and non-TEST writer routes are refused; the exact factory-qualified local TEST clone is the only S14 executor target; and the public R1 surface remains read-only. The named integration evidence and one authorized live TEST draft/read-back are recorded in the S16 plan and `reports/evidence/sprints/S16_04_LIVE_TEST_DRAFT_20261122.json`. This acceptance is `ACCEPTED_BOUNDED` and does not require a persistent deployment or a Cloudflare tunnel.
+
+Cloudflare connector rotation, tunnel health, and migration of the existing read-only R1 ingress from Tailscale are separate backlog work under “move ERP_MCP ingress from Tailscale to Cloudflare.” They are not S16-04 dependencies and do not block its acceptance. Earlier decision/lesson wording that called these “S16-04 Cloudflare” changes was inaccurate and is corrected here. Keep S16-04 TEST writer routes off every public tunnel; assess Cloudflare ingress independently against its own origin, OIDC, authenticated read-only MCP, and rollback criteria.
+
 
 ## 2026-11-22 — Commit follow-through for current dirty set
 
