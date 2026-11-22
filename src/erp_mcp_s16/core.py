@@ -192,6 +192,17 @@ class S16Core:
         self._s12_anchors: dict[UUID, object] = {}
         self._approval_anchors: dict[UUID, ApprovalDecision] = {}
         self._apply_receipt_anchors: dict[UUID, ApplyReceipt] = {}
+        self._private_apply_port_bound = False
+
+    def bind_private_apply_port(self, apply_port: ApplyPort) -> None:
+        """Bind the separately composed private TEST writer before serving requests."""
+        if not callable(getattr(apply_port, "apply", None)):
+            raise ValueError("S16_APPLY_PORT_INVALID")
+        with self._lock:
+            if self._private_apply_port_bound or self._apply_started:
+                raise RuntimeError("S16_APPLY_PORT_ALREADY_BOUND")
+            self.apply_port = apply_port
+            self._private_apply_port_bound = True
 
     def anchor_issuance(self, receipt: DomainReceipt) -> ErrorCode | None:
         """Bind newly issued local values to this core instance; restart without anchors fails closed."""
