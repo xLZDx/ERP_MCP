@@ -51,6 +51,35 @@ function Set-PrivateAcl([string]$Path, [bool]$Directory) {
     Set-Acl -LiteralPath $Path -AclObject $acl
 }
 
+function Enter-ConnectorRotationMutex([int]$TimeoutSeconds = 60) {
+    $mutexName = "Global\ERP_MCP_Cloudflare_Rotate_${CurrentSid}_$TunnelName"
+    $mutex = [Threading.Mutex]::new($false, $mutexName)
+    $acquired = $false
+    try {
+        try {
+            $acquired = $mutex.WaitOne([TimeSpan]::FromSeconds($TimeoutSeconds))
+        } catch [Threading.AbandonedMutexException] {
+            # The previous rotation process exited while holding the lock. This process owns it now;
+            # its protected recovery record is reconciled below before a new snapshot is taken.
+            $acquired = $true
+        }
+        if (-not $acquired) { throw 'CLOUDFLARED_ROTATION_LOCK_TIMEOUT' }
+        return $mutex
+    } catch {
+        try {
+            if ($acquired) { $mutex.ReleaseMutex() }
+        } finally {
+            $mutex.Dispose()
+        }
+        throw
+    }
+}
+
+function Exit-ConnectorRotationMutex([Threading.Mutex]$Mutex) {
+    if (-not $Mutex) { return }
+    try { $Mutex.ReleaseMutex() } finally { $Mutex.Dispose() }
+}
+
 function Resolve-Cloudflared {
     if ($CloudflaredPath) {
         if (-not (Test-Path -LiteralPath $CloudflaredPath -PathType Leaf)) {
@@ -110,12 +139,17 @@ function Save-EncryptedToken([string]$CipherText) {
     }
 }
 
-function Save-RotationRecovery([string]$CipherText, [string]$ResolvedCloudflaredPath) {
+function Save-RotationRecovery(
+    [string]$CipherText,
+    [string]$ResolvedCloudflaredPath,
+    [string]$Phase = 'ROLLBACK_PENDING'
+) {
     $temporaryRecoveryPath = "$RecoveryPath.new"
     try {
         $recoveryJson = @{
             encrypted_token = $CipherText
             cloudflared_path = $ResolvedCloudflaredPath
+            rotation_phase = $Phase
         } | ConvertTo-Json -Compress
         $utf8 = New-Object System.Text.UTF8Encoding($false)
         [IO.File]::WriteAllText($temporaryRecoveryPath, $recoveryJson, $utf8)
@@ -146,6 +180,29 @@ function Restore-InterruptedRotation {
     } catch {
         throw 'CLOUDFLARED_ROTATION_RECOVERY_FAILED; connector startup refused'
     }
+}
+
+function Remove-RotationRecovery {
+    if (Test-Path -LiteralPath $RecoveryPath -PathType Leaf) {
+        Remove-Item -LiteralPath $RecoveryPath -Force
+    }
+}
+
+function Prepare-ConnectorRunAfterRotation {
+    if (-not (Test-Path -LiteralPath $RecoveryPath -PathType Leaf)) { return }
+    try {
+        $recovery = Get-Content -LiteralPath $RecoveryPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ([string]$recovery.rotation_phase -ceq 'REPLACEMENT_START_PENDING') {
+            Save-RotationRecovery -CipherText ([string]$recovery.encrypted_token) `
+                -ResolvedCloudflaredPath ([string]$recovery.cloudflared_path) `
+                -Phase 'REPLACEMENT_START_CONSUMED'
+            Add-Content -LiteralPath $LogPath -Value 'Rotation replacement startup accepted' -Encoding UTF8
+            return
+        }
+    } catch {
+        throw 'CLOUDFLARED_ROTATION_STATE_INVALID; connector startup refused'
+    }
+    Restore-InterruptedRotation
 }
 
 function Restore-PendingRotationBeforeRetry {
@@ -303,25 +360,27 @@ function Get-LogTextAfter([long]$Offset) {
     }
 }
 
-function Start-ConnectorTaskAndWait([string]$ResolvedCloudflaredPath, [int]$TimeoutSeconds = 60) {
+function Start-ConnectorTaskAndWait(
+    [string]$ResolvedCloudflaredPath,
+    [int]$TimeoutSeconds = 60,
+    [string]$ExpectedRotationMarker
+) {
     $logOffset = if (Test-Path -LiteralPath $LogPath -PathType Leaf) { (Get-Item -LiteralPath $LogPath).Length } else { 0L }
     Start-ScheduledTask -TaskName $TaskName
-    $processName = [IO.Path]::GetFileNameWithoutExtension($ResolvedCloudflaredPath)
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     do {
         $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         $treeIds = @(Get-ConnectorProcessTreeIds)
-        $connectorRunning = $false
-        if ($treeIds.Count -gt 0) {
-            $connectorRunning = @($treeIds | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } |
-                Where-Object { $_.ProcessName -eq $processName }).Count -gt 0
-        }
+        $connectorProcessIds = @(Get-CloudflaredProcessIdsByPath $ResolvedCloudflaredPath)
+        $connectorRunning = @($treeIds | Where-Object { $connectorProcessIds -contains [int]$_ }).Count -gt 0
         $newLogText = Get-LogTextAfter -Offset $logOffset
+        $rotationRunAccepted = [string]::IsNullOrEmpty($ExpectedRotationMarker) -or
+            $newLogText.IndexOf($ExpectedRotationMarker, [StringComparison]::Ordinal) -ge 0
         if ($newLogText -match '(?i)unauthorized|invalid tunnel token|failed to authenticate|tunnel not found') {
             throw 'CLOUDFLARED_CONNECTOR_AUTHENTICATION_FAILED'
         }
         if ($task -and [string]$task.State -eq 'Running' -and $connectorRunning -and
-            $newLogText -match 'Registered tunnel connection') {
+            $rotationRunAccepted -and $newLogText -match 'Registered tunnel connection') {
             return
         }
         Start-Sleep -Seconds 1
@@ -347,7 +406,7 @@ if ($Mode -eq 'Status') {
 }
 
 if ($Mode -eq 'Run') {
-    Restore-InterruptedRotation
+    Prepare-ConnectorRunAfterRotation
     if (-not (Test-Path -LiteralPath $SecretPath -PathType Leaf)) {
         throw 'ENCRYPTED_TUNNEL_TOKEN_NOT_FOUND'
     }
@@ -379,6 +438,12 @@ if ($Mode -eq 'Run') {
     return
 }
 
+$rotationMutex = $null
+if ($Mode -eq 'Rotate') {
+    # Serialize snapshot → stop → replace → readiness/rollback across concurrent invocations.
+    $rotationMutex = Enter-ConnectorRotationMutex
+}
+try {
 if (-not (Test-Path -LiteralPath $Root -PathType Container)) {
     New-Item -ItemType Directory -Path $Root -Force | Out-Null
     Set-PrivateAcl -Path $Root -Directory $true
@@ -466,15 +531,18 @@ if ($Mode -eq 'Install') {
     }
 } else {
     Save-RotationRecovery -CipherText $previousEncryptedToken -ResolvedCloudflaredPath $previousCloudflaredPath
-        Stop-ConnectorTask -ResolvedCloudflaredPath $resolvedCloudflaredPath
+    Stop-ConnectorTask -ResolvedCloudflaredPath $previousCloudflaredPath
     try {
         Save-EncryptedToken -CipherText $encrypted
         Save-ConnectorConfig -ResolvedCloudflaredPath $resolvedCloudflaredPath
-        Start-ConnectorTaskAndWait -ResolvedCloudflaredPath $resolvedCloudflaredPath
-        Remove-Item -LiteralPath $RecoveryPath -Force
+        Save-RotationRecovery -CipherText $previousEncryptedToken `
+            -ResolvedCloudflaredPath $previousCloudflaredPath -Phase 'REPLACEMENT_START_PENDING'
+        Start-ConnectorTaskAndWait -ResolvedCloudflaredPath $resolvedCloudflaredPath `
+            -ExpectedRotationMarker 'Rotation replacement startup accepted'
+        Remove-RotationRecovery
     } catch {
         try {
-    Stop-ConnectorTask -ResolvedCloudflaredPath $previousCloudflaredPath
+            Stop-ConnectorTask -ResolvedCloudflaredPath $resolvedCloudflaredPath
         } catch {
             throw 'CLOUDFLARED_ROTATION_FAILED; replacement connector stop could not be confirmed'
         }
@@ -482,7 +550,7 @@ if ($Mode -eq 'Install') {
             Save-EncryptedToken -CipherText $previousEncryptedToken
             Save-ConnectorConfig -ResolvedCloudflaredPath $previousCloudflaredPath
             Start-ConnectorTaskAndWait -ResolvedCloudflaredPath $previousCloudflaredPath
-            Remove-Item -LiteralPath $RecoveryPath -Force
+            Remove-RotationRecovery
         } catch {
             throw 'CLOUDFLARED_ROTATION_FAILED_AND_ROLLBACK_NOT_CONFIRMED'
         }
@@ -490,3 +558,6 @@ if ($Mode -eq 'Install') {
     }
 }
 & $PSCommandPath -Mode Status -TunnelName $TunnelName
+} finally {
+    Exit-ConnectorRotationMutex -Mutex $rotationMutex
+}

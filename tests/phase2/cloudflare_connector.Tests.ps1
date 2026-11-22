@@ -33,19 +33,6 @@ function Get-RotateElseBlock {
     return [scriptblock]::Create($body)
 }
 
-function Get-RotateStateSetup {
-    $statements = @($connectorAst.EndBlock.Statements | Where-Object {
-        ($_ -is [System.Management.Automation.Language.AssignmentStatementAst] -and
-            ($_.Left.Extent.Text -eq '$previousCloudflaredPath' -or
-                $_.Left.Extent.Text -eq '$resolvedCloudflaredPath' -or
-                $_.Left.Extent.Text -eq '$previousEncryptedToken')) -or
-        ($_ -is [System.Management.Automation.Language.IfStatementAst] -and
-            $_.Extent.Text -match "CloudflaredPath = ''")
-    } | Sort-Object { $_.Extent.StartOffset })
-    if ($statements.Count -ne 4) { throw 'ROTATE_STATE_SETUP_NOT_FOUND' }
-    return [scriptblock]::Create(($statements | ForEach-Object { $_.Extent.Text }) -join "`n")
-}
-
 function Get-RunRecoveryFirstStatement {
     $run = $connectorAst.Find({
         param($node)
@@ -54,7 +41,7 @@ function Get-RunRecoveryFirstStatement {
     }, $true)
     if (-not $run) { throw 'RUN_BRANCH_NOT_FOUND' }
     $body = @($run.Clauses[0].Item2.Statements)
-    if ($body.Count -lt 1 -or $body[0].Extent.Text -notmatch '^Restore-InterruptedRotation$') {
+    if ($body.Count -lt 1 -or $body[0].Extent.Text -notmatch '^Prepare-ConnectorRunAfterRotation$') {
         throw 'RUN_RECOVERY_NOT_FIRST'
     }
     return [scriptblock]::Create($body[0].Extent.Text)
@@ -73,6 +60,7 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         $script:TaskName = 'ERP_MCP_CloudflareTunnel_razer'
         $script:PSCommandPath = $connectorPath
         function Set-PrivateAcl { param([string]$Path, [bool]$Directory) }
+        . ([scriptblock]::Create((Get-ConnectorFunctionText 'Remove-RotationRecovery')))
     }
 
     It 'persists and resolves a custom executable path for a later Run invocation' {
@@ -107,6 +95,7 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         . ([scriptblock]::Create((Get-ConnectorFunctionText 'Save-ConnectorConfig')))
         . ([scriptblock]::Create((Get-ConnectorFunctionText 'Save-RotationRecovery')))
         . ([scriptblock]::Create((Get-ConnectorFunctionText 'Restore-InterruptedRotation')))
+        . ([scriptblock]::Create((Get-ConnectorFunctionText 'Prepare-ConnectorRunAfterRotation')))
         . ([scriptblock]::Create((Get-ConnectorFunctionText 'Resolve-Cloudflared')))
         (Get-Command Save-RotationRecovery).Definition | Should Match 'temporaryRecoveryPath'
         $RecoveryPath | Should Be $script:RecoveryPath
@@ -149,6 +138,46 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         }
     }
 
+    It 'first scheduled Run consumes replacement state and a later interrupted Run restores the old token and path' {
+        foreach ($helperName in @('Save-EncryptedToken', 'Save-ConnectorConfig', 'Save-RotationRecovery',
+                'Restore-InterruptedRotation', 'Prepare-ConnectorRunAfterRotation', 'Resolve-Cloudflared')) {
+            . ([scriptblock]::Create((Get-ConnectorFunctionText $helperName)))
+        }
+        $oldBinary = Join-Path $script:connectorRoot 'cloudflared-old.exe'
+        $newBinary = Join-Path $script:connectorRoot 'cloudflared-new.exe'
+        Set-Content -LiteralPath $oldBinary -Value 'old executable' -NoNewline
+        Set-Content -LiteralPath $newBinary -Value 'new executable' -NoNewline
+
+        Save-EncryptedToken -CipherText 'old-encrypted-token'
+        Save-ConnectorConfig -ResolvedCloudflaredPath $oldBinary
+        Save-RotationRecovery -CipherText 'old-encrypted-token' -ResolvedCloudflaredPath $oldBinary
+        Save-EncryptedToken -CipherText 'replacement-encrypted-token'
+        Save-ConnectorConfig -ResolvedCloudflaredPath $newBinary
+        Save-RotationRecovery -CipherText 'old-encrypted-token' -ResolvedCloudflaredPath $oldBinary `
+            -Phase 'REPLACEMENT_START_PENDING'
+
+        # The first scheduled Run consumes, but does not discard, the rollback record.
+        Prepare-ConnectorRunAfterRotation
+        (Get-Content -LiteralPath $script:SecretPath -Raw -Encoding ASCII) |
+            Should Be 'replacement-encrypted-token'
+        (Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json).cloudflared_path |
+            Should Be $newBinary
+        $pendingRecovery = Get-Content -LiteralPath $script:RecoveryPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $pendingRecovery.rotation_phase | Should Be 'REPLACEMENT_START_CONSUMED'
+        Resolve-Cloudflared | Should Be (Resolve-Path -LiteralPath $newBinary).Path
+        (Get-Content -LiteralPath $script:LogPath -Raw -Encoding UTF8) |
+            Should Match 'Rotation replacement startup accepted'
+
+        # A second Run means the replacement did not reach readiness before interruption.
+        Prepare-ConnectorRunAfterRotation
+        (Get-Content -LiteralPath $script:SecretPath -Raw -Encoding ASCII) |
+            Should Be 'old-encrypted-token'
+        (Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json).cloudflared_path |
+            Should Be $oldBinary
+        Resolve-Cloudflared | Should Be (Resolve-Path -LiteralPath $oldBinary).Path
+        [IO.File]::Exists($script:RecoveryPath) | Should Be $false
+    }
+
     It 'restores pending rotation state before a retry and rolls a failed replacement back to the original token and path' {
         foreach ($helperName in @('Save-EncryptedToken', 'Save-ConnectorConfig', 'Save-RotationRecovery',
                 'Restore-InterruptedRotation', 'Restore-PendingRotationBeforeRetry', 'Resolve-Cloudflared')) {
@@ -166,7 +195,7 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         function Stop-ConnectorTask([string]$ResolvedCloudflaredPath) {
             $global:connectorEvents += "stop:$ResolvedCloudflaredPath"
         }
-        function Start-ConnectorTaskAndWait([string]$ResolvedCloudflaredPath) {
+        function Start-ConnectorTaskAndWait([string]$ResolvedCloudflaredPath, [string]$ExpectedRotationMarker) {
             $global:connectorStartCalls++
             $global:connectorEvents += "start:$ResolvedCloudflaredPath"
             if ($global:connectorStartCalls -eq 1) { throw 'RETRY_REPLACEMENT_NOT_READY' }
@@ -212,10 +241,10 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         $script:previousCloudflaredPath = 'C:\tools\cloudflared.exe'
         $global:connectorEvents = @()
         function Stop-ConnectorTask([string]$ResolvedCloudflaredPath) { $global:connectorEvents += 'stop'; throw 'STOP_NOT_CONFIRMED' }
-        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
+        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath, [string]$Phase) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
         function Save-EncryptedToken { param([string]$CipherText) $global:connectorEvents += "token:$CipherText" }
         function Save-ConnectorConfig { param([string]$ResolvedCloudflaredPath) $global:connectorEvents += 'config' }
-        function Start-ConnectorTaskAndWait { param([string]$ResolvedCloudflaredPath) $global:connectorEvents += 'start' }
+        function Start-ConnectorTaskAndWait { param([string]$ResolvedCloudflaredPath, [string]$ExpectedRotationMarker) $global:connectorEvents += 'start' }
 
         { & $rotate } | Should Throw 'STOP_NOT_CONFIRMED'
         ($global:connectorEvents -join ',') | Should Be 'stop'
@@ -230,10 +259,10 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         $script:previousCloudflaredPath = 'C:\tools\cloudflared.exe'
         $global:connectorEvents = @()
         function Stop-ConnectorTask([string]$ResolvedCloudflaredPath) { $global:connectorEvents += 'stop' }
-        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
+        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath, [string]$Phase) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
         function Save-EncryptedToken { param([string]$CipherText) $global:connectorEvents += "token:$CipherText" }
         function Save-ConnectorConfig { param([string]$ResolvedCloudflaredPath) $global:connectorEvents += "config:$ResolvedCloudflaredPath" }
-        function Start-ConnectorTaskAndWait { param([string]$ResolvedCloudflaredPath) $global:connectorEvents += "start:$ResolvedCloudflaredPath" }
+        function Start-ConnectorTaskAndWait { param([string]$ResolvedCloudflaredPath, [string]$ExpectedRotationMarker) $global:connectorEvents += "start:$ResolvedCloudflaredPath" }
 
         & $rotate
 
@@ -250,11 +279,11 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         $global:connectorEvents = @()
         $global:connectorStartCalls = 0
         function Stop-ConnectorTask([string]$ResolvedCloudflaredPath) { $global:connectorEvents += 'stop' }
-        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
+        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath, [string]$Phase) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
         function Save-EncryptedToken { param([string]$CipherText) $global:connectorEvents += "token:$CipherText" }
         function Save-ConnectorConfig { param([string]$ResolvedCloudflaredPath) $global:connectorEvents += "config:$ResolvedCloudflaredPath" }
         function Start-ConnectorTaskAndWait {
-            param([string]$ResolvedCloudflaredPath)
+            param([string]$ResolvedCloudflaredPath, [string]$ExpectedRotationMarker)
             $global:connectorStartCalls++
             $global:connectorEvents += "start:$ResolvedCloudflaredPath"
             if ($global:connectorStartCalls -eq 1) { throw 'NEW_CONNECTOR_NOT_READY' }
@@ -275,8 +304,11 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         $script:Mode = 'Rotate'
         $script:CloudflaredPath = $newBinary
 
-        . (Get-RotateStateSetup)
-
+        $script:previousEncryptedToken = Get-Content -LiteralPath $script:SecretPath -Raw -Encoding ASCII
+        $script:CloudflaredPath = ''
+        $script:previousCloudflaredPath = Resolve-Cloudflared
+        $script:CloudflaredPath = $newBinary
+        $script:resolvedCloudflaredPath = Resolve-Cloudflared
         $previousEncryptedToken | Should Be 'previous-encrypted-token'
         $previousCloudflaredPath | Should Be (Resolve-Path -LiteralPath $oldBinary).Path
 
@@ -284,11 +316,11 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         $global:connectorEvents = @()
         $global:connectorStartCalls = 0
         function Stop-ConnectorTask([string]$ResolvedCloudflaredPath) { $global:connectorEvents += 'stop' }
-        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
+        function Save-RotationRecovery { param([string]$CipherText, [string]$ResolvedCloudflaredPath, [string]$Phase) Set-Content -LiteralPath $script:RecoveryPath -Value '{}' -NoNewline }
         function Save-EncryptedToken { param([string]$CipherText) $global:connectorEvents += "token:$CipherText" }
         function Save-ConnectorConfig { param([string]$ResolvedCloudflaredPath) $global:connectorEvents += "config:$ResolvedCloudflaredPath" }
         function Start-ConnectorTaskAndWait {
-            param([string]$ResolvedCloudflaredPath)
+            param([string]$ResolvedCloudflaredPath, [string]$ExpectedRotationMarker)
             $global:connectorStartCalls++
             $global:connectorEvents += "start:$ResolvedCloudflaredPath"
             if ($global:connectorStartCalls -eq 1) { throw 'REPLACEMENT_READINESS_FAILED' }
@@ -326,7 +358,7 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         function Get-ScheduledTask { return [pscustomobject]@{ State = 'Ready' } }
         function Get-Process { return $null }
         function Save-RotationRecovery {
-            param([string]$CipherText, [string]$ResolvedCloudflaredPath)
+            param([string]$CipherText, [string]$ResolvedCloudflaredPath, [string]$Phase)
             $global:connectorEvents += 'save-recovery'
         }
         function Save-EncryptedToken([string]$CipherText) { $global:connectorEvents += "save-token:$CipherText" }
@@ -376,24 +408,49 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
         $global:processSnapshotCalls | Should Be 2
     }
 
-    It 'confirms rotation readiness only with a running task, its cloudflared process, and a fresh registration log entry' {
+    It 'confirms rotation readiness only with the exact executable and a fresh replacement-start marker' {
         . ([scriptblock]::Create((Get-ConnectorFunctionText 'Start-ConnectorTaskAndWait')))
         function Get-ConnectorProcessTreeIds { return @(421) }
-        function Get-LogTextAfter([long]$Offset) { return 'Registered tunnel connection connIndex=0' }
+        function Get-CloudflaredProcessIdsByPath([string]$ResolvedCloudflaredPath) {
+            if ($ResolvedCloudflaredPath -ceq 'C:\tools\cloudflared.exe') { return @(421) }
+            return @()
+        }
+        function Get-LogTextAfter([long]$Offset) {
+            return "Rotation replacement startup accepted`nRegistered tunnel connection connIndex=0"
+        }
         Mock Start-ScheduledTask {}
         Mock Get-ScheduledTask { return [pscustomobject]@{ State = 'Running' } }
-        Mock Get-Process { return [pscustomobject]@{ ProcessName = 'cloudflared' } }
         Mock Start-Sleep {}
 
-        { Start-ConnectorTaskAndWait -ResolvedCloudflaredPath 'C:\tools\cloudflared.exe' -TimeoutSeconds 0 } |
+        { Start-ConnectorTaskAndWait -ResolvedCloudflaredPath 'C:\tools\cloudflared.exe' -TimeoutSeconds 0 `
+            -ExpectedRotationMarker 'Rotation replacement startup accepted' } |
             Should Not Throw
         Assert-MockCalled Start-ScheduledTask -Times 1
         (Get-LogTextAfter -Offset 0) | Should Match 'Registered tunnel connection'
+
+        { Start-ConnectorTaskAndWait -ResolvedCloudflaredPath 'C:\tools\other.exe' -TimeoutSeconds 0 `
+            -ExpectedRotationMarker 'Rotation replacement startup accepted' } |
+            Should Throw 'CLOUDFLARED_CONNECTOR_READINESS_NOT_CONFIRMED'
+    }
+
+    It 'does not confirm rotation readiness without a fresh replacement-start marker' {
+        . ([scriptblock]::Create((Get-ConnectorFunctionText 'Start-ConnectorTaskAndWait')))
+        function Get-ConnectorProcessTreeIds { return @(421) }
+        function Get-CloudflaredProcessIdsByPath([string]$ResolvedCloudflaredPath) { return @(421) }
+        function Get-LogTextAfter([long]$Offset) { return 'Registered tunnel connection connIndex=0' }
+        Mock Start-ScheduledTask {}
+        Mock Get-ScheduledTask { return [pscustomobject]@{ State = 'Running' } }
+        Mock Start-Sleep {}
+
+        { Start-ConnectorTaskAndWait -ResolvedCloudflaredPath 'C:\tools\cloudflared.exe' -TimeoutSeconds 0 `
+            -ExpectedRotationMarker 'Rotation replacement startup accepted' } |
+            Should Throw 'CLOUDFLARED_CONNECTOR_READINESS_NOT_CONFIRMED'
     }
 
     It 'rejects a tunnel authentication error even when the task reports running' {
         . ([scriptblock]::Create((Get-ConnectorFunctionText 'Start-ConnectorTaskAndWait')))
         function Get-ConnectorProcessTreeIds { return @(421) }
+        function Get-CloudflaredProcessIdsByPath([string]$ResolvedCloudflaredPath) { return @(421) }
         function Get-LogTextAfter([long]$Offset) { return 'Unauthorized: invalid tunnel token' }
         Mock Start-ScheduledTask {}
         Mock Get-ScheduledTask { return [pscustomobject]@{ State = 'Running' } }
@@ -407,15 +464,53 @@ Describe 'Cloudflare connector executable-path and rotation contract' {
     It 'does not accept a running task without its cloudflared process and fresh connection evidence' {
         . ([scriptblock]::Create((Get-ConnectorFunctionText 'Start-ConnectorTaskAndWait')))
         function Get-ConnectorProcessTreeIds { return @() }
+        function Get-CloudflaredProcessIdsByPath([string]$ResolvedCloudflaredPath) { return @() }
         function Get-LogTextAfter([long]$Offset) { return '' }
         Mock Start-ScheduledTask {}
         Mock Get-ScheduledTask { return [pscustomobject]@{ State = 'Running' } }
-        Mock Get-Process { return $null }
         Mock Start-Sleep {}
 
         { Start-ConnectorTaskAndWait -ResolvedCloudflaredPath 'C:\tools\cloudflared.exe' -TimeoutSeconds 0 } |
             Should Throw 'CLOUDFLARED_CONNECTOR_READINESS_NOT_CONFIRMED'
     }
 
+    It 'serializes rotation mutex acquisition across runspaces until the first owner releases it' {
+        . ([scriptblock]::Create((Get-ConnectorFunctionText 'Enter-ConnectorRotationMutex')))
+        . ([scriptblock]::Create((Get-ConnectorFunctionText 'Exit-ConnectorRotationMutex')))
+        $script:TunnelName = 'rotation-test-' + [guid]::NewGuid().ToString('N')
+        $script:CurrentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        $firstMutex = Enter-ConnectorRotationMutex -TimeoutSeconds 5
+        $ready = [Threading.ManualResetEvent]::new($false)
+        $runspace = [RunspaceFactory]::CreateRunspace()
+        $runspace.Open()
+        $runspace.SessionStateProxy.SetVariable('TunnelName', $script:TunnelName)
+        $runspace.SessionStateProxy.SetVariable('CurrentSid', $script:CurrentSid)
+        $runspace.SessionStateProxy.SetVariable('readyEvent', $ready)
+        $secondPowerShell = [PowerShell]::Create()
+        $secondPowerShell.Runspace = $runspace
+        $enterMutexDefinition = Get-ConnectorFunctionText 'Enter-ConnectorRotationMutex'
+        $exitMutexDefinition = Get-ConnectorFunctionText 'Exit-ConnectorRotationMutex'
+        [void]$secondPowerShell.AddScript($enterMutexDefinition + "`n" + $exitMutexDefinition + @'
+$readyEvent.Set() | Out-Null
+$secondMutex = Enter-ConnectorRotationMutex -TimeoutSeconds 5
+try { 'ACQUIRED' } finally { Exit-ConnectorRotationMutex -Mutex $secondMutex }
+'@)
+        $async = $secondPowerShell.BeginInvoke()
+        try {
+            $ready.WaitOne(2000) | Should Be $true
+            Start-Sleep -Milliseconds 150
+            $async.IsCompleted | Should Be $false
+        } finally {
+            Exit-ConnectorRotationMutex -Mutex $firstMutex
+        }
+        try {
+            $result = $secondPowerShell.EndInvoke($async)
+            ($result -join '') | Should Be 'ACQUIRED'
+        } finally {
+            $secondPowerShell.Dispose()
+            $runspace.Dispose()
+            $ready.Dispose()
+        }
+    }
 
 }
