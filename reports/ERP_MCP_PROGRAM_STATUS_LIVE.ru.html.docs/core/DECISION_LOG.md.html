@@ -3560,4 +3560,9 @@ GPT-PM reviewed code-only S16-04 changes at `c515c8ca2d7f8db0777117b38dd7fb141bd
 ## 2026-11-23 — Bind H3 receipts to source/run pairs and scored claims
 
 Decision: keep S17-06 in its existing `PARTIAL` state. The scorecard verifier interface now receives each frozen source hash paired with the exact test-lane run ID, plus a digest of the scorecard claims, so an authenticated receipt can bind the exact input-to-run mapping and result assertions. The named scorecard test passed 30 cases on the modified working tree; fix-only code and Python review found no remaining mapping issue. The trusted verifier must still authenticate source bytes and human review, and no qualified verifier or frozen N=30 evidence set is available. A one-time source-list/status attempt through ERP_MCP_Ivan and ERP_MCP_Razer failed at the MCP integration layer with internal error `-32603`; no accounting-period status was read. Keep FIN-S1.2 `BLOCKED_EXTERNAL` and S19-03 `PARTIAL`; do not synthesize or promote missing evidence. No new task or report layout was introduced.
+
+
+## 2026-11-23 — Correct native harness completion count
+
+Decision: count native harness completion exclusively from reconciled task rows where state == `done`: 56/119 at the current reconciliation. The plan&#x27;s 57/119 was a stale summary and has been corrected; bounded project acceptance stays 115/119, and R2-US-047 remains separately superseded. No ledger task state changed.
 </pre></main></body></html>
