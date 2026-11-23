@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import ipaddress
 import json
+from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Protocol
@@ -14,7 +15,15 @@ from business_ai_gateway.phase2.change.errors import ErrorCode, render
 from .contracts import ApproverSession, AuthenticatedPrincipal, PrincipalRole, TargetScope, TokenClass
 from .core import _as_utc, _valid_approver_session
 
-__all__ = ["PrivateNetworkConfig", "RouteAssessment", "create_private_s16_app"]
+__all__ = ["ExactPrivateListenerRouteProbe", "PrivateNetworkConfig", "RouteAssessment",
+           "create_private_s16_app", "private_listener_binding"]
+
+_current_identity: ContextVar[object | None] = ContextVar("s16_private_ingress_identity", default=None)
+
+
+def current_private_identity() -> object | None:
+    """Return the identity authenticated by the outer private ingress for this request."""
+    return _current_identity.get()
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +45,28 @@ class RouteAssessment:
 
 class RouteProbePort(Protocol):
     def assess(self, address: str, *, port: int) -> RouteAssessment: ...
+
+
+class ExactPrivateListenerRouteProbe:
+    """Confirm direct ASGI traffic reached the one configured numeric private listener."""
+
+    def __init__(self, origin: str) -> None:
+        parsed = urlsplit(origin)
+        if parsed.scheme != "https" or not parsed.netloc or parsed.hostname is None:
+            raise ValueError("PRIVATE_ORIGIN_INVALID")
+        try:
+            self._address = str(ipaddress.ip_address(parsed.hostname))
+            self._port = parsed.port if parsed.port is not None else 443
+        except ValueError:
+            raise ValueError("PRIVATE_ORIGIN_INVALID") from None
+        if not 1 <= self._port <= 65535:
+            raise ValueError("PRIVATE_ORIGIN_INVALID")
+
+    def assess(self, address: str, *, port: int) -> RouteAssessment:
+        if (type(address) is str and type(port) is int
+                and address == self._address and port == self._port):
+            return RouteAssessment((self._address,))
+        return RouteAssessment((), unresolved=True)
 
 
 class RequestAuthenticator(Protocol):
@@ -81,18 +112,52 @@ async def _invoke(function: Callable[..., Any], *args: Any, **kwargs: Any) -> An
     return await result if inspect.isawaitable(result) else result
 
 
+_PRIVATE_BIND_RANGES = tuple(ipaddress.ip_network(value) for value in (
+    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8",
+    "100.64.0.0/10", "fc00::/7", "fe80::/10", "::1/128",
+))
+
+
 def _is_private(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    return address.is_loopback or address.is_private
+    return (not address.is_unspecified and not address.is_multicast
+            and any(address.version == network.version and address in network
+                    for network in _PRIVATE_BIND_RANGES))
 
 
 def _configured_networks(config: PrivateNetworkConfig) -> tuple[Any, ...]:
     if type(config.allowed_networks) is not tuple or not config.allowed_networks:
         raise ValueError("PRIVATE_NETWORK_CONFIG_INVALID")
-    networks = tuple(ipaddress.ip_network(value, strict=True) for value in config.allowed_networks)
-    if any(not _is_private(network.network_address) or not _is_private(network.broadcast_address)
-           for network in networks):
+    try:
+        networks = tuple(ipaddress.ip_network(value, strict=True) for value in config.allowed_networks)
+    except (TypeError, ValueError):
+        raise ValueError("PRIVATE_NETWORK_CONFIG_INVALID") from None
+    if any(not any(network.version == allowed.version and network.subnet_of(allowed)
+                   for allowed in _PRIVATE_BIND_RANGES) for network in networks):
         raise ValueError("PUBLIC_NETWORK_FORBIDDEN")
     return networks
+
+
+def private_listener_binding(config: PrivateNetworkConfig
+                             ) -> tuple[ipaddress.IPv4Address | ipaddress.IPv6Address,
+                                        int, tuple[Any, ...]]:
+    """Validate and return the one numeric private bind address, port and peer ranges."""
+    if type(config) is not PrivateNetworkConfig or type(config.origin) is not str:
+        raise ValueError("PRIVATE_NETWORK_CONFIG_INVALID")
+    origin = urlsplit(config.origin)
+    if (origin.scheme != "https" or not origin.netloc or origin.path or origin.query
+            or origin.fragment or origin.username or origin.password):
+        raise ValueError("PRIVATE_ORIGIN_INVALID")
+    try:
+        host = ipaddress.ip_address(origin.hostname or "")
+        explicit_port = origin.port
+    except (TypeError, ValueError):
+        raise ValueError("PRIVATE_ORIGIN_INVALID") from None
+    port = 443 if explicit_port is None else explicit_port
+    networks = _configured_networks(config)
+    if (not _is_private(host) or type(port) is not int or not 1 <= port <= 65535
+            or not any(host.version == network.version and host in network for network in networks)):
+        raise ValueError("PRIVATE_ORIGIN_INVALID")
+    return host, port, networks
 
 
 def _valid_route_prefix(value: object, *, trailing_slash: bool) -> bool:
@@ -198,7 +263,8 @@ def _positive_identity(identity: object, *, approval: bool) -> bool:
 
 def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[..., Any],
                            authenticator: RequestAuthenticator, route_probe: RouteProbePort,
-                           config: PrivateNetworkConfig) -> Callable[..., Any]:
+                           config: PrivateNetworkConfig, *,
+                           lifespan_app: Callable[..., Any] | None = None) -> Callable[..., Any]:
     """Compose the two isolated applications behind fail-closed per-request checks only."""
     if (type(config) is not PrivateNetworkConfig or type(config.origin) is not str):
         raise ValueError("PRIVATE_NETWORK_CONFIG_INVALID")
@@ -211,19 +277,7 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
             or approval_root.startswith(tool_prefix + "/")
             or tool_prefix.startswith(approval_root + "/")):
         raise ValueError("PRIVATE_ROUTE_CONFIG_INVALID")
-    origin = urlsplit(config.origin)
-    if (origin.scheme != "https" or not origin.netloc or origin.path or origin.query or origin.fragment
-            or origin.username or origin.password):
-        raise ValueError("PRIVATE_ORIGIN_INVALID")
-    try:
-        origin_ip = ipaddress.ip_address(origin.hostname or "")
-        configured_port = origin.port
-        origin_port = 443 if configured_port is None else configured_port
-    except ValueError as exc:
-        raise ValueError("PRIVATE_ORIGIN_INVALID") from exc
-    if not _is_private(origin_ip) or not 1 <= origin_port <= 65535:
-        raise ValueError("PRIVATE_ORIGIN_INVALID")
-    networks = _configured_networks(config)
+    origin_ip, origin_port, networks = private_listener_binding(config)
     if type(config.max_body_bytes) is not int or not 1 <= config.max_body_bytes <= 1_048_576:
         raise ValueError("REQUEST_LIMIT_INVALID")
 
@@ -242,6 +296,9 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
             await send({"type": "http.response.body", "body": body})
             return
         if scope_type == "lifespan":
+            if lifespan_app is not None:
+                await _invoke(lifespan_app, scope, receive, send)
+                return
             while True:
                 event = await receive()
                 if event.get("type") == "lifespan.startup":
@@ -393,11 +450,19 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                         pass
                     else:
                         downstream_invoked = True
-                        await _invoke(downstream, scope, downstream_receive, protected_send)
+                        identity_token: Token[object | None] = _current_identity.set(identity)
+                        try:
+                            await _invoke(downstream, scope, downstream_receive, protected_send)
+                        finally:
+                            _current_identity.reset(identity_token)
                         return
                 if method != "POST":
                     downstream_invoked = True
-                    await _invoke(downstream, scope, receive, protected_send)
+                    identity_token = _current_identity.set(identity)
+                    try:
+                        await _invoke(downstream, scope, receive, protected_send)
+                    finally:
+                        _current_identity.reset(identity_token)
                     return
         except _BodyLimitExceeded:
             if downstream_invoked:

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Интерактивная архитектурная карта ERP_MCP: путь пользователя до баз 1С, внутренние службы, модели, доказательства и инфраструктура.">
+<meta name="color-scheme" content="dark">
+<title>ERP_MCP — изнутри: люди, данные и связи</title>
+<link rel="stylesheet" href="map.css">
+<script defer src="architecture.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<header class="top">
+ <div><div class="eyebrow">ERP_MCP / Architecture explorer</div><h1>От вопроса — до базы. И обратно.</h1><p class="intro">Вся архитектура приложения на одной карте: люди, проверки, бизнес-функции, адаптеры, хранилища и внутренние процессы. Выберите сценарий и проследите нить данных.</p></div>
+ <div class="topmark">КАРТА СВЯЗЕЙ<br><span id="counts">Компоненты и зависимости</span></div>
+</header>
+<main>
+ <nav class="routes" id="routes" aria-label="Сквозные сценарии"></nav>
+ <div class="route-info"><strong id="route-title">Вопрос → ответ из 1С</strong><p id="route-desc">Проследите путь запроса пользователя.</p></div>
+ <section class="workarea" aria-label="Интерактивная архитектура">
+  <div class="map-panel">
+   <div class="toolbar">
+    <label class="sr-only" for="search">Найти компонент, инструмент или исходник</label><input id="search" type="search" placeholder="Найти узел или инструмент…" autocomplete="off"><span id="search-status" class="empty" role="status"></span>
+    <span class="grow"></span><button id="zoom-out" type="button" aria-label="Уменьшить масштаб">−</button><span id="zoom-value" class="zoom-value" aria-live="polite">80%</span><button id="zoom-in" type="button" aria-label="Увеличить масштаб">+</button><button id="fit" type="button">По ширине</button><button id="reset" type="button">Все связи</button>
+   </div>
+   <div id="viewport" class="viewport" role="region" aria-label="Схема компонентов. Прокручивайте область; выбирайте узлы клавишей Tab и Enter.">
+    <div id="world-size" class="world-size"><div id="world" class="world"><svg id="network" class="network" aria-hidden="true"></svg></div></div>
+   </div>
+   <nav class="nav-lanes" aria-label="Слои архитектуры"><button type="button" data-lane="0">Вход и чтение</button><button type="button" data-lane="850">Модель и история</button><button type="button" data-lane="1070">Сбор и сверка</button><button type="button" data-lane="1290">Изменения в копии</button><button type="button" data-lane="1510">Инфраструктура</button></nav>
+   <div class="legend" aria-label="Типы связей"><span><i></i>Данные / вызов</span><span><i class="control"></i>Управление</span><span><i class="storage"></i>Хранение</span><span><i class="return"></i>Ответ</span><span><i class="contract"></i>Архитектурный контракт</span></div>
+  </div>
+  <aside id="inspector" class="inspector" aria-label="Подробности выбранного компонента"></aside>
+ </section>
+ <section class="trace" id="trace" aria-label="Последовательность сценария"><h2>Проследить по шагам</h2><ol class="steps" id="steps"></ol></section>
+ <details class="catalog"><summary>Источники карты и границы прочтения</summary><p>Это единая архитектурная карта состава, потоков и контрактов приложения, а не монитор текущего развёртывания. Линии не гарантируют, что все изображённые модули связаны в одном работающем процессе. Нажмите на узел, чтобы открыть соответствующие исходники и документы. Публичный путь к рабочим базам 1С остаётся только для чтения; изменение данных показано в отдельной одноразовой копии.</p><div class="catalog-links"><a href="https://github.com/xLZDx/ERP_MCP/blob/main/docs/DOCUMENT_INDEX.md" target="_blank" rel="noopener noreferrer">Единый каталог документов</a><a href="https://github.com/xLZDx/ERP_MCP/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Архитектура</a><a href="https://github.com/xLZDx/ERP_MCP/blob/main/docs/MASTER_PLAN.md" target="_blank" rel="noopener noreferrer">Мастер-план</a><a href="https://github.com/xLZDx/ERP_MCP/blob/main/docs/TDD.md" target="_blank" rel="noopener noreferrer">Технические требования</a><a href="https://github.com/xLZDx/ERP_MCP/blob/main/core/DECISION_LOG.md" target="_blank" rel="noopener noreferrer">Решения</a><a href="https://github.com/xLZDx/ERP_MCP/blob/main/core/LESSONS_LOG.md" target="_blank" rel="noopener noreferrer">Выводы и ретроспективы</a><a href="https://github.com/xLZDx/ERP_MCP/blob/main/docs/phase2/TDD_PHASE2_RU.md" target="_blank" rel="noopener noreferrer">Модели, коннекторы и сверка</a></div></details>
+</main>
+<footer>Клик по узлу — его окружение. Клик по линии — смысл передачи. Клик по шагу — переход к компоненту. Эта страница не обращается к вашим базам и не содержит учётных данных.</footer>
+<div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+<noscript><p>Для интерактивной карты включите JavaScript. Документы архитектуры доступны по ссылкам выше.</p></noscript>
+</body>
+</html>

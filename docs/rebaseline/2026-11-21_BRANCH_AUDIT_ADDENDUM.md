@@ -27,3 +27,24 @@ The preserved root workflow digest line matches candidate commit `ac97a979f81483
 ## Disposition
 
 No refs, branches, pull requests or worktrees were merged, closed, reset or deleted by this refresh. The remaining audit work is criterion-level mapping of the preserved dirty worktree content and any unique branch commits not yet reconciled in `2026-11-20_BRANCH_AUDIT.md`.
+
+## Subsequent rebaseline closeout — 2026-11-21
+
+- GPT-PM approved the RBF-01–06 code/contract package at exact HEAD `2fdf8ee457891166b3d4a58c4741d7ddb1dcf8de`; PR #73 merged to `main` as `b991658159634553a48f7d21d4e0bd9b293aa1a4` after head and mergeability verification. The repository deleted the temporary remote topic ref after merge. The local `codex/rebaseline-status-20261120` branch remains available as an audit ref; no other branches or worktrees were removed.
+- The merge did not include the three pre-existing root dirty items: `.gitattributes`, `.github/workflows/ci.yml`, and `reports/S10_RELEASE_EVIDENCE_MANIFEST.json`. They remain unstaged and must not be treated as part of the approved PR.
+- RBF-01–06 project status is bounded accepted. RBF-06 evidence remains limited to two sequential disposable-database scenarios; true concurrent requests, retry, and crash-mid-operation behavior are not established.
+- PR #41 and #42 remain open/conflicting at their audited historical heads and are not safe whole-tree merge candidates. Continue candidate-specific disposition from the existing audit rather than merge or delete those refs in bulk.
+
+The report renderer was corrected to honor `active_sprint: none` after closeout instead of falling back to a historical ledger sprint. The regenerated dashboard now has no active-sprint task table until the next sprint is planned. This is reporting behavior only; it changes no harness state or product acceptance.
+
+## Current-snapshot follow-up — 2026-11-21
+
+A read-only ref comparison against `2026-11-21_REF_CENSUS.json` finds 103 refs now: one added local branch ref, no removed refs, and four moved refs. The added `codex/s14-private-writer-followup-20261121` points to the same `39b762f470aa6912c2afa9cdf088321bc26c7406` commit as local `main`; that commit is one commit ahead of `origin/main`, so it is a local documentation-only candidate, not a new source delta or a merge/deletion authorization. `codex/rebaseline-status-20261120` now points at the approved PR #73 head `2fdf8ee457891166b3d4a58c4741d7ddb1dcf8de`; local `main` moved from `b8a2e2f` to `39b762f`; and `origin/HEAD` plus `origin/main` moved from `7916d16` to the merged PR #73 commit `b991658159634553a48f7d21d4e0bd9b293aa1a4`.
+
+Fresh GitHub metadata reads still show PR #41 and PR #42 as `open`, `merged=false`, and `mergeable=false`, at the same exact heads recorded above. They remain preserved and unsuitable for whole-tree merge.
+
+A fresh `git worktree list --porcelain` plus `git status --porcelain=v1 --untracked-files=all` pass read all 45 registered worktrees successfully: 18 are dirty and 377 paths are changed/untracked. Compared with `2026-11-21_WORKTREE_CENSUS_POST_RBF01.json`, all 17 non-root dirty worktrees have identical path/status entries; only the root changed (24 additions and two removals). The root changes are the current plan/decision/lesson/catalog/report reconciliation and generated report copies; the pre-existing `.gitattributes`, `.github/workflows/ci.yml`, and untracked `reports/S10_RELEASE_EVIDENCE_MANIFEST.json` remain present and untouched. No worktree or branch was removed, reset, or merged.
+
+The old `core/DECISION_LOG.md` blob `9faa925f34360762185c256722a795c9900cbb4a` (511 lines) was structurally cross-reconciled against the exact comparison blob `59cc4d40f32b2a85a847fe5627af1b9b776f1851` (3,045 lines): all 47 old section headings and all extracted task/PR/commit references appear in the current blob, and all 387 nonblank old lines appear verbatim after whitespace normalization. The bounded secret-pattern scan emitted no values and found no matches for the checked token/key and password-assignment patterns. This resolves the historical missing-content concern for the exact compared blobs; it does not claim every historical decision is currently active, nor does it replace current plan/status precedence.
+
+Disposition: branch/worktree and historical decision-log reconciliation is complete for the captured refs and exact blobs above. Preserve the current user/root changes and all refs. The local `39b762f` documentation commit is still not on `origin/main`; delivery review/approval is a separate step.

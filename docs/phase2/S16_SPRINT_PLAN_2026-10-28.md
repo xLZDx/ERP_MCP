@@ -46,9 +46,11 @@ Notes (wording only, not discrepancies):
    REVISE reviews on 2026-10-23; S13 acceptance state after 2026-10-17 is UNKNOWN). S16 is therefore specified as pure logic over injected ports,
    tested with fakes, exactly as S15 is. Where a real S12/S13 module exists in the tree (for example `ChangeProposal`, `approval_digest`, `ErrorCode`),
    S16 consumes it as a value/contract, not as proof that S12 is accepted.
-2. Nothing in S16 is wired into any gateway, ASGI app, listener or process manager. The production binding set stays empty. No new route is registered
-   on the R1 gateway.
-3. The S14 writer stays UNQUALIFIED and disabled. S16 never calls the COM write port; the `apply` tool logic ends at a fake apply port.
+2. S16 is wired as a separate private ASGI/MCP application. Its change tools and approval page are available only through the explicitly configured
+   private listener; the existing R1/public gateway remains read-only and receives no S16 write route. Operator scope revision on 2026-11-22 permits
+   this private gateway/listener wiring; it does not authorize a public/tunnel route or production 1C writes.
+3. The existing S14 COM executor may be injected into the separately configured S16 TEST service for the exact disposable clone. Do not build a duplicate
+   adapter. The public R1 production binding stays read-only; S16 functional tests continue to use fake apply ports.
 4. The `approve` action is never exposed on the model-facing tool surface. The model-facing surface is exactly: propose, status, apply, verify,
    rollback_propose. Approval exists only as an operation of the separate approval service reached by an approver browser session.
 5. Writes are private-network-only. Proxy, redirect and public-tunnel bypass routes are denied (I12, I14, D3).
@@ -97,7 +99,8 @@ Non-goals and explicitly out of scope:
 - Production identity and the production IdP choice; real SSO configuration.
 - Real client replay: real ChatGPT or Claude sessions, real connectors, real tunnels (NOT_RUN unless observed).
 - UI/accessibility user acceptance testing (UAT) with real approvers; the UX and a11y expert review of the page states is in scope, user UAT is not.
-- Deployment of any kind (FORBIDDEN): no service install, no listener on a real interface, no tunnel, no gateway registration.
+- Public/tunnel deployment and production service installation remain out of scope. A private loopback listener for the separately composed S16 TEST
+  application is allowed when explicitly configured; it must fail closed on non-private bind addresses and must not share the public R1 app.
 - Enabling the writer, any COM write, 1C real-base activity, post/unpost on a real base, contract update (E2), Drive intake, document intake (S17),
   gates G1-G7, and the independent security review of the implementation (S18).
 
@@ -272,31 +275,39 @@ Assertions:
     mismatched person identity, invalid/stale epoch, or non-boolean dependency-current result) before claim or apply-port execution.
 14. The explicit `register_tool` adapter publishes exactly the five tool names and their complete JSON Schemas from the immutable manifest;
     transport context is passed separately and absent from `inputSchema`. Signature-derived adapters that cannot preserve the exact schema or reject
-    undeclared arguments are refused before partial registration. Full binding to the gateway's high-level MCPServer is not established by this task;
-    it requires a separate low-level integration design that preserves authenticated context. The focused adapter contract passed 15 tests on
-    2026-11-15; this is synthetic adapter evidence, not gateway/runtime acceptance.
-Resolved for S16 on 2026-11-18: the immutable tool manifest fixes tool schemas, and all five change tools—including read-only `status` and `verify`—remain private-only. No public/tunnel change-tool exposure is implemented or claimed.
+    undeclared arguments are refused before partial registration. On 2026-11-22, `private_gateway.py` added a separate MCPServer transport bridge and
+    forwards the ingress-authenticated principal through request-scoped context; the designated integration tests are pending.
+Resolved for S16 on 2026-11-18 and revised 2026-11-22: all five change tools—including read-only `status` and `verify`—are private-only. The operator
+authorized a separate private S16 application/listener; no S16 route is added to the public R1 app or any tunnel.
 
 ### Epic E16-4 Private-network exposure (V2-S16-04: private-network-only writes, proxy/redirect/SSRF check)
 
 Assertions:
 1. The write-capable tool set and the approval service are registered only on a private-listener configuration object. A public/tunnel
    configuration object yields a surface with no change tools (E16).
-2. The write port target check refuses a target outside the allowed lanes (staging/production host, public address) by itself, independent of the
-   request label (E16).
+2. The S16 apply adapter accepts only the factory-qualified Windows COM lane for the exact configured local TEST file database. The factory rejects
+   server-mode, UNC, relative, duplicate, missing, unresolved, or mismatched `File=` targets before `V83.COMConnector.Connect`, then checks the
+   connected user and actual base fingerprint before opening the lane. A request label cannot override these checks (E16).
 3. Requests carrying `Forwarded`, `X-Real-IP` or `X-Forwarded-*` headers, with multiple or mismatched `Host`, are refused on the private surface
    (pattern of `private_ingress.py`; INFERENCE as to reuse).
-4. RouteProbePort cases: a target that redirects (3xx) to a public address, a proxy-routed target, a hostname resolving to a public address, and a
-   DNS answer changing between check and use are each refused (SSRF/redirect/proxy bypass). Redirects are never followed on write calls.
+4. The writer target is a local 1C file database, not a URL or network hostname. Therefore DNS, HTTP redirects, and HTTP proxy routing are not
+   writer-target mechanisms in this composition. Tests instead refuse remote/server-mode, UNC, duplicate, missing, relative, or mismatched local
+   targets before COM connection; the separate listener guard refuses public, wildcard, mismatched-host, and forwarded-header routes.
 5. A route check enumerates all declared routes and asserts no public or indirect route reaches a write tool.
-6. All checks run over fakes; no listener, tunnel or real network call is made by the tests.
+6. Route-policy checks run over test authorities. A separate named integration case starts the MCP session-manager lifespan and binds an ephemeral
+   HTTPS loopback listener to prove authenticated private ASGI/MCP composition and S16-to-S14 executor dispatch; the physical executor is
+   intercepted in that case, so it proves wiring rather than a live 1C write. It starts no tunnel or public interface.
 7. Positive authentication on every request: the private listener requires a valid approver session (approval service) or a write-audience token
    (tool surface) on every request. Network origin alone never authenticates (FACT: the `private_ingress.py` loopback check is an address check;
    it is not sufficient as authentication). Test: a request from a loopback origin with a rewritten `Host`, no proxy headers and no credential is
    refused; the same request with a valid credential but a foreign Origin/Referer on an approval POST is refused.
 8. A `CHAT_WRITE` principal with missing/empty identity fields, invalid epoch/MFA types, a non-TEST lane, or malformed/non-TEST scope is refused
    before the downstream MCP tool app is called.
-Resolved for this sprint on 2026-11-18: no S16 change tool is exposed on a public tunnel; the default allowed network is loopback, with additional private ranges only when explicitly configured in the private listener object. The listener factory still does not bind or start a network listener.
+Resolved for this sprint on 2026-11-18: no S16 change tool is exposed on a public tunnel; the default allowed network is loopback, with additional private ranges only when explicitly configured in the private listener object. Operator scope revision on 2026-11-22 authorizes composing and binding the separate private S16 listener; the R1/public listener stays unchanged.
+
+Bounded S16-04 follow-up evidence (2026-11-22): the separate gateway/listener and exact S14 executor adapter were added under the authorized private TEST scope. The designated named run of `test_s16_private_gateway_integration.py`, `test_s16_private_ingress.py`, and `test_windows_com_lane_target.py` reported 53 passed and one dependency deprecation warning. Independent code-reviewer, python-reviewer, and silent-failure-hunter reviews found no remaining issue. This is source/test acceptance of the private composition; it is not deployment, real-client, or a live 1C-write claim. The old S16 PR #68 closeout remains its historical 4/5 snapshot.
+
+Additional live TEST evidence (2026-11-22): after the bounded code acceptance, one explicitly authorized runtime execution used an isolated copy of the current S16/S14 source on Ivan, an ephemeral HTTPS listener bound only to `127.0.0.1`, the TEST IdP and in-memory proposal/approval stores, and a least-privilege COM user on the disposable `818HA_test_ready` file clone. The full MCP `propose` → separate approval page → `apply` path returned `APPLIED`; a new native COM connection then read the CT14 change marker and verified the document reference, incoming number, total 10, VAT 1.67, one line, and `Проведен = false`. The public R1 gateway was untouched. The value-free run record is `reports/evidence/sprints/S16_04_LIVE_TEST_DRAFT_20261122.json`. This proves one live TEST draft through the composed path. It does not qualify persistent service deployment, real IdP/secret-store integration, durable S12/S13 stores, tunnel/public access, production routing, posting, or S14 production-class operation. Do not rerun this one-off create flow or create a duplicate draft.
 
 ### Epic E16-5 Recorded tool-call replay (V2-S16-05: ChatGPT and Claude transcripts replayed; real runs NOT_RUN)
 
@@ -397,7 +408,7 @@ the observable value that would differ if the guard were off.
    (page states), silent-failure-hunter (false-approval and false-success paths), reliability-reviewer (fail-closed behavior under port failure).
    GPT-PM APPROVE on the exact head before push/PR.
 10. One PR; each commit carries a change record and a lessons-log entry.
-11. Writer stays UNQUALIFIED and disabled; production binding set stays empty; no gateway wiring.
+11. The S16 TEST writer remains distinct from the production binding set. S16 is composed only on a separate explicitly configured private listener; the R1/public gateway stays read-only and has no S16 write route. No production 1C write is enabled.
 12. The permissive-store test, the apply-time re-validation and parallel-claim tests, the positive-authentication test and the fake-versus-S12
     conformance test (sections 5.1, 5.2, 5.4, E16-4) pass.
 

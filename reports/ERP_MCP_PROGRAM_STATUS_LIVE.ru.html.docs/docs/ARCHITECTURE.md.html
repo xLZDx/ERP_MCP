@@ -207,10 +207,13 @@ Two complementary L2 paths are required:
 Test-only write capabilities are isolated from the production gateway.
 
 Under the explicit ADR-0009 rebaseline, the test plane may also use a separate private writer on
-marked disposable clones. It is bound to loopback/Tailscale, uses only the approved CT14 lifecycle,
-and is absent from public MCP registration. PostgreSQL admission and physical COM qualification are
-separate gates; until both pass, admission remains disabled and lifecycle remains `NOT_READY`. The
-production control/data planes remain read-only.
+marked disposable clones. The S16 application is composed as its own private MCP/approval ASGI app;
+its HTTPS listener binds only a configured private numeric address (loopback by default), forwards
+the MCP session-manager lifecycle, and authenticates each request before dispatch. The operator
+authorized this separate gateway/listener wiring on 2026-11-22. It is absent from public R1 MCP and
+all public tunnels. It uses only the approved CT14 lifecycle. PostgreSQL admission and physical COM
+qualification are separate gates; until both pass, admission remains disabled and lifecycle remains
+`NOT_READY`. The production control/data planes remain read-only.
 
 ## 4. Trust boundaries
 
@@ -487,9 +490,9 @@ grant evidence entries per company; all matching grants still determine deny pre
 Group membership uses verified caller claims or a future trusted directory. Other subjects&#x27;
 memberships remain unknown. Company navigation expansion is unavailable until separately proven.
 
-## 14. Current as-built qualification boundary — 2026-11-21
+## 14. Current as-built qualification boundary — 2026-11-22
 
-The frozen architecture above remains the design authority. Since its 2026-10-23 baseline, separately reviewed bounded engineering work has been integrated through S20, including isolated S16 approval/MCP code, S17 intake/workbench, S18 recovery, S19 residual-checking, and S20 bounded operation-duration metrics. `REBASELINE_FOLLOWUP` is active; its six audit tasks do not change the production read-only invariant, and no production writer, public approval route, or production binding is authorized by their bounded acceptance.
+The frozen architecture above remains the design authority. Since its 2026-10-23 baseline, separately reviewed bounded engineering work has been integrated through S20, including isolated S16 approval/MCP code, S17 intake/workbench, S18 recovery, S19 residual-checking, and S20 bounded operation-duration metrics. The S16-04 implementation now composes its private MCP and approval routes separately from public R1, and the named test has exercised request authentication, request-scoped identity, exact tool schemas, and an ephemeral loopback HTTPS listener. Independent code reviews are in progress. This bounded test does not claim a deployed listener, real 1C write, or production readiness.
 
-Current unresolved architecture evidence is tracked in `PROJECT_PLAN.md`: S16-04 has no qualified outbound writer route/listener; S17-06 lacks a qualified external verifier, fixed N=30 dataset and authenticated lane receipt; S19-03 lacks exact-head I1–I15 runtime results and G8 evidence. The full program also remains `NO_GO` for production. See the task rows for the evidence boundary and next action; do not treat test doubles or code presence as runtime qualification.
+Current unresolved architecture evidence is tracked in `PROJECT_PLAN.md`: S16-04 is awaiting the exact diff reviews and task-state reconciliation; S17-06 lacks a qualified external verifier, fixed N=30 dataset and authenticated lane receipt; S19-03 lacks exact-head I1–I15 runtime results and G8 evidence. The full program also remains `NO_GO` for production. See the task rows for the evidence boundary and next action; do not treat test doubles or code presence as runtime qualification.
 </pre></main></body></html>

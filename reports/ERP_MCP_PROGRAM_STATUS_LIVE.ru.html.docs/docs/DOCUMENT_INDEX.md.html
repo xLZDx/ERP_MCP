@@ -6,9 +6,11 @@
 
 The operator authorized a full evidence-based program rebaseline across source,
 architecture, plans, reports, commits and branches. Current execution order is
-in `../PROJECT_PLAN.md`. The bounded REBASELINE and MAIN_CONSOLIDATION work is
-recorded closed; `REBASELINE_FOLLOWUP` is the active sprint for the supplemental
-branch/PR audit, next-work queue and status reconciliation. The latest audit snapshot is
+in `../PROJECT_PLAN.md`. The bounded REBASELINE, MAIN_CONSOLIDATION and
+REBASELINE_FOLLOWUP work is recorded closed. S16-04 is resumed as the current
+bounded task under the operator&#x27;s 2026-11-22 authorization to wire a separate
+private TEST gateway/listener; the existing R1/public gateway remains read-only.
+The latest audit snapshot is
 `rebaseline/2026-11-20_BRANCH_AUDIT.md`; current worktree path/status data is in
 `rebaseline/2026-11-20_WORKTREE_CENSUS.json`, and the source-restricted
 decision-log comparison is in
@@ -16,14 +18,16 @@ decision-log comparison is in
 evidence limits and do not imply that every unique branch delta has been
 semantically cleared.
 
-The initial project-document reconciliation records 107/112 baseline tasks as
-`ACCEPTED_BOUNDED`; the remaining five product obligations are FIN-S1.2 and
-R2-US-047 (`BLOCKED_EXTERNAL`), plus S16-04, S17-06 and S19-03 (`PARTIAL`). The
-active `REBASELINE_FOLLOWUP` sprint adds six audit tasks, so the live registry
-has 118 tasks; none of these six is project-accepted yet. As of 2026-11-21,
-native harness completion is 55/118 and project-document acceptance is 107/118.
-Restricted to the original 112-task baseline these are 55/112 harness-done and
-107/112 project-accepted; keep the two measures distinct.
+The initial project-document reconciliation recorded 107/112 baseline tasks as
+`ACCEPTED_BOUNDED`. After the six bounded follow-up tasks were accepted, the
+live 118-task registry records 113/118 project-document acceptances and 55/118
+native-harness completions; these are separate measures. The remaining five
+product obligations are FIN-S1.2 and R2-US-047 (`BLOCKED_EXTERNAL`), plus
+S16-04, S17-06 and S19-03 (`PARTIAL`).
+`REBASELINE_FOLLOWUP` closed bounded after PR #73 merged as
+`b991658159634553a48f7d21d4e0bd9b293aa1a4`. Restricted to the original 112-task
+baseline, project acceptance remains 107/112 and native-harness completion
+remains 55/112; keep the two measures distinct.
 Historical bounded acceptance does not establish runtime, product or production
 readiness.
 

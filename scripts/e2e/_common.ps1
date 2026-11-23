@@ -329,10 +329,20 @@ function Get-ComponentCommand([string]$Name) {
     }
 }
 
+function Get-ComponentLogPath([string]$Name, [ValidateSet('err', 'out')][string]$Stream) {
+    $instanceSuffix = [string]$env:E2E_COMPONENT_LOG_SUFFIX
+    if ($instanceSuffix -and $instanceSuffix -notmatch '^[A-Za-z0-9_-]{1,40}$') {
+        throw 'E2E_COMPONENT_LOG_SUFFIX_INVALID'
+    }
+    $stem = $Name
+    if ($instanceSuffix) { $stem += '-' + $instanceSuffix }
+    return Join-Path $script:E2eDir ('logs\' + $stem + '.' + $Stream + '.log')
+}
+
 function Get-LogTail([string]$Name, [int]$Lines = 15) {
     $parts = @()
     foreach ($suffix in 'err', 'out') {
-        $file = Join-Path $script:E2eDir ('logs\' + $Name + '.' + $suffix + '.log')
+        $file = Get-ComponentLogPath -Name $Name -Stream $suffix
         if (Test-Path $file) {
             $parts += ('--- ' + $Name + '.' + $suffix + '.log (tail) ---')
             $parts += @(Get-Content $file -Tail $Lines -ErrorAction SilentlyContinue)
@@ -364,8 +374,8 @@ function Start-E2eComponent {
     Initialize-PythonEnv
     New-Item -ItemType Directory -Force -Path (Join-Path $script:E2eDir 'pids'),
         (Join-Path $script:E2eDir 'logs') | Out-Null
-    $out = Join-Path $script:E2eDir ('logs\' + $Name + '.out.log')
-    $err = Join-Path $script:E2eDir ('logs\' + $Name + '.err.log')
+    $out = Get-ComponentLogPath -Name $Name -Stream out
+    $err = Get-ComponentLogPath -Name $Name -Stream err
     if ($Name -in 'gateway', 'sidecar', 'capability_observer', 'capability_acceptor') { Import-E2eEnv }
     if ($Name -eq 'gateway') {
         foreach ($key in 'BAG_CAPABILITY_OBSERVATION_DATABASE_URL', 'BAG_CAPABILITY_ACCEPTANCE_DATABASE_URL',
