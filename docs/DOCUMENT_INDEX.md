@@ -17,11 +17,11 @@ evidence limits and do not imply that every unique branch delta has been
 semantically cleared.
 
 The initial project-document reconciliation recorded 107/112 baseline tasks as
-`ACCEPTED_BOUNDED`. After the six bounded follow-up tasks were accepted, the
-live 118-task registry records 113/118 project-document acceptances and 55/118
-native-harness completions; these are separate measures. The remaining five
-product obligations are FIN-S1.2 and R2-US-047 (`BLOCKED_EXTERNAL`), plus
-S16-04, S17-06 and S19-03 (`PARTIAL`).
+`ACCEPTED_BOUNDED`. As of 2026-11-23, the live 119-task registry records 115/119
+project-document acceptances, one superseded task outside ERP_MCP scope, and
+57/119 native-harness completions; these are separate measures. The remaining
+ERP_MCP product obligations are FIN-S1.2 (deferred to final project verification),
+S17-06 and S19-03 (`PARTIAL`).
 `REBASELINE_FOLLOWUP` closed bounded after PR #73 merged as
 `b991658159634553a48f7d21d4e0bd9b293aa1a4`. Restricted to the original 112-task
 baseline, project acceptance remains 107/112 and native-harness completion

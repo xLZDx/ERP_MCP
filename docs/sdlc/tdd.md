@@ -16,11 +16,11 @@ This handoff links the accepted finisher requirements to the settled design and 
 
 This paragraph records the original handoff scope and is historical. Later bounded sprints S17–S20 were separately authorized and closed; their closeouts do not promote the product/runtime gates below.
 
-## Current program disposition — 2026-11-21
+## Current program disposition — 2026-11-23
 
-The current project plan and sprint evidence supersede the original handoff status above. `REBASELINE_FOLLOWUP` is active with six audit tasks. The live registry records 107/118 project-document tasks as `ACCEPTED_BOUNDED` and 55/118 native harness tasks as done; the original 112-task baseline remains 107/112 project-accepted. Five product obligations remain open: `FIN-S1.2` and `R2-US-047` are `BLOCKED_EXTERNAL`, while `S16-04`, `S17-06`, and `S19-03` are `PARTIAL`. See [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md) for exact criterion evidence, owners, and next steps.
+The current project plan and sprint evidence supersede the original handoff status above. `REBASELINE_FOLLOWUP` and S20 are closed bounded. The live 119-task registry records 115 project-document acceptances, one superseded task outside ERP_MCP scope, and 57 native-harness tasks in `done`; the original 112-task baseline remains 107/112 project-accepted and 55/112 harness-done. The three remaining ERP_MCP product obligations are FIN-S1.2 (deferred to final project verification), S17-06 (`PARTIAL`), and S19-03 (`PARTIAL`). See [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md) for exact criterion evidence, owners, dependencies, and next steps.
 
-Bounded acceptance means only the reviewed engineering slice passed its stated criteria. It does not establish production readiness, authenticated live 1C period status, a deployed writer, a qualified external H3 verifier, runtime execution of I1–I15, or G8. S17-01–05 are already accepted; do not rerun or reopen them to address S17-06's distinct N=30/external-receipt residual. S20-01 is bounded-accepted and merged; full suites, CI, deployment, live 1C mutation, and production GO remain unclaimed.
+Bounded acceptance means only the reviewed engineering slice passed its stated criteria. It does not establish production readiness, authenticated live 1C period status, a deployed writer, a qualified external H3 verifier, runtime execution of I1–I15, or G8. S17-01–05 and S20-01 are already accepted; do not rerun or reopen them to address S17-06's distinct N=30/external-receipt residual. Full suites, CI, deployment, live 1C mutation, and production GO remain unclaimed.
 
 ## Requirement to story to acceptance
 
