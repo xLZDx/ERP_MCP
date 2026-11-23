@@ -377,8 +377,8 @@ The active scope freeze is not released merely because current code is green. Th
 scope defined in `SCOPE_FREEZE_BASELINE_2026-10-06.md` must reach its declared acceptance level
 before new product scope is admitted.
 
-## Current implementation and evidence status — 2026-11-21
+## Current implementation and evidence status — 2026-11-23
 
-The 2026-10-23 frozen design above remains the normative product boundary. Later bounded engineering slices are tracked separately in `PROJECT_PLAN.md`; they do not amend the read-only production boundary or imply runtime qualification. As of 2026-11-21, `REBASELINE_FOLLOWUP` is active with six audit tasks; the live registry has 107/118 project-accepted tasks and 55/118 native harness-done tasks. The original 112-task project baseline remains 107 accepted. Five product residuals remain: two external blocks (`FIN-S1.2`, `R2-US-047`) and three partial criteria (`S16-04`, `S17-06`, `S19-03`).
+The 2026-10-23 frozen design above remains the normative product boundary. Later bounded engineering slices are tracked separately in `PROJECT_PLAN.md`; they do not amend the read-only production boundary or imply runtime qualification. As of 2026-11-23, `REBASELINE_FOLLOWUP` and S20 are closed; the live registry has 115/119 project-document acceptances, one superseded task outside ERP_MCP scope, and 57/119 native harness-done tasks. The original 112-task project baseline remains 107 accepted and 55 harness-done. Three product residuals remain: `FIN-S1.2` is deferred to final verification, while `S17-06` and `S19-03` remain partial.
 
 Release 2 remains `NO_GO`; production authorization remains `NONE`; G8 is not passed. In particular, do not infer 1C period closure from synthetic data, writer deployment from fake/private-ingress tests, H3 N=30 acceptance from deterministic verifier tests, or I1–I15 runtime coverage from the synthetic contract checker. The dated project plan and linked sprint evidence are the acceptance source for those slices.

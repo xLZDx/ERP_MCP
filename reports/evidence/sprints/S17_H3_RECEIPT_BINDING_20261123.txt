@@ -1,0 +1,15 @@
+S17-06 H3 receipt-binding contract follow-up
+Date: 2026-11-23
+
+Base commit: 4f45f3f59b0d31be8fa70875145cb3173521d196
+Candidate state: modified working tree; this is not a committed exact-head run.
+Changed source SHA-256: f24367cb47e65eceb467bfdf569d296e40bc92724b02577f7c7fd089465e49a0
+Changed test SHA-256: efffc09d6eb4e68688e7004e3505d3111d5a74ffcec0a5218e51de3a6e8e2691
+
+Assigned test role: functional-test-reviewer
+Command: .venv\Scripts\python.exe -m pytest -q tests/phase2/test_s17_h3_scorecard.py
+Result: 30 passed in 1.04s; exit code 0.
+
+Fix-only review: code-reviewer and python-reviewer confirmed the ordered source-hash/run-ID pair correction and reported no remaining finding in that delta. silent-failure-hunter confirmed the pair mapping is fixed but retained a blocker: no qualified verifier/receipt currently proves source provenance and authenticated human review against the frozen invoice bytes.
+
+Scope: this run verifies scorecard contract behavior only. It is not a committed-head result and does not provide the frozen N=30 invoice set, external receipt, trust-root qualification, or measured H3 acceptance. S17-06 remains PARTIAL.

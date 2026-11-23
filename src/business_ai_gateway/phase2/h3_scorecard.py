@@ -1,9 +1,11 @@
 """Value-free, fail-closed scorecard for the frozen S17 H3 evaluation."""
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Protocol
 
@@ -46,9 +48,16 @@ class H3MetricStatus(StrEnum):
 
 
 class H3EvidenceReceiptVerifier(Protocol):
-    """Trusted host adapter that authenticates the frozen external lane artifacts."""
+    """Verify an authenticated receipt binding source/run pairs and digest to frozen bytes
+    and authenticated human-review evidence. Mock/test verifiers exercise the contract only;
+    they cannot establish H3 acceptance.
+    """
 
-    def verify(self, source_hashes: tuple[str, ...], run_ids: tuple[str, ...]) -> bool: ...
+    def verify(
+        self,
+        source_runs: tuple[tuple[str, str], ...],
+        evidence_sha256: str,
+    ) -> bool: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,8 +167,8 @@ def evaluate_h3(
     else:
         try:
             receipt_verified = receipt_verifier.verify(
-                tuple(row.source_sha256 for row in evidence),
-                tuple(row.test_lane_run_id for row in evidence if row.test_lane_run_id is not None),
+                _source_run_pairs(evidence),
+                _evidence_sha256(evidence),
             ) is True
         except Exception:  # noqa: BLE001 - an unavailable verifier cannot establish acceptance
             receipt_verified = False
@@ -203,6 +212,55 @@ def _invoice_valid(row: H3InvoiceEvidence) -> bool:
     except Exception:  # noqa: BLE001 - malformed slotted evidence must fail closed
         return False
     return True
+
+
+def _source_run_pairs(
+    evidence: tuple[H3InvoiceEvidence, ...],
+) -> tuple[tuple[str, str], ...]:
+    """Keep each frozen source bound to the run that processed that source."""
+    pairs: list[tuple[str, str]] = []
+    for row in evidence:
+        run_id = row.test_lane_run_id
+        if run_id is not None:
+            pairs.append((row.source_sha256, run_id))
+    return tuple(pairs)
+
+
+def _evidence_sha256(evidence: tuple[H3InvoiceEvidence, ...]) -> str:
+    """Digest every scorecard claim so a receipt must attest the exact scored payload.
+
+    The digest deliberately excludes invoice contents: source hashes identify the frozen files,
+    while the per-field booleans and run metadata bind the metric and review claims to the
+    verifier's authenticated lane receipt.
+    """
+    payload = {
+        "domain": "ERP_MCP/S17-06/H3_EVIDENCE/v1",
+        "invoices": [
+            {
+                "source_sha256": row.source_sha256,
+                "file_format": row.file_format.value,
+                "frozen_at": row.frozen_at.astimezone(timezone.utc).isoformat(timespec="microseconds"),
+                "extraction_started_at": row.extraction_started_at.astimezone(timezone.utc).isoformat(
+                    timespec="microseconds"
+                ),
+                "evidence_class": row.evidence_class.value,
+                "test_lane_run_id": row.test_lane_run_id,
+                "fields": [
+                    {
+                        "material": field.material,
+                        "semantic_correction": field.semantic_correction,
+                        "confidently_wrong": field.confidently_wrong,
+                        "human_reviewed": field.human_reviewed,
+                        "approved": field.approved,
+                    }
+                    for field in row.fields
+                ],
+            }
+            for row in evidence
+        ],
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(canonical.encode("ascii")).hexdigest()
 
 
 def _field_valid(field: object) -> bool:

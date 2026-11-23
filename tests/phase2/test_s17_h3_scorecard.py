@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -21,15 +22,28 @@ STARTED = FROZEN + timedelta(minutes=1)
 
 
 class _TrustedReceiptVerifier:
-    def __init__(self, result: object = True, *, error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        result: object = True,
+        *,
+        expected_sha256: str | None = None,
+        error: Exception | None = None,
+    ) -> None:
         self.result = result
+        self.expected_sha256 = expected_sha256
         self.error = error
-        self.calls: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
+        self.calls: list[tuple[tuple[tuple[str, str], ...], str]] = []
 
-    def verify(self, source_hashes: tuple[str, ...], run_ids: tuple[str, ...]) -> bool:
-        self.calls.append((source_hashes, run_ids))
+    def verify(
+        self,
+        source_runs: tuple[tuple[str, str], ...],
+        evidence_sha256: str,
+    ) -> bool:
+        self.calls.append((source_runs, evidence_sha256))
         if self.error is not None:
             raise self.error
+        if self.expected_sha256 is not None:
+            return self.result is True and evidence_sha256 == self.expected_sha256
         return self.result  # type: ignore[return-value]
 
 
@@ -69,6 +83,13 @@ def _sample(*, corrected_count: int = 0, **overrides: object) -> tuple[H3Invoice
     )
 
 
+def _receipt_digest(rows: tuple[H3InvoiceEvidence, ...]) -> str:
+    verifier = _TrustedReceiptVerifier()
+    evaluate_h3(rows, receipt_verifier=verifier)
+    assert len(verifier.calls) == 1
+    return verifier.calls[0][1]
+
+
 def test_exact_ten_percent_passes_and_strata_are_reported_separately() -> None:
     formats = tuple(H3FileFormat)
     rows = tuple(
@@ -87,7 +108,121 @@ def test_exact_ten_percent_passes_and_strata_are_reported_separately() -> None:
     assert result.metric_status is H3MetricStatus.PASS
     assert {stratum.file_format for stratum in result.strata} == set(formats)
     assert sum(stratum.document_count for stratum in result.strata) == 30
-    assert verifier.calls == [(tuple(row.source_sha256 for row in rows), ("run-001",) * 30)]
+    assert len(verifier.calls) == 1
+    source_runs, evidence_sha256 = verifier.calls[0]
+    assert source_runs == tuple((row.source_sha256, "run-001") for row in rows)
+    assert len(evidence_sha256) == 64
+    assert all(char in "0123456789abcdef" for char in evidence_sha256)
+
+
+@pytest.mark.parametrize(
+    "claim",
+    [
+        "source_sha256",
+        "file_format",
+        "frozen_at",
+        "extraction_started_at",
+        "evidence_class",
+        "test_lane_run_id",
+        "material",
+        "semantic_correction",
+        "confidently_wrong",
+        "human_reviewed",
+        "approved",
+    ],
+)
+def test_receipt_digest_changes_when_any_scored_claim_changes(claim: str) -> None:
+    rows = list(_sample())
+    original = rows[0]
+    if claim == "source_sha256":
+        rows[0] = replace(original, source_sha256=f"{99:064x}")
+    elif claim == "file_format":
+        rows[0] = replace(original, file_format=H3FileFormat.XLSX)
+    elif claim == "frozen_at":
+        rows[0] = replace(original, frozen_at=FROZEN + timedelta(seconds=1))
+    elif claim == "extraction_started_at":
+        rows[0] = replace(original, extraction_started_at=STARTED + timedelta(seconds=1))
+    elif claim == "evidence_class":
+        rows[0] = replace(original, evidence_class=H3EvidenceClass.TEST_LANE_REALISTIC)
+    elif claim == "test_lane_run_id":
+        rows[0] = replace(original, test_lane_run_id="run-002")
+    else:
+        field = original.fields[0]
+        field_value = {
+            "material": not field.material,
+            "semantic_correction": not field.semantic_correction,
+            "confidently_wrong": not field.confidently_wrong,
+            "human_reviewed": not field.human_reviewed,
+            "approved": not field.approved,
+        }[claim]
+        rows[0] = replace(original, fields=(replace(field, **{claim: field_value}),))
+
+    assert _receipt_digest(tuple(rows)) != _receipt_digest(_sample())
+
+
+def test_receipt_digest_is_stable_for_same_instant_in_another_timezone() -> None:
+    rows = _sample()
+    plus_two = timezone(timedelta(hours=2))
+    localized = tuple(
+        replace(
+            row,
+            frozen_at=row.frozen_at.astimezone(plus_two),
+            extraction_started_at=row.extraction_started_at.astimezone(plus_two),
+        )
+        for row in rows
+    )
+
+    assert _receipt_digest(localized) == _receipt_digest(rows)
+
+
+def test_verified_receipt_cannot_be_reused_after_a_review_claim_changes() -> None:
+    rows = _sample()
+    receipt_digest = _receipt_digest(rows)
+    verifier = _TrustedReceiptVerifier(expected_sha256=receipt_digest)
+    accepted = evaluate_h3(rows, receipt_verifier=verifier)
+
+    changed = list(rows)
+    original = changed[0]
+    changed[0] = replace(
+        original,
+        fields=(replace(original.fields[0], human_reviewed=False),),
+    )
+    refused = evaluate_h3(tuple(changed), receipt_verifier=verifier)
+
+    assert accepted.status is H3Status.PASS
+    assert refused.status is H3Status.NOT_ACCEPTANCE
+    assert refused.code == "TEST_LANE_EVIDENCE_UNVERIFIED"
+    assert verifier.calls[0][0] == verifier.calls[1][0]
+    assert verifier.calls[0][1] == receipt_digest
+    assert verifier.calls[1][1] != receipt_digest
+
+
+def test_receipt_binds_each_source_to_its_exact_run_id() -> None:
+    rows = tuple(
+        replace(row, test_lane_run_id=f"run-{index:02d}")
+        for index, row in enumerate(_sample(), start=1)
+    )
+    receipt_digest = _receipt_digest(rows)
+    verifier = _TrustedReceiptVerifier(expected_sha256=receipt_digest)
+    accepted = evaluate_h3(rows, receipt_verifier=verifier)
+
+    swapped_runs = list(rows)
+    swapped_runs[0] = replace(swapped_runs[0], test_lane_run_id=rows[1].test_lane_run_id)
+    swapped_runs[1] = replace(swapped_runs[1], test_lane_run_id=rows[0].test_lane_run_id)
+    refused = evaluate_h3(tuple(swapped_runs), receipt_verifier=verifier)
+
+    expected_pairs = tuple((row.source_sha256, row.test_lane_run_id) for row in rows)
+    swapped_pairs = tuple((row.source_sha256, row.test_lane_run_id) for row in swapped_runs)
+    assert accepted.status is H3Status.PASS
+    assert refused.status is H3Status.NOT_ACCEPTANCE
+    assert refused.code == "TEST_LANE_EVIDENCE_UNVERIFIED"
+    assert tuple(pair[0] for pair in expected_pairs) == tuple(pair[0] for pair in swapped_pairs)
+    assert {pair[1] for pair in expected_pairs} == {pair[1] for pair in swapped_pairs}
+    assert expected_pairs != swapped_pairs
+    assert verifier.calls[0][0] == expected_pairs
+    assert verifier.calls[1][0] == swapped_pairs
+    assert verifier.calls[0][1] == receipt_digest
+    assert verifier.calls[1][1] != receipt_digest
 
 
 def test_more_than_ten_percent_semantic_corrections_fails_without_rounding() -> None:
